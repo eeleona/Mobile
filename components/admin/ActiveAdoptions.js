@@ -33,6 +33,7 @@ const ActiveAdoptions = () => {
                 <Text style={styles.cardTitle}>{item.v_id?.v_fname} {item.v_id?.v_lname}</Text>
                 <Text style={styles.cardText}>Pet: {item.p_id?.p_name}</Text>
             </View>
+            
         </TouchableOpacity>
     );
 
