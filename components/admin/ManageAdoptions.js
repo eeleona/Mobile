@@ -4,16 +4,23 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import ActiveAdoptions from './ActiveAdoptions';
 import PendingAdoptions from './PendingAdoptions';
 
-
 const Tab = createMaterialTopTabNavigator();
 
-function ManageAdoptions () {
+function ManageAdoptions() {
   return (
     <View style={styles.container}>
-      <AppBar></AppBar>
-      <Tab.Navigator>
-        <Tab.Screen name="Active Adoptions" component={ActiveAdoptions} style={styles.label}/>
-        <Tab.Screen name="Pending Adoptions" component={PendingAdoptions} style={styles.label}/>
+      <AppBar />
+      <Tab.Navigator
+        screenOptions={{
+          tabBarStyle: styles.tabBar,
+          tabBarIndicatorStyle: styles.tabIndicator,
+          tabBarLabelStyle: styles.tabLabel,
+          tabBarActiveTintColor: 'white',
+          tabBarInactiveTintColor: 'gray',
+        }}
+      >
+        <Tab.Screen name="Active Adoptions" component={ActiveAdoptions} />
+        <Tab.Screen name="Pending Adoptions" component={PendingAdoptions} />
       </Tab.Navigator>
     </View>
   );
@@ -24,10 +31,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F4F4F4',
   },
-  label: {
-    fontFamily: 'Inter',
-    //fontWeight: 500,
-  }
+  tabBar: {
+    backgroundColor: 'white',
+    elevation: 5,
+    height: 50,
+    borderRadius: 10,
+    marginHorizontal: 10,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  tabIndicator: {
+    backgroundColor: '#ff69b4', // Pink background for selected tab
+    height: '100%', // Cover the entire height
+    borderRadius: 10,
+  },
+  tabLabel: {
+    fontWeight: 'bold',
+    fontSize: 15,
+    textTransform: 'none',
+  },
 });
 
 export default ManageAdoptions;

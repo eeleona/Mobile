@@ -3,19 +3,19 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Divider } from 'react-native-paper';
 import config from '../../server/config/config';
 import AppBar from '../design/AppBar';
- 
+
 const ViewEvent = ({ route, navigation }) => {
   // Use state to manage the event data
   const [event, setEvent] = useState(route.params.event);
- 
+
   // Simple navigation to edit screen
   const handleEdit = () => {
-    navigation.navigate('Edit Event', {
+    navigation.navigate('Edit Event', { 
       eventId: event._id,
       // No callback needed - we'll refresh when returning
     });
   };
- 
+
   return (
     <View style={styles.container}>
       <AppBar />
@@ -25,14 +25,14 @@ const ViewEvent = ({ route, navigation }) => {
           source={{ uri: `${config.address}${event.e_image}?${Date.now()}` }} // Cache busting
           resizeMode="cover"
         />
- 
+
         <View style={styles.whitebg}>
           <Text style={styles.eventName}>{event.e_title}</Text>
           <Text style={styles.event}>Location: {event.e_location}</Text>
           <Text style={styles.event}>Date: {new Date(event.e_date).toDateString()}</Text>
           <Divider style={styles.divider} />
           <Text style={styles.event}>Description: {event.e_description}</Text>
- 
+
           <View style={styles.buttonContainer}>
             <TouchableOpacity
               style={styles.editbtn}
@@ -52,7 +52,7 @@ const ViewEvent = ({ route, navigation }) => {
     </View>
   );
 };
- 
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f6f6f6' },
   combinedContainer: {
@@ -83,5 +83,5 @@ const styles = StyleSheet.create({
   deletebtn: { padding: 10, marginHorizontal: 5, backgroundColor: '#d95555', width: 90, height: 40, borderRadius: 5 },
   deletebtntext: { fontSize: 18, color: 'white', textAlign: 'center', fontFamily: 'Inter_700Bold' },
 });
- 
+
 export default ViewEvent;

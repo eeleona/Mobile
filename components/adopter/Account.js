@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, Image } from 'react-native';
-import AdminSearch from '../design/AdminSearch';
+
 import { PaperProvider } from 'react-native-paper';
 import UserNavbar from '../design/UserNavbar';
 import {  useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';

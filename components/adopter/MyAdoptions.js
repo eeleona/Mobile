@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert } from 'react-native';
-import AdminNavbar from '../design/AdminNavbar';
-import AppBar from '../design/AppBar';
+
 import axios from 'axios';
 import { ProgressBar, MD3Colors, Divider, PaperProvider, Modal, Portal, Appbar, Button } from 'react-native-paper';
 import { ApplicationProvider, Input} from '@ui-kitten/components';
@@ -90,7 +89,7 @@ const MyAdoptions = () => {
           <Text style={styles.msg}>Please message the Shelter for updates!</Text> */}
         </Modal>
       </Portal>
-            <AdminNavbar></AdminNavbar>
+            
             </View>
         </PaperProvider>
     </ApplicationProvider>

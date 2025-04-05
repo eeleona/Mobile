@@ -3,17 +3,25 @@ import AppBar from '../design/AppBar';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import VerifiedUsers from './VerifiedUsers';
 import PendingUsers from './PendingUsers';
-import AdminNavbar from '../design/AdminNavbar';
+import PendingAdoptions from './PendingAdoptions';
 
 const Tab = createMaterialTopTabNavigator();
 
-function ManageStaff () {
+function ManageUser() {
   return (
     <View style={styles.container}>
-      <AppBar></AppBar>
-      <Tab.Navigator>
-        <Tab.Screen name="Verified Users" component={VerifiedUsers} style={styles.label}/>
-        <Tab.Screen name="Pending Users" component={PendingUsers} style={styles.label}/>
+      <AppBar />
+      <Tab.Navigator
+        screenOptions={{
+          tabBarStyle: styles.tabBar,
+          tabBarIndicatorStyle: styles.tabIndicator,
+          tabBarLabelStyle: styles.tabLabel,
+          tabBarActiveTintColor: 'white',
+          tabBarInactiveTintColor: 'gray',
+        }}
+      >
+        <Tab.Screen name="Pending Users" component={PendingUsers} />
+        <Tab.Screen name="Verified Users" component={VerifiedUsers} />
       </Tab.Navigator>
     </View>
   );
@@ -24,11 +32,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F4F4F4',
   },
-  label: {
-    fontFamily: 'Inter',
+  tabBar: {
+    backgroundColor: 'white',
+    elevation: 5,
+    height: 50,
+    borderRadius: 10,
+    marginHorizontal: 10,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  tabIndicator: {
+    backgroundColor: '#ff69b4', // Pink background for selected tab
+    height: '100%', // Cover the entire height
+    borderRadius: 10,
+  },
+  tabLabel: {
     fontWeight: 'bold',
-    color: 'red',
-  }
+    fontSize: 15,
+    textTransform: 'none',
+  },
 });
 
-export default ManageStaff;
+export default ManageUser;

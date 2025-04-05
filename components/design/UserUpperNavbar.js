@@ -1,4 +1,4 @@
-import './gesture-handler';
+// import './gesture-handler';
 import { Searchbar } from 'react-native-paper';
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';

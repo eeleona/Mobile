@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Image, Text, TouchableOpacity, View, Modal, TextInput } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import AdminNavbar from '../design/AdminNavbar';
-import AdminSearch from '../design/AdminSearch';
 import { PaperProvider } from 'react-native-paper';
 
 const Notification = ({ navigation }) => {
@@ -46,7 +44,7 @@ const Notification = ({ navigation }) => {
   return (
     <PaperProvider>
     <View style={styles.container}>
-      <AdminSearch></AdminSearch>
+      
       <Text style={styles.welcome}>Notifications</Text>
       <View style={styles.notificationList}>
         {notificationsData.map((notification) => (
@@ -73,7 +71,7 @@ const Notification = ({ navigation }) => {
           </TouchableOpacity>
         ))}
       </View>
-      <AdminNavbar></AdminNavbar>
+      
     </View>
     </PaperProvider>
   );
@@ -98,7 +96,7 @@ const styles = StyleSheet.create({
   },
   welcome: {
     fontFamily: 'Inter',
-    marginTop: 110,
+    marginTop: 130,
     fontWeight: 'bold',
     color: 'black',
     fontSize: 30,
@@ -129,9 +127,8 @@ const styles = StyleSheet.create({
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    marginLeft: 5,
-    marginRight: 5,
+    padding: 15,
+    marginHorizontal: 15,
     backgroundColor: '#fff',
     borderRadius: 8,
     marginBottom: 10,

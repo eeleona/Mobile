@@ -1,42 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, Animated } from 'react-native';
+import React from 'react';
+import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Divider } from 'react-native-paper';
-import { MaterialIcons } from '@expo/vector-icons'; // Ensure you have this library installed
 import AppBar from '../design/AppBar'; // Import your custom AppBar
 import axios from 'axios';
-import config from '../../server/config/config'; // Adjust the import path as necessary
 
 const PendingUserDetails = ({ route, navigation }) => {
   const { user } = route.params;
-  const [isValidIdVisible, setIsValidIdVisible] = useState(false);
-  const [arrowRotation] = useState(new Animated.Value(0));
-
-  const toggleValidIdVisibility = () => {
-    setIsValidIdVisible(!isValidIdVisible);
-
-    // Animate the arrow rotation
-    Animated.timing(arrowRotation, {
-      toValue: isValidIdVisible ? 0 : 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const arrowRotationStyle = {
-    transform: [
-      {
-        rotate: arrowRotation.interpolate({
-          inputRange: [0, 1],
-          outputRange: ['0deg', '90deg'],
-        }),
-      },
-    ],
-  };
 
   // Handle Verify User
   const handleVerify = async () => {
     try {
-      await axios.put(`${config.address}/${user._id}/role`, { p_role: 'verified' });
+      await axios.put(`http://192.168.0.110:8000/api/user/${user._id}/role`, { p_role: 'verified' });
       Alert.alert('Success', 'User has been verified.');
       navigation.goBack();
     } catch (error) {
@@ -48,7 +22,7 @@ const PendingUserDetails = ({ route, navigation }) => {
   // Handle Reject User
   const handleReject = async () => {
     try {
-      await axios.delete(`${config.address}/${user._id}`);
+      await axios.delete(`http://192.168.0.110:8000/api/user/delete/${user._id}`);
       Alert.alert('Success', 'User has been rejected.');
       navigation.goBack();
     } catch (error) {
@@ -65,11 +39,11 @@ const PendingUserDetails = ({ route, navigation }) => {
           <View style={styles.imageContainer}>
             <Image
               style={styles.profileImage}
-              source={{ uri: `${config.address}${user.p_img}` }}
+              source={{ uri: `http://192.168.0.110:8000${user.p_img}` }}
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.name}>{user.p_fname} {user.p_mname} {user.p_lname}</Text>
+          <Text style={styles.name}>{user.p_fname} {user.p_mname}. {user.p_lname}</Text>
           <Divider style={styles.divider} />
           <Text style={styles.detail}>Username: {user.p_username}</Text>
           <Text style={styles.detail}>Email Address: {user.p_emailadd}</Text>
@@ -77,26 +51,20 @@ const PendingUserDetails = ({ route, navigation }) => {
           <Text style={styles.detail}>Address: {user.p_add}</Text>
           <Text style={styles.detail}>Gender: {user.p_gender}</Text>
           <Text style={styles.detail}>Birthday: {user.p_birthdate}</Text>
+          <Text style={styles.detail}>Role: {user.p_role}</Text>
         </View>
         <View style={styles.validID}>
-          <TouchableOpacity style={styles.validIdButton} onPress={toggleValidIdVisibility}>
-            <Text style={styles.sectionTitle}>Valid ID</Text>
-            <Animated.View style={arrowRotationStyle}>
-              <MaterialIcons name="keyboard-arrow-right" size={24} color="#333" />
-            </Animated.View>
-          </TouchableOpacity>
-          {isValidIdVisible && (
-            <View style={styles.imageContainer}>
-              <Image
-                style={styles.validIdImage}
-                source={{ uri: `${config.address}${user.p_validID}` }}
-                resizeMode="contain"
-              />
-            </View>
-          )}
+          <Text style={styles.sectionTitle}>Valid ID</Text>
+          <View style={styles.imageContainer}>
+            <Image
+              style={styles.validIdImage}
+              source={{ uri: `http://192.168.0.110:8000${user.p_validID}` }}
+              resizeMode="contain"
+            />
+          </View>
         </View>
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.rejectButton} onPress={handleReject}>
+        <TouchableOpacity style={styles.rejectButton} onPress={handleReject}>
             <Text style={styles.buttonText}>Reject</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.verifyButton} onPress={handleVerify}>
@@ -127,28 +95,21 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
   },
-  validIdButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   imageContainer: {
     alignItems: 'center',
+    marginBottom: 20,
   },
   profileImage: {
     width: 200,
     height: 200,
     borderRadius: 100,
-    marginTop: 10,
   },
   validIdImage: {
-    marginTop: 10,
     width: '100%',
     height: 200,
     borderRadius: 10,
   },
   name: {
-    marginTop: 15,
     fontSize: 24,
     color: '#ff69b4',
     textAlign: 'center',
@@ -163,11 +124,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     color: '#333',
+    marginBottom: 10,
     fontFamily: 'Inter_700Bold',
   },
   divider: {
     marginVertical: 15,
-    backgroundColor: '#e6dde3',
+    backgroundColor: '#ccc',
     height: 1,
   },
   buttonContainer: {
@@ -180,6 +142,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 5,
     flex: 1,
+    
   },
   rejectButton: {
     backgroundColor: '#d95555',

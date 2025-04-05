@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, Image, ImageBackground } from 'react-native';
-import {  useFonts, Inter_700Bold, Inter_500Medium, Inter_400Regular } from '@expo-google-fonts/inter';
+import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import { useFonts, Inter_700Bold, Inter_500Medium, Inter_400Regular } from '@expo-google-fonts/inter';
 import { ApplicationProvider, Input } from '@ui-kitten/components';
 import * as eva from '@eva-design/eva';
-
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { jwtDecode } from 'jwt-decode';
+import config from '../../server/config/config';
 
 const LogIn = ({ navigation }) => {
   const [username, setUsername] = useState('');
@@ -15,27 +18,48 @@ const LogIn = ({ navigation }) => {
       setError('Please enter both username and password.');
       return;
     }
-
+  
     try {
-      const response = await axios.post('http://192.168.0.110:8000/api/login', { username, password });
-      const { accessToken, role } = response.data;
-      
-      if (role === 'admin' || role === 'pending-admin') {
-        navigation.navigate('Admin Homepage');
-      } else if (role === 'verified' || role === 'pending') {
+      const response = await axios.post(`${config.address}/api/user/login`, { username, password });
+      const { accessToken } = response.data;
+  
+      // ✅ 1) Remove old token first
+      await AsyncStorage.removeItem('authToken');
+  
+      // ✅ 2) Store the token correctly
+      await AsyncStorage.setItem('authToken', accessToken);
+  
+      // ✅ 3) Retrieve it immediately to confirm
+      const storedToken = await AsyncStorage.getItem('authToken');
+      console.log("🔹 Retrieved Token Immediately After Storing:", storedToken);
+  
+      // ✅ 4) Decode token
+      const decodedToken = jwtDecode(accessToken);
+      console.log("✅ Decoded Token:", decodedToken);
+  
+      const userRole = decodedToken.role;
+  
+      // ✅ 5) Navigate based on role
+      if (userRole === 'pending' || userRole === 'verified') {
         navigation.navigate('User Homepage');
+      } else if (userRole === 'admin' || userRole === 'super-admin') {
+        navigation.navigate('Admin Page');
+      } else if (userRole === 'pending-admin') {
+        navigation.navigate('Admin Homepage');
       } else {
         setError('Unauthorized role.');
       }
     } catch (error) {
+      console.error("❌ Login Error:", error.response?.data || error.message);
       setError('Incorrect username or password.');
     }
   };
+  
 
   const handleSignup = () => {
     navigation.navigate('Sign up');
   };
-  
+
   let [fontsLoaded] = useFonts({
     Inter_700Bold,
     Inter_500Medium,
@@ -131,8 +155,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 10,
     borderColor: '#EEEEEE',
-    alignItems: 'center',
-    justifyContent: 'center',
+    
   },
   buttons: {
     alignItems: 'center',
@@ -170,5 +193,11 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
   },
+  error: {
+    color: 'red',
+    fontSize: 14,
+    marginBottom: 10,
+  },
 });
+
 export default LogIn;

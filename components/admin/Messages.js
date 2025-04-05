@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, Image, Modal, Button, KeyboardAvoidingView, Platform } from 'react-native';
-import AdminNavbar from '../design/AdminNavbar';
-import AdminSearch from '../design/AdminSearch';
+
 import { PaperProvider } from 'react-native-paper';
 
 const Messages = ({ navigation }) => {
@@ -38,22 +37,16 @@ const Messages = ({ navigation }) => {
   return (
     <PaperProvider>
     <View style={styles.container}>
-      <AdminSearch></AdminSearch>
+      
       <Text style={styles.welcome}>Messages</Text>
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search messages..."
-          value={searchText}
-          onChangeText={setSearchText}
-        />
-      </View>
+      <View style={styles.whitebg}>
+      
       <FlatList
         data={filteredMessages}
         renderItem={renderMessageItem}
         keyExtractor={(item) => item.id}
       />
-      <AdminNavbar></AdminNavbar>
+      </View>
     </View>
     </PaperProvider>
   );
@@ -62,19 +55,21 @@ const Messages = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F4F4F4',
   },
   logo: {
     width: 40,
     height: 40,
   },
+  whitebg: { backgroundColor: 'white'},
   welcome: {
     fontFamily: 'Inter',
-    marginTop: 110,
+    marginTop: 130,
     fontWeight: 'bold',
     color: 'black',
-    fontSize: 30,
+    fontSize: 32,
     marginLeft: 15,
+    marginBottom: 15,
   },
   navBar: {
     height: 50,
@@ -97,21 +92,10 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginHorizontal: 5,
 },
-  searchContainer: {
-    marginBottom: 10,
-    marginTop: 20,
-    marginHorizontal: 10,
-  },
-  searchInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 8,
-  },
   messageItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },

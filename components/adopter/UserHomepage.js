@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, StyleSheet, Text, View, Image, TouchableOpacity, ScrollView, ImageBackground } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import AdminSearch from '../design/AdminSearch';
+
 import UserNavbar from '../design/UserNavbar';
 import UserUpperNavbar from '../design/UserUpperNavbar';
 import {  useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';

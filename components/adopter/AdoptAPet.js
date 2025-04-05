@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import { Button, Divider, PaperProvider, Modal, Portal} from 'react-native-paper';
-import AdminNavbar from '../design/AdminNavbar';
+
 import AppBar from '../design/AppBar';
 
 
@@ -93,7 +93,7 @@ const AdoptAPet = ({ navigation }) => {
           </View>
         </Modal>
       </Portal>
-      <AdminNavbar></AdminNavbar>
+      
     </View>
     </PaperProvider>
   );

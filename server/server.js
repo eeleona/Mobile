@@ -1,108 +1,156 @@
-require('dotenv').config({ path: "../.env" });
-console.log('JWT_SECRET:', process.env.JWT_SECRET);
+const fs = require("fs");
+const https = require("https");
+require("dotenv").config({ path: '../.env' });
 
+const Message = require("./models/messageModel");
 const express = require("express");
-const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
-const multer = require('multer');
-const path = require('path');
+const multer = require("multer");
+const path = require("path");
+const helmet = require("helmet");
 
 require("./config/mongo_config");
 
 const app = express();
-const server = http.createServer(app);
 const port = 8000;
 
-// 🔹 Initialize `io` early to prevent circular dependency
+// SSL Certificate Files
+const options = {
+  key: fs.readFileSync("/etc/letsencrypt/live/api.e-pet-adopt.site/privkey.pem"),
+  cert: fs.readFileSync("/etc/letsencrypt/live/api.e-pet-adopt.site/fullchain.pem"),
+};
+
+const server = https.createServer(options, app);
+
+// Enhanced CORS configuration
+const allowedOrigins = [
+  "https://e-pet-adopt.site",
+  "http://localhost:3000",
+  "http://localhost:8081", // For React Native development
+  //"exp://192.168.*.*:8081", // For Expo development
+  "null" // For mobile apps
+];
+
 const io = new Server(server, {
-    cors: {
-        origin: "http://localhost:3000",
-        credentials: true
-    }
+  cors: {
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.some(allowed => origin.includes(allowed))) {
+        callback(null, true);
+      } else {
+        console.log(`Blocked by CORS: ${origin}`);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+  },
 });
 
 app.set("io", io);
 
-// Multer Setup for File Uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/images/'),
-    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
-});
-const upload = multer({ storage });
-
-app.use(express.json(), express.urlencoded({ extended: true }), cors());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Debugging Middleware
+// Security Middleware
+app.use(helmet());
 app.use((req, res, next) => {
-    console.log('Authorization header:', req.headers['authorization']);
-    console.log('🔹 Incoming Request Path:', req.path);
-    console.log('🔹 Incoming Authorization Header:', req.headers['authorization']);
-    next();
+  if (!req.secure) {
+    return res.redirect("https://" + req.headers.host + req.url);
+  }
+  next();
 });
 
-// 🔹 Import Routes (after setting up `io`)
+// Enhanced Multer Setup with validation
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, "uploads/images");
+    fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only JPEG, PNG and GIF are allowed.'), false);
+  }
+};
+
+const upload = multer({ 
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
+
+// Increased payload limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Enhanced Debugging Middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  console.log("Headers:", req.headers);
+  next();
+});
+
+// Error Handling Middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
+
+// Import Routes
 const UserRoutes = require("./routes/data_routes");
 UserRoutes(app, upload);
 
 const MessageRoutes = require("./routes/messageRoutes");
 app.use("/api/messages", MessageRoutes);
 
-const Adoption = require("./models/adoption_model");
-
-// 🔹 **Socket.IO Real-Time Messaging & Notifications**
+// Socket.IO with enhanced error handling
 io.on("connection", (socket) => {
-    console.log(`User connected: ${socket.id}`);
+  console.log(`User connected: ${socket.id}`);
 
-    socket.on("joinRoom", (userId) => {
-        socket.join(userId);
-        console.log(`User ${userId} joined room`);
-    });
+  socket.on("joinRoom", (userId) => {
+    if (!userId) {
+      return socket.emit("error", "User ID is required");
+    }
+    socket.join(userId);
+    console.log(`User ${userId} joined room`);
+  });
 
-    socket.on("sendMessage", async ({ senderId, receiverId, message }) => {
-        try {
-            const newMessage = new Message({ senderId, receiverId, message });
-            await newMessage.save();
-            io.to(receiverId).emit("receiveMessage", newMessage);
-        } catch (error) {
-            console.error("Error sending message:", error);
-        }
-    });
+  socket.on("sendMessage", async ({ senderId, receiverId, message }) => {
+    try {
+      if (!senderId || !receiverId || !message) {
+        throw new Error("Missing required fields");
+      }
+      
+      const newMessage = new Message({ senderId, receiverId, message });
+      await newMessage.save();
+      io.to(receiverId).emit("receiveMessage", newMessage);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      socket.emit("messageError", error.message);
+    }
+  });
 
-    socket.on("joinNotifications", (adminId) => {
-        socket.join(adminId);
-        console.log(`Admin ${adminId} joined notifications room`);
-    });
-
-    socket.on("disconnect", () => {
-        console.log(`User disconnected: ${socket.id}`);
-    });
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
 });
 
-// Adoption Status API
-// app.get('/api/adoptions/status/:userId', async (req, res) => {
-//     try {
-//         const userId = req.params.userId;
-//         const adoptions = await Adoption.find({ v_id: userId });
-
-//         const notifications = adoptions.map(adoption => {
-//             let statusText = "Your adoption is still pending.";
-
-//             if (adoption.status === "accepted") statusText = "Your adoption has been accepted!";
-//             if (adoption.status === "failed") statusText = `Your adoption failed: ${adoption.failedReason}`;
-//             if (adoption.status === "declined") statusText = "Your adoption has been declined.";
-//             if (adoption.status === "complete") statusText = "Your adoption process is complete.";
-
-//             return { id: adoption._id, text: statusText };
-//         });
-
-//         res.json(notifications);
-//     } catch (error) {
-//         console.error("Error fetching adoption status:", error);
-//         res.status(500).json({ message: "Error fetching adoption status" });
-//     }
-// });
-
-// Start Server
-server.listen(port, () => console.log(`Server running on port ${port}`));
+server.listen(port, "0.0.0.0", () => {
+  console.log(`🚀 HTTPS Server running on port ${port}`);
+  console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
+});

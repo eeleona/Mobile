@@ -1,146 +1,142 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList, Image } from 'react-native';
-import AdminNavbar from '../design/AdminNavbar';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+// import MapView, { Marker } from 'react-native-maps';
+import axios from 'axios';
 import AppBar from '../design/AppBar';
+import config from '../../server/config/config';
 
-// Sample data to mimic service lists
-const SERVICES = {
-  'Veterinary Clinics': [
-    {
-      name: 'Carveldon Veterinary Center',
-      address: 'CPC, 21 Cartimar Ave, Pasay, 1300 Metro Manila',
-      image: require('../../assets/Images/vetone.png'),
-    },
-    {
-      name: 'Cruz Veterinary Clinic',
-      address: 'Stall G, Felimarc Pet Center, 2189 A. Luna, Pasay, 1300 Metro Manila',
-      image: require('../../assets/Images/vettwo.png'),
-    },
-  ],
-  'Neutering Clinics': [
-    {
-      name: 'Pet Allies Animal Clinic',
-      address: 'Unit 6, Megal Taft Bldg., 2140 Taft Ave.Cor.',
-      image: require('../../assets/Images/locOne.png'),
-    },
-    {
-      name: 'The Veterinary Hub Pte. Corp',
-      address: 'Unit W Zone V, 1300 Taft Ave, Pasay, Metro Manila',
-      image: require('../../assets/Images/locTwo.png'),
-    },
-  ],
-  'Pet Hotels': [
-    {
-      name: 'Dog Friend Hotel & SPA',
-      address: 'Unit K & C Felimarc Center Taft Avenue',
-      image: require('../../assets/Images/hotelone.png'),
-    },
-    {
-      name: 'The Pup Club',
-      address: '131 Armstrong Ave corner Von Braun, Parañaque, Philippines',
-      image: require('../../assets/Images/hotelTwo.png'),
-    },
-  ],
-  'Pet Grooming': [
-    {
-      name: 'Happy Tails Pet Salon',
-      address: '32 C Clemente Jose, Malibay, Pasay, 1300 Kalakhang Maynila',
-      image: require('../../assets/Images/salonOne.png'),
-    },
-    {
-      name: 'Dogs and The City',
-      address: '116-117 South parking SM Mall of Asia, Parañaque, Philippines',
-      image: require('../../assets/Images/salonTwo.png'),
-    },
-  ],
-};
-
-const ManageNearby = ({ navigation }) => {
-  const [searchText, setSearchText] = useState('');
+const NearbyServices = () => {
+  const [services, setServices] = useState([]);
   const [filteredServices, setFilteredServices] = useState([]);
-  const [hasNotification, setHasNotification] = useState(false);
+  const [activeTab, setActiveTab] = useState('veterinary');
+  const [loading, setLoading] = useState(true);
+  const mapRef = useRef(null); // Reference to the MapView
 
-  const handleSearch = (text) => {
-    setSearchText(text);
-    if (text.trim() === '') {
-      setFilteredServices([]);
-    } else {
-      const filtered = Object.keys(SERVICES).filter((service) =>
-        service.toLowerCase().includes(text.toLowerCase())
+  // Fetch all nearby services
+  const fetchServices = async () => {
+    try {
+      const response = await axios.get(`${config.address}/api/service/all`);
+      setServices(response.data);
+      filterServices('veterinary', response.data); // Default filter
+    } catch (error) {
+      console.error('Error fetching services:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+ 
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  // Filter services based on type
+  const filterServices = (type, allServices = services) => {
+    const filtered = allServices.filter(service => service.ns_type === type);
+    setFilteredServices(filtered);
+    setActiveTab(type);
+  };
+
+  // Navigate to a specific service on the map
+  const navigateToService = (latitude, longitude) => {
+    if (mapRef.current && latitude && longitude) {
+      mapRef.current.animateToRegion(
+        {
+          latitude,
+          longitude,
+          latitudeDelta: 0.005, // Zoom level (more zoomed in)
+          longitudeDelta: 0.005,
+        },
+        1000 // Animation duration in milliseconds
       );
-      setFilteredServices(filtered);
+    } else {
+      console.error('Invalid coordinates or mapRef is not set.');
     }
-  };
-
-  const onButtonPress = (route) => {
-    if (route === 'Notifications') {
-      setHasNotification(false);
-    }
-    navigation.navigate(route);
-  };
-
-  const renderServiceList = (service) => {
-    return (
-      <FlatList
-        data={SERVICES[service]}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.clinicContainer}>
-            <View style={styles.clinicItem}>
-              <Image source={item.image} style={styles.clinicImage} />
-              <View style={styles.clinicDetails}>
-                <Text style={styles.clinicName}>{item.name}</Text>
-                <Text style={styles.clinicAddress}>{item.address}</Text>
-              </View>
-              <TouchableOpacity style={styles.bookButton}>
-                <Text style={styles.buttonText}>EDIT</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      />
-    );
   };
 
   return (
     <View style={styles.container}>
       <AppBar></AppBar>
-      <Text style={styles.heading}>Nearby Services</Text>
-      <Image
+      {/* Map View */}
+      {/* <MapView
+        ref={mapRef} // Attach the ref to the MapView
         style={styles.map}
-        source={require('../../assets/Images/pasaymap.png')}
-        resizeMode="contain"
-      />
-      
-      <View style={styles.buttonContainerr}>
-        {filteredServices.length > 0 ? (
-          filteredServices.map((service, index) => (
-            <View key={index} style={{ marginHorizontal: 10}}>
-              <Text style={styles.title}>{service}</Text>
-              {renderServiceList(service)}
-            </View>
-          ))
-        ) : (
-          <FlatList
-            style={styles.flat}
-            data={Object.keys(SERVICES)}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item }) => (
-              <View style={styles.serviceCategoryContainer}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setFilteredServices([item]);
-                  }}
-                  style={[styles.buttons, { backgroundColor: '#cad47c', color: 'white'}]}
-                >
-                  <Text style={styles.buttonText}>{item.toUpperCase()}</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          />
-        )}
+        initialRegion={{
+          latitude: 14.5378, // Latitude of Pasay City
+          longitude: 120.9817, // Longitude of Pasay City
+          latitudeDelta: 0.1,
+          longitudeDelta: 0.1,
+        }}
+      >
+        {filteredServices
+          .filter(
+            (service) =>
+              service.ns_latitude !== undefined &&
+              service.ns_longitude !== undefined &&
+              !isNaN(service.ns_latitude) &&
+              !isNaN(service.ns_longitude)
+          )
+          .map((service) => (
+            <Marker
+              key={service._id}
+              coordinate={{
+                latitude: service.ns_latitude,
+                longitude: service.ns_longitude,
+              }}
+              title={service.ns_name}
+              description={service.ns_address}
+            />
+          ))}
+      </MapView> */}
+      {/* Tab Navigation */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'veterinary' && styles.activeTab]}
+          onPress={() => filterServices('veterinary')}
+        >
+          <Text style={[styles.tabText, activeTab === 'veterinary' && styles.activeTabText]}>Veterinary</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'neutering' && styles.activeTab]}
+          onPress={() => filterServices('neutering')}
+        >
+          <Text style={[styles.tabText, activeTab === 'neutering' && styles.activeTabText]}>Neutering</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'hotel' && styles.activeTab]}
+          onPress={() => filterServices('hotel')}
+        >
+          <Text style={[styles.tabText, activeTab === 'hotel' && styles.activeTabText]}>Hotel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'grooming' && styles.activeTab]}
+          onPress={() => filterServices('grooming')}
+        >
+          <Text style={[styles.tabText, activeTab === 'grooming' && styles.activeTabText]}>Grooming</Text>
+        </TouchableOpacity>
       </View>
-      <AdminNavbar></AdminNavbar>
+
+      
+
+      {/* Service List */}
+      {loading ? (
+        <Text style={styles.loadingText}>Loading...</Text>
+      ) : (
+        <FlatList
+          data={filteredServices}
+          keyExtractor={(item) => item._id}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() => navigateToService(item.ns_latitude, item.ns_longitude)} // Navigate to the service
+            >
+              <View style={styles.serviceItem}>
+                <Text style={styles.serviceName}>{item.ns_name}</Text>
+                <Text style={styles.serviceAddress}>{item.ns_address}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={<Text style={styles.emptyText}>No services available for this category.</Text>}
+        />
+      )}
     </View>
   );
 };
@@ -148,116 +144,61 @@ const ManageNearby = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F4F4F4',
+    backgroundColor: '#f6f6f6',
+    padding: 10,
   },
-  heading: {
-    fontFamily: 'Inter_700Bold',
-    color: '#ff69b4',
-    fontSize: 30,
-    marginLeft: 15,
-    marginTop: 15,
-    marginBottom: 15,
-  },
-  title: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 20,
+  tabContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     marginBottom: 10,
+  },
+  tabButton: {
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: '#d2d2d5',
+  },
+  activeTab: {
+    backgroundColor: 'white',
+  },
+  tabText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  activeTabText: {
+    color: 'black',
   },
   map: {
-    width: "100%", 
-    height: "30%",
-  },
-  searchBarContainer: {
-    width: '100%',
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    color: '#000',
-    paddingVertical: 40,
-    fontFamily: 'Inter_500Medium',
-  },
-  searchBar: {
-    width: '80%',
-    height: 20,
-    borderWidth: 1,
-    borderColor: '#A9A9A9',
-    boxShadow: '4px 4px 11.5px 4px rgba(12, 12, 13, 0.10)',
-    borderRadius: 20,
-    padding: 10,
-  },
-  flat: {
-    elevation: 5,
-  },
-  buttonText: {
-    fontSize: 16,
-    color: 'black',
-    fontFamily: 'Inter_700Bold',
-    color: 'white',
-  },
-  button: {
-    width: '80%',
-    height: 30,
-    borderRadius: 40,
-    boxShadow: '0px 4px 4px rgba(0, 0, 0, 0.25)',
-    backgroundColor: '#E6A1C2',
-    fontFamily: 'Inter_700Bold',
-},
-  buttonContainerr: {
-    marginTop: 20,
-    justifyContent: 'space-between',
-  },
-  serviceCategoryContainer: {
-    padding: 1,
-    elevation: 5,
-  },
-  clinicContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-    backgroundColor: '#f9f9f9',
-    padding: 10,
-    borderRadius: 10,
-    elevation: 5,
-  },
-  clinicItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    elevation: 5,
-  },
-  clinicImage: {
-    width: 80,
-    height: 80,
-    marginRight: 10,
-    borderRadius: 10,
-  },
-  clinicDetails: {
-    flex: 1,
-  },
-  clinicName: {
-    fontSize: 16,
-    marginBottom: 5,
-    fontFamily: 'Inter_500Medium',
-  },
-  clinicAddress: {
-    fontSize: 12,
-    color: '#666666',
-    fontFamily: 'Inter_500Medium',
-  },
-  bookButton: {
-    backgroundColor: '#FF66C4',
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  buttons: {
-    backgroundColor: '#FF66C4',
-    paddingVertical: 15,
-    borderRadius: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 20,
+    height: 300,
     marginBottom: 10,
-    fontFamily: 'Inter_700Bold',
+  },
+  loadingText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: 'gray',
+    marginTop: 20,
+  },
+  serviceItem: {
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    elevation: 3,
+  },
+  serviceName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2a2a2a',
+  },
+  serviceAddress: {
+    fontSize: 14,
+    color: 'gray',
+  },
+  emptyText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: 'gray',
+    marginTop: 20,
   },
 });
 
-export default ManageNearby;
+export default NearbyServices;

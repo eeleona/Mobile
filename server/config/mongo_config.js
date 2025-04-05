@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
  
-mongoose.connect('mongodb://127.0.0.1:27017/epetadopt_db', {
+mongoose.connect('mongodb://epetadopt:E-PetAdopt2024@88.222.241.112:27017/epetadopt_db', {
     useNewUrlParser: true,
     useUnifiedTopology: true
 })

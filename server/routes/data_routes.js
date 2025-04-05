@@ -14,6 +14,7 @@ const adoptionController = require("../controllers/adoption_controller");
 const nearbyController = require("../controllers/nearby_controller");
 const activityLogController =require("../controllers/activitylog_controller");
 const notificationController = require("../controllers/notification_controller");
+const forgotpassController = require("../controllers/forgotpass_controller");
 const { authenticateJWT, isSuperAdmin, isAdminOrSuperAdmin, isPendingUser, isVerifiedUser} = require('../middlewares/auth');
 
 module.exports = (app, upload) => {
@@ -21,6 +22,11 @@ module.exports = (app, upload) => {
         res.json({message:"the api is working"})}
         );
     
+    // api links for forgot password
+    app.post("/api/user/forgotpassword", forgotpassController.sendResetCode);
+    app.post("/api/user/verify-code", forgotpassController.verifyResetCode);
+    app.post("/api/user/reset-password", forgotpassController.resetPassword);
+
     // api links for notifications
     app.get("/api/notifications", authenticateJWT, notificationController.getNotifications);
     app.get("/api/user/notifications/:userId", authenticateJWT, notificationController.getUserNotifications);
@@ -53,6 +59,8 @@ module.exports = (app, upload) => {
     app.post('/api/user/login', userController.login);
     app.get('/api/user/profile', authenticateJWT, userController.getUserProfile);
     app.get('/api/my/adoptions', authenticateJWT, userController.getUserAdoptions);
+    app.put('/api/user/profile/update', authenticateJWT, userController.updateUserProfile);
+
 
     // api links for adoption
     app.post('/api/adoption/submit', authenticateJWT, adoptionController.submitAdoptionForm);
@@ -68,6 +76,8 @@ module.exports = (app, upload) => {
     app.get('/api/adoption/past', adoptionController.getPastAdoptions);
     app.get('/api/adoption/notifications', authenticateJWT, isAdminOrSuperAdmin, adoptionController.getNewAdoptionNotifications);
     app.get('/api/adoptions/status/:userId', adoptionController.adoptionNotifications);
+    app.get('/api/adoption/check/:userId/:petId', adoptionController.checkAdoption);
+
 
     // api links for verified users
     app.delete('/api/user/delete/transfer/:id', verifiedController.deleteUserByIdAndTransferData);
@@ -120,7 +130,7 @@ module.exports = (app, upload) => {
     app.get('/api/barangay/all', barangayController.findAllInfo);
     app.put('/api/barangay/update/:id', authenticateJWT, isAdminOrSuperAdmin, barangayController.updateBarangayInfo);
     app.post('/api/barangay/export', authenticateJWT, isAdminOrSuperAdmin, barangayController.logExportActivity);
-
+    app.delete('/api/barangay/delete/:id', authenticateJWT, isAdminOrSuperAdmin, barangayController.deleteBarangayInfo);
 
     // api links for nearby services
     app.post('/api/service/new', upload.single('ns_image'), authenticateJWT, isAdminOrSuperAdmin, nearbyController.createNearbyService);

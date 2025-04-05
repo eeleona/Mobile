@@ -1,13 +1,13 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import AdminSearch from '../design/AdminSearch';
+
 import UserNavbar from '../design/UserNavbar';
-import AdminNavbar from '../design/AdminNavbar';
+
 
 const AdoptionProcess = () => {
   return (
     <View style={styles.container}>
-      <AdminSearch></AdminSearch>
+      
       <View style={styles.content}>
       <Text style={styles.ty}>Thank you for trusting E-Pet Adopt!</Text>
         <Text style={styles.message}>
@@ -21,7 +21,7 @@ const AdoptionProcess = () => {
           <Text style={styles.buttonText}>Back to Home</Text>
         </TouchableOpacity>
       </View>
-      <UserNavbar></UserNavbar>
+      
     </View>
   );
 };

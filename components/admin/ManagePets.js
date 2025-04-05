@@ -1,86 +1,99 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
 import axios from 'axios';
-import { Button, Divider, PaperProvider, Modal, Portal} from 'react-native-paper';
-import AdminNavbar from '../design/AdminNavbar';
+import { Divider, PaperProvider, Modal, Portal } from 'react-native-paper';
 import AppBar from '../design/AppBar';
-
+import config from '../../server/config/config'; // Import your config for API address
 
 const ManagePets = ({ navigation }) => {
   const [pets, setPets] = useState([]);
-  const [visible, setVisible] = React.useState(false);
-  const showModal = () => setVisible(true);
-  const hideModal = () => setVisible(false);
-  const containerStyle = {backgroundColor: 'white', padding: 20};
-  
+  const [visible, setVisible] = useState(false);
+  const [selectedPet, setSelectedPet] = useState(null); // State to store selected pet details
+
+  const showModal = (pet) => {
+    setSelectedPet(pet); // Set the selected pet details
+    setVisible(true);
+  };
+
+  const hideModal = () => {
+    setVisible(false);
+    setSelectedPet(null); // Clear the selected pet details
+  };
+
+  const containerStyle = { backgroundColor: 'white', padding: 20 };
+
   const fetchPets = () => {
-    axios.get('http://192.168.0.110:8000/api/pet/all')
-    .then((response)=>{
-      console.log(response.data.thePet)
-      setPets(response.data.thePet)
-    })
-    .catch((err)=>{
-      console.log(err)
-    })
+    axios
+      .get(`${config.address}/api/pet/all`)
+      .then((response) => {
+        console.log(response.data.thePet);
+        setPets(response.data.thePet);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
   };
 
   const renderItem = ({ item }) => (
-    <View style={styles.container}>
-      <View style={styles.allusercontainer}>
-        <View style={styles.userContainer}>
-        <Text style={styles.userName}>{item.p_name}</Text>
-        <Text style={styles.userDetails}>{item.p_type}</Text>
-      </View>
-      </View>
-    </View>
+    <TouchableOpacity onPress={() => showModal(item)} style={styles.petCard}>
+      <Image source={{ uri: `${config.address}${item.pet_img[0]}` }} style={styles.petImage} />
+      <Text style={styles.petName}>{item.p_name}</Text>
+      <Text style={styles.petDesc}>{item.p_gender} || {item.p_breed}</Text>
+      
+    </TouchableOpacity>
   );
 
   useEffect(() => {
     fetchPets();
   }, []);
-  useEffect(() => {
-    console.log(pets);
-  }, [pets]); 
 
   return (
     <PaperProvider>
-    <View style={styles.container}>
-      <AppBar></AppBar>
+      <View style={styles.container}>
+        <AppBar />
 
-      <View style={styles.headerContainer}>
-        <Text style={styles.heading}>Pets in Shelter</Text>
-      </View>
-
-      <TouchableOpacity onPress={showModal}>
-        <FlatList data={pets} 
-          renderItem={renderItem} 
-          keyExtractor={item => item.id}
+        <FlatList
+          data={pets}
+          renderItem={renderItem}
+          keyExtractor={(item) => item._id}
+          numColumns={2} // Display 2 items per row
+          key={'2-columns'} // Static key to ensure FlatList renders correctly
+          contentContainerStyle={styles.listContainer}
         />
-      </TouchableOpacity>
+        <Portal>
+  <Modal
+    visible={visible}
+    onDismiss={hideModal}
+    contentContainerStyle={styles.modalContainer} // Apply the updated container style
+  >
+    {selectedPet && (
+      <ScrollView style={{ maxHeight: '100%' }}> {/* Make the modal scrollable */}
+        {/* Pet Image Container */}
+        <View style={styles.imageContainer}>
+          <Image
+            style={styles.petImageModal}
+            source={{ uri: `${config.address}${selectedPet.pet_img[0]}` }}
+            resizeMode="contain" // Ensures the image maintains its aspect ratio
+          />
+        </View>
 
-      <Portal>
-        <Modal style={styles.mContainer} visible={visible} onDismiss={hideModal} contentContainerStyle={containerStyle}>
-          <Image style={styles.profilepic} source={require('../../assets/Images/petdog.jpg')}></Image>
-          <Text style={styles.name}>Brownies</Text>
-          <View style={styles.label1}>
-            <Text style={styles.labels}>Type: Dog</Text>
-            <Text style={styles.labels}>Gender: Female</Text>
-            <Text style={styles.labels}>Age: 2</Text>
-            <Text style={styles.labels}>Breed: Pomeranian</Text>
-          </View>
-          <Divider/>
-          <View style={styles.label2}>
-            <Text style={styles.labels}>Medical History: None</Text>
-            <Text style={styles.labels}>Vaccines: None</Text>
-          </View>
-          <Divider/>
-          <View style={styles.label2}>
-            <Text style={styles.labels}>Description: Brownieeee</Text>
-          </View>
-        </Modal>
-      </Portal>
-      <AdminNavbar></AdminNavbar>
-    </View>
+        {/* Pet Details */}
+        <Text style={styles.petNameModal}>{selectedPet.p_name}</Text>
+        <Text style={styles.petDetails}>Type: {selectedPet.p_type}</Text>
+        <Text style={styles.petDetails}>Gender: {selectedPet.p_gender}</Text>
+        <Text style={styles.petDetails}>Age: {selectedPet.p_age}</Text>
+        <Text style={styles.petDetails}>Breed: {selectedPet.p_breed}</Text>
+        <Text style={styles.petDetails}>Weight: {selectedPet.p_weight} kg</Text>
+        <Text style={styles.petDetails}>Medical History: {selectedPet.p_medicalhistory}</Text>
+        <Text style={styles.petDetails}>Vaccines: {selectedPet.p_vaccines.join(', ')}</Text>
+        <Text style={styles.petDetails}>Status: {selectedPet.p_status}</Text>
+        <Divider style={styles.divider} />
+        <Text style={styles.petDetails}>Description: {selectedPet.p_description}</Text>
+      </ScrollView>
+    )}
+  </Modal>
+</Portal>
+      </View>
     </PaperProvider>
   );
 };
@@ -90,133 +103,67 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F4F4F4',
   },
-  headerContainer: {
-    width: '100%',
-    height: 50,
-    alignItems: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 10,
-  },
-  heading: {
-    fontFamily: 'Inter_700Bold',
-    color: '#ff69b4',
-    fontSize: 30,
-    marginLeft: 15,
-    marginTop: 10,
-  },
-  allusercontainer: {
-    width: '100%',
-    height: '90%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 10,
-    flexDirection: 'row',
-  },
-  userContainer: {
-    width: '90%',
-    height: 80,
-    backgroundColor: 'white',
-    boxShadow: '0px 4px 4px rgba(0, 0, 0, 0.10)',
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+  listContainer: {
     padding: 10,
-    marginTop: 5,
-    elevation: 5,
+    justifyContent: 'center', // Center items when there's only one
   },
-  userName: {
-    width: '90%',
-    height: 20,
-    fontFamily: 'Inter_700Bold',
-    fontSize: 16,
+  petCard: {
+    width: '45%', // Fixed width for each card (adjust for spacing)
+    margin: 8,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 10,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 5,
+    marginHorizontal: 10,
   },
-  userDetails: {
-    width: '90%',
-    height: 20,
-    fontFamily: 'Inter_500Medium',
-    fontSize: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userDescription: {
-    width: '90%',
-    height: 20,
-    fontFamily: 'Inter',
-    fontSize: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 5,
-    marginBottom: 5,
-  },
-  mContainer: {
-    width: '95%',
-    alignContent: 'center',
-    alignItems: 'center',
-    marginLeft: 10,
-    borderRadius: 5,
-  },
-  profilepic: {
-    width: 300,
-    height: 300,
-    borderRadius: 5,
-    marginLeft: 5,
-  },
-  label1: {
+  petImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 10,
     marginBottom: 10,
   },
-  label2: {
-    marginTop: 15,
-    marginBottom: 5,
+  petName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
   },
-  labels: {
-    fontFamily: 'Inter_500Medium',
-    marginBottom: 10,
+  petDesc: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
   },
-  name: {
-    marginTop: 13,
-    marginBottom: 20,
-    fontFamily: 'Inter_700Bold',
+  modalContainer: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 8,
+    marginHorizontal: 30, // Space outside the modal
+  },
+  imageContainer: {
+    width: '100%',
+    height: 300, // Fixed height for the image container
+    borderRadius: 8,
+  },
+  petImageModal: {
+    width: '100%',
+    height: '100%', // Ensures the image fills the container
+    borderRadius: 8,
+  },
+  petNameModal: {
     fontSize: 30,
-    color: '#ff69b4',
-    textAlign: 'center',
-  },
-  btncontainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  editbtn: {
-    width: 160,
-    backgroundColor: '#cad47c',
-    paddingVertical: 15,
-    borderRadius: 5,
-    marginTop: 10,
-    marginRight: 5,
-  },
-  editbtntext: {
-    textAlign: 'center',
     fontWeight: 'bold',
-    fontSize: 16,
-    color: 'white',
-  },
-  deletebtn: {
-    width: 160,
-    backgroundColor: '#e85d5d',
-    paddingVertical: 15,
-    borderRadius: 5,
-    marginTop: 10,
-    marginLeft: 5,
-  },
-  deletebtntext: {
+    marginVertical: 15,
     textAlign: 'center',
-    fontWeight: 'bold',
-    fontSize: 16,
-    color: 'white',
+    color: '#333',
   },
+  petDetails: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 5,
+  },
+  divider: {
+    marginVertical: 10,
+  },
+    
 });
 
 export default ManagePets;

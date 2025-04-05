@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Image, Text, TouchableOpacity, View, Modal, TextInput } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import AdminNavbar from '../design/AdminNavbar';
-import AdminSearch from '../design/AdminSearch';
+
 import { PaperProvider } from 'react-native-paper';
 import UserNavbar from '../design/UserNavbar';
 
