@@ -2,7 +2,7 @@ const User = require('../models/user_model');
 const Verified = require('../models/verified_model');
 const Admin = require('../models/admin_model');
 const Adoption = require('../models/adoption_model');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 // const newUser = (req, res) => {
@@ -36,6 +36,9 @@ const newUser = async (req, res) => {
     const p_validID = req.files['p_validID'] ? `/uploads/images/${req.files['p_validID'][0].filename}` : null; 
 
     try {
+        // Hash the password before storing it
+        const hashedPassword = await bcrypt.hash(p_password, 10);
+
         // Create a new user instance
         const user = new User({
             p_img, 
@@ -44,7 +47,7 @@ const newUser = async (req, res) => {
             p_fname, 
             p_lname, 
             p_mname, 
-            p_password, // Store the plain text password
+            p_password: hashedPassword, // Store the hashed password
             p_add, 
             p_contactnumber, 
             p_gender, 
@@ -68,53 +71,33 @@ const login = async (req, res) => {
     const { username, password } = req.body;
 
     try {
-        // Find user in the first database
         const user1 = await Verified.findOne({ v_username: username }).exec();
-        const user2 = await User.findOne({ p_username: username }).exec(); // Adjust the database/model name
-        const user3 = await Admin.findOne({a_username: username}).exec();
+        const user2 = await User.findOne({ p_username: username }).exec();
+        const user3 = await Admin.findOne({ a_username: username }).exec();
 
         if (!user1 && !user2 && !user3) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Check password for the first user
-        if (user1 && password === user1.v_password) {
-            // Create a JWT token for the first user
-            const accessToken = jwt.sign({ 
-                id: user1._id,  
-                username: user1.v_username, 
-                role: user1.v_role 
-            }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        let user = user1 || user2 || user3; 
+        let storedPassword = user1 ? user1.v_password : user2 ? user2.p_password : user3.a_password;
+        let role = user1 ? user1.v_role : user2 ? user2.p_role : user3.s_role;
+        let usernameField = user1 ? user1.v_username : user2 ? user2.p_username : user3.a_username;
 
-            return res.status(200).json({ message: 'Login successful', accessToken });
+        // Compare hashed password
+        const isMatch = await bcrypt.compare(password, storedPassword);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Incorrect password' });
         }
 
-        // Check password for the second user
-        if (user2 && password === user2.p_password) {
-            // Create a JWT token for the second user
-            const accessToken = jwt.sign({ 
-                id: user2._id,  
-                username: user2.p_username, 
-                role: user2.p_role 
-            }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        // Generate JWT
+        const accessToken = jwt.sign(
+            { id: user._id, username: usernameField, role },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
 
-            return res.status(200).json({ message: 'Login successful', accessToken });
-        }
-
-        // Check password for the third user
-        if (user3 && password === user3.a_password) {
-            // Create a JWT token for the third user
-            const accessToken = jwt.sign({ 
-                id: user3._id,  
-                username: user3.a_username, 
-                role: user3.s_role 
-            }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
-            return res.status(200).json({ message: 'Login successful', accessToken });
-        }
-
-        // If password doesn't match for both users
-        return res.status(401).json({ message: 'Incorrect password' });
+        return res.status(200).json({ message: 'Login successful', accessToken });
 
     } catch (err) {
         console.error('Error during login:', err);
@@ -218,10 +201,6 @@ const getUserAdoptions = async (req, res) => {
 };
 
 
-
-
-
-
 const findAllUser = (req, res) => {
     User.find()
         .then((allTheUser) => {
@@ -282,6 +261,50 @@ const updateUserRole = async (req, res) => {
     }
 };
 
+const updateUserProfile = async (req, res) => {
+    try {
+        if (!req.user || !req.user.role) {
+            return res.status(401).json({ message: 'Unauthorized access' });
+        }
+
+        const { firstName, lastName, email, contactNumber, address, birthday } = req.body;
+        let updatedFields = {};
+
+        // Determine correct fields to update based on role
+        if (req.user.role === 'pending') {
+            updatedFields = {
+                p_fname: firstName,
+                p_lname: lastName,
+                p_emailadd: email,
+                p_contactnumber: contactNumber,
+                p_add: address,
+                p_birthdate: birthday
+            };
+            await User.findOneAndUpdate({ p_username: req.user.username }, updatedFields, { new: true });
+        } else if (req.user.role === 'verified') {
+            updatedFields = {
+                v_fname: firstName,
+                v_lname: lastName,
+                v_emailadd: email,
+                v_contactnumber: contactNumber,
+                v_add: address, 
+                v_birthdate: birthday
+            };
+            await Verified.findOneAndUpdate({ v_username: req.user.username }, updatedFields, { new: true });
+        } else {
+            return res.status(400).json({ message: 'Invalid user role' });
+        }
+
+        res.status(200).json({ message: 'Profile updated successfully' });
+
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+};
+
+
+
 module.exports = {
     generateAccessToken,
     newUser,
@@ -291,5 +314,6 @@ module.exports = {
     login,
     updateUserRole,
     getUserProfile,
-    getUserAdoptions
+    getUserAdoptions,
+    updateUserProfile 
 }

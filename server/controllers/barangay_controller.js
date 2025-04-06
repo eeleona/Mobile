@@ -122,10 +122,34 @@ const resetCounter = async (req, res) => {
     }
 };
 
+const deleteBarangayInfo = async (req, res) => {
+    const { id } = req.params;
+    const adminId = req.user && (req.user._id || req.user.id);
+    console.log('DELETE /api/barangay/:id was hit');
+
+    try {
+        const deleted = await Barangay.findByIdAndDelete(id);
+        if (!deleted) {
+            return res.status(404).json({ message: 'Barangay record not found.' });
+        }
+
+        const logMessage = `Deleted barangay record (ID: ${deleted.b_id}).`;
+        await logActivity(adminId, 'DELETE', 'Barangays', deleted._id, 'N/A', logMessage);
+
+        res.status(200).json({ message: 'Barangay record deleted successfully.' });
+    } catch (err) {
+        console.error('Error deleting barangay record:', err);
+        res.status(500).json({ error: 'Failed to delete barangay record.' });
+    }
+};
+
+
 module.exports = {
     newBarangayInfo,
     findAllInfo,
     resetCounter,
     updateBarangayInfo,
-    logExportActivity
+    logExportActivity,
+    deleteBarangayInfo
+
 }

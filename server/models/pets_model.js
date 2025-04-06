@@ -29,12 +29,12 @@ const PetSchema = new mongoose.Schema({
     },
     p_medicalhistory: {
         type: [String],
-        default: 'none'
+        default: []
     },
     p_vaccines: {
         type: [String],
-        default: 'none'
-    },
+        default: []
+    },    
     p_status: {
         type: String,
         default: 'none'

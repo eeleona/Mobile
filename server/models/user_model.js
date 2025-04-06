@@ -48,7 +48,16 @@ const UserSchema = new mongoose.Schema({
     p_role: {
         type: String,
         default: 'pending'
+    },
+    reset_code: { 
+        type: String, 
+        default: null 
+    },
+    reset_expires: { 
+        type: Date, 
+        default: null 
     }
+
 });
 
 UserSchema.pre('save', function(next) {

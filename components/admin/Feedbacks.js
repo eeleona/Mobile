@@ -1,92 +1,90 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, ScrollView, Dimensions, Image, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  FlatList, 
+  StyleSheet, 
+  Image, 
+  ActivityIndicator 
+} from 'react-native';
 import axios from 'axios';
-
-import AppBar from '../design/AppBar';
-
-const { width } = Dimensions.get('window'); // Get the screen width
+import { Card, Title, Paragraph } from 'react-native-paper';
+import config from '../../server/config/config';
 
 const Feedbacks = () => {
   const [feedbacks, setFeedbacks] = useState([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  const slides = [
-    { id: 1, title: 'Slide 1', image: 'https://via.placeholder.com/300x150' },
-    { id: 2, title: 'Slide 2', image: 'https://via.placeholder.com/300x150' },
-    { id: 3, title: 'Slide 3', image: 'https://via.placeholder.com/300x150' },
-  ];
-
-  const handleScroll = (event) => {
-    const scrollPosition = event.nativeEvent.contentOffset.x;
-    const currentIndex = Math.round(scrollPosition / width);
-    setActiveIndex(currentIndex);
-  };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchFeedbacks = async () => {
-      try {
-        const response = await axios.get('http://192.168.0.110:8000/api/feedback'); // Replace with your API endpoint
-        setFeedbacks(response.data);
-      } catch (error) {
-        console.error('Error fetching feedbacks:', error);
-      }
-    };
     fetchFeedbacks();
   }, []);
 
-  const renderFeedback = ({ item }) => (
-    <View style={styles.feedbackContainer}>
-      <View style={styles.feedbackHeader}>
-        <Text style={styles.username}>{item.adopterUsername}</Text>
-        <StarRating
-          rating={item.feedbackRating}
-          starSize={20}
-          color="gold"
-          onChange={() => {}} // No-op since this is for display only
-        />
-      </View>
-      <Text style={styles.feedbackText}>{item.feedbackText}</Text>
-    </View>
+  const fetchFeedbacks = async () => {
+    try {
+      const response = await axios.get(`${config.address}/api/feedback`);
+      setFeedbacks(response.data);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching feedbacks:', err);
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  const renderFeedbackItem = ({ item }) => (
+    <Card style={styles.feedbackCard}>
+      <Card.Content>
+        <Title>{item.userName || 'Anonymous User'}</Title>
+        <Paragraph>{item.feedbackText}</Paragraph>
+        <Text style={styles.dateText}>
+          {new Date(item.createdAt).toLocaleDateString()}
+        </Text>
+        {item.rating && (
+          <Text style={styles.ratingText}>
+            Rating: {'⭐'.repeat(item.rating)}
+          </Text>
+        )}
+      </Card.Content>
+    </Card>
   );
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#FF66C4" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>Error loading feedbacks: {error}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <AppBar></AppBar>
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-      >
-        {slides.map((slide) => (
-          <View key={slide.id} style={styles.slide}>
-            <Image source={{ uri: slide.image }} style={styles.image} />
-            <Text style={styles.title}>{slide.title}</Text>
-          </View>
-        ))}
-      </ScrollView>
-
-      {/* Pagination Dots */}
-      <View style={styles.pagination}>
-        {slides.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.dot,
-              activeIndex === index && styles.activeDot, // Highlight the active dot
-            ]}
+      {feedbacks.length === 0 ? (
+        <View style={styles.centerContainer}>
+          <Image 
+            source={require('../../assets/Images/pawicon2.png')} 
+            style={styles.emptyImage}
           />
-        ))}
-      </View>
-      
-      <FlatList
-        data={feedbacks}
-        renderItem={renderFeedback}
-        keyExtractor={(item, index) => index.toString()}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={<Text style={styles.emptyText}>No feedbacks found.</Text>}
-      />
+          <Text style={styles.emptyText}>No feedbacks yet.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={feedbacks}
+          renderItem={renderFeedbackItem}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.listContainer}
+          refreshing={loading}
+          onRefresh={fetchFeedbacks}
+        />
+      )}
     </View>
   );
 };
@@ -94,72 +92,48 @@ const Feedbacks = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    padding: 10,
+  },
+  centerContainer: {
+    flex: 1,
     justifyContent: 'center',
-    marginTop: 50,
-  },
-  slide: {
-    width: width, // Set the width of each slide to the screen width
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'white',
   },
-  image: {
-    width: '90%',
-    height: 150,
-    borderRadius: 10,
+  emptyImage: {
+    width: 100,
+    height: 100,
+    marginBottom: 20,
+    tintColor: '#FF66C4',
   },
-  title: {
-    marginTop: 10,
+  emptyText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    color: '#718096',
+    textAlign: 'center',
   },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 10,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#ccc',
-    marginHorizontal: 4,
-  },
-  activeDot: {
-    backgroundColor: '#ff69b4', // Highlighted color for the active dot
+  errorText: {
+    fontSize: 16,
+    color: 'red',
+    textAlign: 'center',
+    padding: 20,
   },
   listContainer: {
     paddingBottom: 20,
   },
-  feedbackContainer: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
+  feedbackCard: {
     marginBottom: 15,
+    borderRadius: 10,
     elevation: 3,
   },
-  feedbackHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
+  dateText: {
+    fontSize: 12,
+    color: '#718096',
+    marginTop: 5,
   },
-  username: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  feedbackText: {
+  ratingText: {
     fontSize: 14,
-    color: '#666',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#999',
-    textAlign: 'center',
-    marginTop: 20,
+    color: '#FFD700',
+    marginTop: 5,
   },
 });
 

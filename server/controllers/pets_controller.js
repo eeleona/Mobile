@@ -16,13 +16,23 @@ const newPet = async (req, res) => {
         return res.status(401).json({ message: 'Unauthorized: Admin ID not found' });
     }
 
-    const { p_name, p_type, p_gender, p_age, p_breed, p_weight, p_medicalhistory, p_vaccines } = req.body;
+    const { p_name, p_type, p_gender, p_age, p_breed, p_weight } = req.body;
 
+    // Ensure medical history and vaccines are stored as arrays
+    let p_medicalhistory = req.body.p_medicalhistory ? JSON.parse(req.body.p_medicalhistory) : [];
+    let p_vaccines = req.body.p_vaccines ? JSON.parse(req.body.p_vaccines) : [];
+
+    if (!Array.isArray(p_medicalhistory)) p_medicalhistory = [];
+    if (!Array.isArray(p_vaccines)) p_vaccines = [];
+
+    console.log("Processed medical history:", p_medicalhistory);
+    console.log("Processed vaccines:", p_vaccines);
+
+    // Extract uploaded images
     const pet_img = req.files ? req.files.map(file => `/uploads/images/${file.filename}`) : [];
     console.log("Extracted image paths:", pet_img);
 
     try {
-
         if (pet_img.length === 0) {
             return res.status(400).json({ error: 'No images uploaded' });
         }
@@ -36,7 +46,7 @@ const newPet = async (req, res) => {
             p_weight,
             p_medicalhistory,
             p_vaccines,
-            pet_img 
+            pet_img
         });
 
         const savedPet = await pet.save();
@@ -51,12 +61,15 @@ const newPet = async (req, res) => {
             `Added new pet`
         );
         console.log('Activity logged successfully');
+
         res.status(201).json({ savedPet, status: "successfully inserted" });
     } catch (err) {
         console.error("Error creating pet:", err);
         res.status(500).json({ message: 'Something went wrong', error: err.message });
     }
 };
+
+
 
 
 const findAllPet = (req, res) => {
@@ -207,7 +220,7 @@ const arraysEqual = (a, b) => {
 const updatePet = async (req, res) => {
     try {
         console.log("Decoded user from JWT in updatePet function:", req.user);
-        
+
         const originalPet = await Pet.findById(req.params.id);
         if (!originalPet) {
             return res.status(404).json({ message: 'Pet not found' });
@@ -219,48 +232,46 @@ const updatePet = async (req, res) => {
             return res.status(401).json({ message: 'Unauthorized: Admin ID not found' });
         }
 
-        const updatedPet = await Pet.findOneAndUpdate(
-            { _id: req.params.id },
-            req.body,
+        // ✅ Define updatedData properly
+        let updatedData = { ...req.body };
+
+        console.log("🔹 Received Data Before Processing:", updatedData);
+
+        // ✅ Ensure medical history and vaccines are arrays
+        if (typeof updatedData.p_medicalhistory === "string") {
+            try {
+                updatedData.p_medicalhistory = JSON.parse(updatedData.p_medicalhistory);
+            } catch (error) {
+                console.error("Error parsing p_medicalhistory:", error);
+                updatedData.p_medicalhistory = [];
+            }
+        }
+        if (!Array.isArray(updatedData.p_medicalhistory)) updatedData.p_medicalhistory = [];
+
+        if (typeof updatedData.p_vaccines === "string") {
+            try {
+                updatedData.p_vaccines = JSON.parse(updatedData.p_vaccines);
+            } catch (error) {
+                console.error("Error parsing p_vaccines:", error);
+                updatedData.p_vaccines = [];
+            }
+        }
+        if (!Array.isArray(updatedData.p_vaccines)) updatedData.p_vaccines = [];
+
+        console.log("🔹 Processed Data Before Updating:", updatedData);
+
+        const updatedPet = await Pet.findByIdAndUpdate(
+            req.params.id,
+            { $set: updatedData },
             { new: true, runValidators: true }
         );
+        
 
         if (!updatedPet) {
             return res.status(404).json({ message: 'Pet not found' });
         }
 
-        const fieldMap = {
-            p_name: 'Name',
-            p_type: 'Type',
-            p_gender: 'Gender',
-            p_age: 'Age',
-            p_breed: 'Breed',
-            p_weight: 'Weight',
-            p_medicalhistory: 'Medical History',
-            p_vaccines: 'Vaccines',
-            pet_img: 'Image',
-        };
-
-        const updatedFields = Object.keys(req.body).filter(field => {
-            if (Array.isArray(originalPet[field]) && Array.isArray(updatedPet[field])) {
-                return !arraysEqual(originalPet[field], updatedPet[field]);
-            }
-            return originalPet[field] !== updatedPet[field]; 
-        }).map(field => fieldMap[field]);
-
-        const changesDescription = updatedFields.join(', ');
-
-        await logActivity(
-            adminId,
-            'UPDATE',
-            'Pet',
-            updatedPet._id,
-            updatedPet.p_name,
-            changesDescription
-        );
-        console.log('Activity logged successfully for pet update');
-
-        res.json({ theUpdatePet: updatedPet, status: "Successfully updated the pet" });
+        res.json({ updatedPet, status: "Successfully updated the pet" });
     } catch (err) {
         console.error("Error updating pet:", err);
         res.status(500).json({ message: 'Something went wrong', error: err.message });

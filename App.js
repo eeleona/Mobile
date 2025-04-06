@@ -49,6 +49,7 @@ import PendingAdoptionDetails from './components/admin/PendingAdoptionDetails';
 import StaffDetails from './components/admin/StaffDetails';
 import AdminDetails from './components/admin/AdminDetails';
 import ViewEvent from './components/admin/ViewEvent';
+import AdminLogs from './components/admin/AdminLogs';
 
 
 export default function App() {
@@ -66,16 +67,14 @@ export default function App() {
         <Stack.Screen name='Notifications' component={Notification} options={{ headerShown: false }} />
         
         {/* SUPER ADMIN MODULES */}
-        <Stack.Screen name='Feedback' component={Feedbacks} options={{ headerShown: false }} />
-
         <Stack.Screen name='Events' component={Events} options={{ headerShown: false }} />
         <Stack.Screen name='View Event' component={ViewEvent} options={{ headerShown: false }} />
         <Stack.Screen name='Edit Event' component={EditEvent} options={{ headerShown: false }} />
 
-        <Stack.Screen name='Adoptions' component={ActiveAdoptions} options={{ headerShown: false }} />
         
         <Stack.Screen name='Manage Pet' component={ManagePets} options={{ headerShown: false }} />
-        
+        <Stack.Screen name='Feedback' component={Feedbacks} options={{ headerShown: false }} />
+        <Stack.Screen name='Admin Logs' component={AdminLogs} options={{ headerShown: false }} />
         <Stack.Screen name='Manage Nearby Services' component={ManageNearby} options={{ headerShown: false }} />
         
         <Stack.Screen name='Manage User' component={ManageUser} options={{ headerShown: false }} />

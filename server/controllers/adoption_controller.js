@@ -346,15 +346,16 @@ const checkFeedbackExists = async (req, res) => {
 
 const getAllFeedbacks = async (req, res) => {
     try {
-        const feedbacks = await Adoption.find({
-            feedbackRating: { $exists: true },
-            feedbackText: { $exists: true }
-        })
-        .populate({
-            path: 'v_id',
-            select: 'v_username', 
-        })
-        .select('feedbackRating feedbackText v_id'); 
+        const feedbacks = await Feedback.find()
+            .populate({
+                path: 'v_id',
+                select: 'v_username',
+            })
+            .populate({
+                path: 'p_id',
+                select: 'p_name',
+            })
+            .select('feedbackRating feedbackText submittedAt v_id p_id adoptionRatings websiteRatings'); // Include websiteRatings
 
         if (!feedbacks || feedbacks.length === 0) {
             return res.status(404).json({ message: 'No feedbacks found' });
@@ -363,9 +364,12 @@ const getAllFeedbacks = async (req, res) => {
         const feedbackData = feedbacks.map(feedback => ({
             feedbackRating: feedback.feedbackRating,
             feedbackText: feedback.feedbackText,
-            adopterUsername: feedback.v_id ? feedback.v_id.v_username : 'Unknown', 
+            adopterUsername: feedback.v_id ? feedback.v_id.v_username : 'Unknown',
+            petName: feedback.p_id ? feedback.p_id.p_name : 'Unknown',
+            submittedAt: feedback.submittedAt,
+            adoptionRatings: feedback.adoptionRatings || {}, // Ensure it always returns an object
+            websiteRatings: feedback.websiteRatings || {} // Ensure websiteRatings is included
         }));
-
 
         res.status(200).json(feedbackData);
     } catch (error) {
@@ -373,6 +377,9 @@ const getAllFeedbacks = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+
+
 
 const getNewAdoptionNotifications = async (req, res) => {
     try {
@@ -439,6 +446,44 @@ const adoptionNotifications = async (req, res) => {
     }
 };
 
+const checkAdoption = async (req, res) => {
+    try {
+        const { userId, petId } = req.params;
+        console.log("🔎 Received userId:", userId);
+        console.log("🔎 Received petId:", petId);
+
+        if (!userId || !petId) {
+            console.error("❌ Missing user ID or pet ID in request.");
+            return res.status(400).json({ message: "User ID and Pet ID are required." });
+        }
+
+        const userObjectId = new mongoose.Types.ObjectId(userId);
+        const petObjectId = new mongoose.Types.ObjectId(petId);
+
+        const application = await Adoption.findOne({ v_id: userObjectId, p_id: petObjectId })
+            .sort({ a_submitted_at: -1 });
+
+        console.log("🔎 Found application:", application);
+
+        if (application && ["pending", "accepted"].includes(application.status)) {
+            return res.status(200).json({
+                application,
+                message: "You already have an ongoing adoption application for this pet."
+            });
+        }
+
+        return res.status(200).json({
+            application: null,
+            message: "You can proceed with a new adoption application."
+        });
+    } catch (error) {
+        console.error("❌ Error checking adoption status:", error);
+        res.status(500).json({ message: "Error checking adoption status" });
+    }
+};
+
+
+
 
 
 module.exports = {
@@ -459,6 +504,7 @@ module.exports = {
     getAllFeedbacks,
     getPastAdoptions,
     getNewAdoptionNotifications,
-    adoptionNotifications
+    adoptionNotifications,
+    checkAdoption
 
 };

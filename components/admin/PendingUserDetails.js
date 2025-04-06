@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert } fr
 import { Divider } from 'react-native-paper';
 import AppBar from '../design/AppBar'; // Import your custom AppBar
 import axios from 'axios';
+import config from '../../server/config/config';
 
 const PendingUserDetails = ({ route, navigation }) => {
   const { user } = route.params;
@@ -10,7 +11,7 @@ const PendingUserDetails = ({ route, navigation }) => {
   // Handle Verify User
   const handleVerify = async () => {
     try {
-      await axios.put(`http://192.168.0.110:8000/api/user/${user._id}/role`, { p_role: 'verified' });
+      await axios.put(`${config.address}/${user._id}/role`, { p_role: 'verified' });
       Alert.alert('Success', 'User has been verified.');
       navigation.goBack();
     } catch (error) {
@@ -22,7 +23,7 @@ const PendingUserDetails = ({ route, navigation }) => {
   // Handle Reject User
   const handleReject = async () => {
     try {
-      await axios.delete(`http://192.168.0.110:8000/api/user/delete/${user._id}`);
+      await axios.delete(`${config.address}/api/user/delete/${user._id}`);
       Alert.alert('Success', 'User has been rejected.');
       navigation.goBack();
     } catch (error) {
@@ -39,7 +40,7 @@ const PendingUserDetails = ({ route, navigation }) => {
           <View style={styles.imageContainer}>
             <Image
               style={styles.profileImage}
-              source={{ uri: `http://192.168.0.110:8000${user.p_img}` }}
+              source={{ uri: `${config.address}${user.p_img}` }}
               resizeMode="contain"
             />
           </View>
@@ -58,7 +59,7 @@ const PendingUserDetails = ({ route, navigation }) => {
           <View style={styles.imageContainer}>
             <Image
               style={styles.validIdImage}
-              source={{ uri: `http://192.168.0.110:8000${user.p_validID}` }}
+              source={{ uri: `${config.address}${user.p_validID}` }}
               resizeMode="contain"
             />
           </View>

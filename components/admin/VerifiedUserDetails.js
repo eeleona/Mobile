@@ -17,11 +17,16 @@ const VerifiedUserDetails = ({ route, navigation }) => {
         <View style={styles.profile}>
         {/* Profile Picture */}
         <View style={styles.imageContainer}>
-          <Image
-            style={styles.profileImage}
-            source={{ uri: `${config.address}${user.v_img}` }}
-            resizeMode="contain"
-          />
+        <Image
+          style={styles.profileImage}
+          source={
+            user.v_img
+              ? { uri: `${config.address}${user.v_img}` }
+              : require('../../assets/Images/user.png') // Fallback image
+          }
+          resizeMode="contain"
+        />
+
         </View>
 
         {/* User Details */}

@@ -5,9 +5,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import AppBar from '../design/AppBar';
 import config from '../../server/config/config';
+const jwt_decode = require('jwt-decode').default;
+
 
 const EditEvent = ({ route, navigation }) => {
-  const { eventId, onUpdate } = route.params; // Changed from onGoBack to onUpdate
+  const { eventId, onEventUpdated } = route.params;
   const [eventDetails, setEventDetails] = useState(null);
   const [formData, setFormData] = useState({
     e_title: '',
@@ -19,31 +21,30 @@ const EditEvent = ({ route, navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch event details
-  useEffect(() => {
-    const fetchEventDetails = async () => {
-      try {
-        const response = await axios.get(`${config.address}/api/events/all?t=${Date.now()}`);
-        const event = response.data.theEvent.find(e => e._id === eventId);
-        
-        if (event) {
-          setEventDetails(event);
-          setFormData({
-            e_title: event.e_title,
-            e_location: event.e_location,
-            e_date: event.e_date,
-            e_description: event.e_description,
-          });
-          setImage(`${config.address}${event.e_image}?${Date.now()}`);
-        }
-      } catch (error) {
-        console.error('Fetch error:', error);
-        Alert.alert('Error', 'Failed to load event details');
-      } finally {
-        setIsLoading(false);
+  // Fetch event details with cache busting
+  const fetchEventDetails = async () => {
+    try {
+      const response = await axios.get(`${config.address}/api/events/all?t=${Date.now()}`);
+      const event = response.data.theEvent.find(e => e._id === eventId);
+      if (event) {
+        setEventDetails(event);
+        setFormData({
+          e_title: event.e_title,
+          e_location: event.e_location,
+          e_date: event.e_date.split('T')[0],
+          e_description: event.e_description,
+        });
+        setImage(`${config.address}${event.e_image}?t=${Date.now()}`);
       }
-    };
+    } catch (error) {
+      console.error('Fetch error:', error);
+      Alert.alert('Error', 'Failed to load event details');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchEventDetails();
   }, [eventId]);
 
@@ -66,57 +67,72 @@ const EditEvent = ({ route, navigation }) => {
 
   const validateForm = () => {
     return (
-      formData.e_title &&
-      formData.e_location &&
-      formData.e_date &&
-      formData.e_description
+      formData.e_title.trim() &&
+      formData.e_location.trim() &&
+      formData.e_date.trim() &&
+      formData.e_description.trim()
     );
   };
 
-  const getToken = async () => {
+  // Function to validate the token
+  const validateToken = (token) => {
     try {
-      return await AsyncStorage.getItem('authToken');
+      const decodedToken = jwt_decode(token);  // Use jwt_decode properly here
+      const currentTime = Date.now() / 1000;  // Get current timestamp in seconds
+      if (decodedToken.exp < currentTime) {
+        Alert.alert('Error', 'Your session has expired. Please log in again.');
+        return false;
+      }
+      return true;
     } catch (error) {
-      console.error('Token error:', error);
-      return null;
+      console.error('Error decoding token:', error);
+      Alert.alert('Error', 'Invalid token');
+      return false;
     }
   };
+  
 
   const handleSaveEvent = async () => {
     if (!validateForm()) {
-      Alert.alert('Error', 'Please fill all fields');
+      Alert.alert('Error', 'Please fill all required fields');
       return;
     }
 
-    if (isSubmitting) return;
     setIsSubmitting(true);
 
-    const token = await getToken();
-    if (!token) {
-      Alert.alert('Error', 'Authentication required');
-      setIsSubmitting(false);
-      return;
-    }
-
-    const data = new FormData();
-    data.append('e_title', formData.e_title);
-    data.append('e_location', formData.e_location);
-    data.append('e_date', formData.e_date);
-    data.append('e_description', formData.e_description);
-
-    if (image && image.startsWith('file://')) {
-      const filename = image.split('/').pop();
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-      data.append('e_image', {
-        uri: image,
-        name: filename,
-        type,
-      });
-    }
-
     try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Alert.alert('Error', 'Authentication required');
+        return;
+      }
+
+      if (!validateToken(token)) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Proceed with the API call if the token is valid
+      const data = new FormData();
+      data.append('e_title', formData.e_title);
+      data.append('e_location', formData.e_location);
+      data.append('e_date', `${formData.e_date}T00:00:00`);
+      data.append('e_description', formData.e_description);
+
+      if (image && image.startsWith('file://')) {
+        const filename = image.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+        data.append('e_image', {
+          uri: image,
+          name: filename,
+          type,
+        });
+      } else if (eventDetails?.e_image) {
+        data.append('e_image', eventDetails.e_image);
+      }
+
       const response = await axios.put(
         `${config.address}/api/events/update/${eventId}`,
         data,
@@ -130,43 +146,29 @@ const EditEvent = ({ route, navigation }) => {
 
       if (response.data?.theUpdateEvent) {
         const updatedEvent = response.data.theUpdateEvent;
-        
-        // Update local state
         setEventDetails(updatedEvent);
         setFormData({
           e_title: updatedEvent.e_title,
           e_location: updatedEvent.e_location,
-          e_date: updatedEvent.e_date,
+          e_date: updatedEvent.e_date.split('T')[0],
           e_description: updatedEvent.e_description,
         });
-        
+
         if (updatedEvent.e_image) {
-          setImage(`${config.address}${updatedEvent.e_image}?${Date.now()}`);
+          setImage(`${config.address}${updatedEvent.e_image}?t=${Date.now()}`);
         }
 
-        Alert.alert('Success', 'Event updated successfully!', [
-          { 
-            text: 'OK', 
-            onPress: () => {
-              // Call the update callback if provided
-              if (onUpdate) {
-                onUpdate(updatedEvent);
-              }
-              
-              // Navigate back with the updated event
-              navigation.navigate({
-                name: 'View Event', 
-                params: { 
-                  event: updatedEvent,
-                  refresh: Date.now() 
-                },
-                merge: true
-              });
-            }
-          }
-        ]);
-      } else {
-        throw new Error('Invalid response format');
+        if (onEventUpdated) {
+          onEventUpdated(updatedEvent);
+        }
+
+        navigation.navigate({
+          name: 'View Event',
+          params: { event: updatedEvent, refresh: Date.now() },
+          merge: true,
+        });
+
+        Alert.alert('Success', 'Event updated successfully!');
       }
     } catch (error) {
       console.error('Update error:', error.response?.data || error.message);
@@ -213,7 +215,7 @@ const EditEvent = ({ route, navigation }) => {
           onChangeText={(text) => handleInputChange('e_location', text)}
         />
 
-        <Text style={styles.label}>Date and Time:</Text>
+        <Text style={styles.label}>Date:</Text>
         <TextInput
           style={styles.input}
           value={formData.e_date}
@@ -251,8 +253,6 @@ const EditEvent = ({ route, navigation }) => {
     </View>
   );
 };
-
-
 
 const styles = StyleSheet.create({
   container: {
@@ -313,6 +313,9 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 6,
     alignItems: 'center',
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#81C784',
   },
   submitButtonText: {
     color: 'white',

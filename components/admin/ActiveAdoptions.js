@@ -40,15 +40,25 @@ const ActiveAdoptions = () => {
 
     return (
         <PaperProvider>
-            <View style={styles.container}>
-              
+        <View style={styles.container}>
+            {activeAdoptions.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                    <Image
+                        source={require('../../assets/Images/pawicon2.png')}
+                        style={styles.pawIcon}
+                        resizeMode="contain"
+                    />
+                    <Text style={styles.emptyText}>No Active Adoptions as of now.</Text>
+                </View>
+            ) : (
                 <FlatList
                     data={activeAdoptions}
                     renderItem={renderItem}
-                    keyExtractor={(item) => item._id || Math.random().toString()} // Fallback for missing _id
+                    keyExtractor={(item) => item._id || Math.random().toString()}
                 />
-            </View>
-        </PaperProvider>
+            )}
+        </View>
+    </PaperProvider>
     );
 };
 
@@ -60,6 +70,22 @@ const styles = StyleSheet.create({
     cardTextContainer: { flex: 1 },
     cardTitle: { fontSize: 16, fontWeight: 'bold', fontFamily: 'Inter_700Bold', color: '#2a2a2a'},
     cardText: { fontSize: 14, color: 'gray' },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 50,
+    },
+    pawIcon: {
+        width: 60,
+        height: 60,
+        marginBottom: 15,
+    },
+    emptyText: {
+        fontSize: 16,
+        color: 'gray',
+        fontFamily: 'Inter_500Medium',
+    },
 });
 
 export default ActiveAdoptions;

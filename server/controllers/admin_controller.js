@@ -1,10 +1,13 @@
 const Admin = require('../models/admin_model'); // Update the path according to your directory structure
 const AdminCounter = require('../models/adminCounter');
 const Staff = require('../models/staff_model');
+const bcrypt = require('bcrypt');
 
 const newAdmin = async (req, res) => {
     try {
         const { firstName, lastName, middleName, address, contact, position, gender, birthdate, email, username, password, s_id } = req.body;
+
+        const hashedPassword = await bcrypt.hash(password, 10);
 
         // Create the admin as before
         const counter = await AdminCounter.findByIdAndUpdate(
@@ -27,7 +30,7 @@ const newAdmin = async (req, res) => {
             a_birthdate: birthdate,
             a_email: email,
             a_username: username,
-            a_password: password,
+            a_password: hashedPassword,
             s_role: 'pending-admin'
         });
 
@@ -113,6 +116,8 @@ const updateAdminCredentials = async (req, res) => {
     const { id } = req.params;
     const { newUsername, newPassword } = req.body;
 
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
     try {
         const admin = await Admin.findById(id);
 
@@ -122,8 +127,8 @@ const updateAdminCredentials = async (req, res) => {
 
         // Update the username, password, and role
         admin.a_username = newUsername;
-        admin.a_password = newPassword;
-        admin.s_role = 'admin'; // Change the role to 'admin' after updating credentials
+        admin.a_password = hashedPassword;
+        admin.s_role = 'admin'; 
 
         await admin.save();
 

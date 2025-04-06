@@ -1,15 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions, ImageBackground } from 'react-native';
-import { PaperProvider, Button } from 'react-native-paper';
-
+import { PaperProvider } from 'react-native-paper';
 import {  useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
 import Carousel from "react-native-reanimated-carousel";
 import Animated, { Extrapolate, interpolate, useAnimatedStyle } from 'react-native-reanimated';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
-import { NavigationContainer } from '@react-navigation/native';
-import { MaterialIcons } from '@expo/vector-icons';
-
 
 const { width } = Dimensions.get("window");
 
@@ -21,6 +16,7 @@ const AdminHomepage = ({ navigation }) => {
   const handleEvents = () => { navigation.navigate('Events'); };
   const handleFeedback = () => { navigation.navigate('Feedback'); };
   const handleAdoptions = () => { navigation.navigate('Manage Adoptions'); };
+  const handleAdminlogs = () => { navigation.navigate('Admin Logs'); };
   const carouselRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -167,7 +163,7 @@ const AdminHomepage = ({ navigation }) => {
               </View>
               <Text style={styles.labels}>Staff</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.button} onPress={handleStaff}>
+            <TouchableOpacity style={styles.button} onPress={handleAdminlogs}>
             <View style={styles.iconcontainer}>
               <Image style={styles.icon} source={require('../../assets/Images/managelogs.png')}/>
               </View>

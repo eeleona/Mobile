@@ -5,6 +5,7 @@ import { PaperProvider } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import config from '../../server/config/config';
 
+
 const VerifiedUsers = () => {
   const [allUsers, setAllUsers] = useState([]);
   const navigation = useNavigation();
@@ -25,24 +26,33 @@ const VerifiedUsers = () => {
   }, []);
 
   // Render each user item
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.userContainer}
-      onPress={() => navigation.navigate('View Verified User', { user: item })}
-    >
-      {/* User Image */}
-      <Image
-        style={styles.userThumbnail}
-        source={{ uri: `${config.address}${item.v_img}` }}
-      />
-      {/* User Info */}
-      <View style={styles.userInfo}>
-        <Text style={styles.userName}>{item.v_fname} {item.v_mname}. {item.v_lname}</Text>
-        <Text style={styles.userDetails}>Gender: {item.v_gender}</Text>
-        <Text style={styles.userDetails}>Address: {item.v_add}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderItem = ({ item }) => {
+    const imageSource = item.v_img
+      ? { uri: `${config.address}${item.v_img}` }
+      : require('../../assets/Images/user.png'); // Fallback to local image
+
+    return (
+      <TouchableOpacity
+        style={styles.userContainer}
+        onPress={() => navigation.navigate('View Verified User', { user: item })}
+      >
+        {/* User Image */}
+        <Image
+          style={styles.userThumbnail}
+          source={imageSource}
+        />
+
+        {/* User Info */}
+        <View style={styles.userInfo}>
+          <Text style={styles.userName}>
+            {item.v_fname} {item.v_mname}. {item.v_lname}
+          </Text>
+          <Text style={styles.userDetails}>Gender: {item.v_gender}</Text>
+          <Text style={styles.userDetails}>Address: {item.v_add}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <PaperProvider>

@@ -71,6 +71,11 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
         {/* Adopter Details */}
         <View style={styles.section}>
           <Text style={styles.title}>Adopter Details</Text>
+          <Image
+            style={styles.profileImage}
+            source={{ uri: `${config.address}${adoption.v_id?.v_img}` }}
+            resizeMode="contain"
+          />
           <Text style={styles.detail}>Name: {adoption.v_id?.v_fname} {adoption.v_id?.v_lname}</Text>
           <Text style={styles.detail}>Birthdate: {adoption.v_id?.v_birthdate}</Text>
           <Text style={styles.detail}>Gender: {adoption.v_id?.v_gender}</Text>
@@ -79,15 +84,6 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
           <Text style={styles.detail}>Contact: {adoption.v_id?.v_contactnumber}</Text>
           <Text style={styles.detail}>Address: {adoption.v_id?.v_add}</Text>
           <Text style={styles.detail}>Role: {adoption.v_id?.v_role}</Text>
-          <Text style={styles.sectionTitle}>Valid ID</Text>
-          {adoption.v_id?.v_validID ? (
-            <Image
-              style={styles.validIdImage}
-              source={{ uri: `${config.address}${adoption.v_id.v_validID}` }}
-            />
-          ) : (
-            <Text style={styles.noImageText}>No valid ID available</Text>
-          )}
         </View>
 
         
@@ -132,6 +128,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
+  },
+  profileImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
   },
   title: {
     fontSize: 20,

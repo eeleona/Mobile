@@ -5,7 +5,10 @@ import { ApplicationProvider, Input } from '@ui-kitten/components';
 import * as eva from '@eva-design/eva';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { jwtDecode } from 'jwt-decode';
+import jwt_decode from 'jwt-decode';
+
+
+
 import config from '../../server/config/config';
 
 const LogIn = ({ navigation }) => {
@@ -34,7 +37,7 @@ const LogIn = ({ navigation }) => {
       console.log("🔹 Retrieved Token Immediately After Storing:", storedToken);
   
       // ✅ 4) Decode token
-      const decodedToken = jwtDecode(accessToken);
+      const decodedToken = jwt_decode(accessToken);
       console.log("✅ Decoded Token:", decodedToken);
   
       const userRole = decodedToken.role;
