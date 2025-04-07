@@ -33,7 +33,7 @@ const AppBar = () => {
 
 const styles = StyleSheet.create({
     appbar: {
-        backgroundColor: '#f6f6f6',
+        backgroundColor: '#FAF9F6',
         height: 70, // Taller app bar
         flexDirection: 'row',
         alignItems: 'center',

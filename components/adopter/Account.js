@@ -49,7 +49,7 @@ const Account = ({ navigation }) => {
   return (
     <PaperProvider>
     <View style={styles.container}>
-      <AdminSearch></AdminSearch>
+      
       <View style={styles.headerContainer}>
         <View style={styles.header}>
           
@@ -67,7 +67,7 @@ const Account = ({ navigation }) => {
           <Text style={styles.navtext}>My Adoptions</Text>
         </TouchableOpacity>
       </View>
-      <UserNavbar></UserNavbar>
+      
       </View>
       
     </PaperProvider>

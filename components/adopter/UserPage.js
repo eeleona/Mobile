@@ -10,18 +10,14 @@ import {
 } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
-import AdminHomepage from './AdminHomepage';
-import Messages from './Messages';
-import Notification from './Notification';
+import UserHomepage from './UserHomepage';
+import UserInbox from './UserInbox';
+import UserNotif from './UserNotif';
+import Account from './Account';
 
 const Tab = createMaterialTopTabNavigator();
 
-// Empty component for the logout tab
-function EmptyScreen() {
-  return null;
-}
-
-function AdminPage({ navigation }) {
+function UserPage({ navigation }) {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
   const handleLogoutPress = () => {
@@ -64,7 +60,7 @@ function AdminPage({ navigation }) {
         </View>
       </View>
 
-      {/* Logout Confirmation Modal */}
+      {/* Logout Confirmation Modal - Will be triggered from Account tab */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -103,17 +99,17 @@ function AdminPage({ navigation }) {
           tabBarIcon: ({ color }) => {
             let iconName;
             switch (route.name) {
-              case 'Homepage':
+              case 'User Homepage':
                 iconName = 'home';
                 break;
-              case 'Inbox':
+              case 'User Inbox':
                 iconName = 'inbox';
                 break;
-              case 'Notification':
+              case 'User Notif':
                 iconName = 'notifications';
                 break;
-              case 'Logout':
-                iconName = 'logout';
+              case 'Account':
+                iconName = 'account-circle';
                 break;
               default:
                 iconName = 'error';
@@ -130,26 +126,27 @@ function AdminPage({ navigation }) {
         })}
       >
         <Tab.Screen 
-          name="Homepage" 
-          component={AdminHomepage} 
+          name="User Homepage" 
+          component={UserHomepage} 
           options={{ tabBarLabel: 'Home' }}
         />
         <Tab.Screen 
-          name="Inbox" 
-          component={Messages} 
+          name="User Inbox" 
+          component={UserInbox} 
           options={{ tabBarLabel: 'Messages' }}
         />
         <Tab.Screen 
-          name="Notification" 
-          component={Notification} 
+          name="User Notif" 
+          component={UserNotif} 
+          options={{ tabBarLabel: 'Notifications' }}
         />
         <Tab.Screen 
-          name="Logout" 
-          component={EmptyScreen}
+          name="Account" 
+          component={Account}
           listeners={{
             tabPress: (e) => {
-              e.preventDefault();
-              handleLogoutPress();
+              // You can add any account-specific logic here
+              // Or keep the logout functionality if that's what you prefer
             },
           }}
         />
@@ -276,4 +273,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default React.memo(AdminPage);
+export default React.memo(UserPage);

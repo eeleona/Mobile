@@ -1,87 +1,189 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { Divider } from 'react-native-paper';
 import config from '../../server/config/config';
 import AppBar from '../design/AppBar';
 
 const ViewEvent = ({ route, navigation }) => {
-  // Use state to manage the event data
-  const [event, setEvent] = useState(route.params.event);
+  const [event] = useState(route.params.event);
 
-  // Simple navigation to edit screen
   const handleEdit = () => {
     navigation.navigate('Edit Event', { 
       eventId: event._id,
-      // No callback needed - we'll refresh when returning
     });
   };
 
   return (
     <View style={styles.container}>
-      <AppBar />
-      <View style={styles.combinedContainer}>
-        <Image
-          style={styles.eventImage}
-          source={{ uri: `${config.address}${event.e_image}?${Date.now()}` }} // Cache busting
-          resizeMode="cover"
-        />
+      <AppBar title="Event Details" onBackPress={() => navigation.goBack()} />
+      
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {/* Event Image */}
+        <View style={styles.imageContainer}>
+          <Image
+            style={styles.eventImage}
+            source={{ uri: `${config.address}${event.e_image}?${Date.now()}` }}
+            resizeMode="cover"
+          />
+        </View>
 
-        <View style={styles.whitebg}>
-          <Text style={styles.eventName}>{event.e_title}</Text>
-          <Text style={styles.event}>Location: {event.e_location}</Text>
-          <Text style={styles.event}>Date: {new Date(event.e_date).toDateString()}</Text>
+        {/* Event Details Card */}
+        <View style={styles.detailsCard}>
+          <Text style={styles.eventTitle}>{event.e_title}</Text>
+          
+          <DetailItem icon="📍" label="Location" value={event.e_location} />
+          <DetailItem icon="📅" label="Date" value={new Date(event.e_date).toDateString()} />
+          
           <Divider style={styles.divider} />
-          <Text style={styles.event}>Description: {event.e_description}</Text>
-
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.editbtn}
-              onPress={handleEdit}
-            >
-              <Text style={styles.editbtntext}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.deletebtn}
-              onPress={() => console.log('Delete Event', event._id)}
-            >
-              <Text style={styles.deletebtntext}>Delete</Text>
-            </TouchableOpacity>
+          
+          <View style={styles.descriptionContainer}>
+            <Text style={styles.descriptionLabel}>Description</Text>
+            <Text style={styles.descriptionText}>{event.e_description}</Text>
           </View>
         </View>
-      </View>
+
+        {/* Action Buttons */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.button, styles.editButton]}
+            onPress={handleEdit}
+          >
+            <Text style={styles.buttonText}>Edit Event</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.deleteButton]}
+            onPress={() => console.log('Delete Event', event._id)}
+          >
+            <Text style={styles.buttonText}>Delete Event</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </View>
   );
 };
 
+const DetailItem = ({ icon, label, value }) => (
+  <View style={styles.detailItem}>
+    <Text style={styles.detailIcon}>{icon}</Text>
+    <View style={styles.detailTextContainer}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={styles.detailValue}>{value}</Text>
+    </View>
+  </View>
+);
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f6f6f6' },
-  combinedContainer: {
-    marginHorizontal: 20,
-    borderRadius: 5, // Rounded corners for the entire container
-    overflow: 'hidden', // Ensures the image and white background respect the border radius
-    elevation: 3, // Adds shadow for Android
-    backgroundColor: 'white', // Ensures the background is white
+  container: {
+    flex: 1,
+    backgroundColor: '#f6f6f6',
+  },
+  scrollContainer: {
+    paddingBottom: 20,
+  },
+  imageContainer: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
   eventImage: {
     width: '100%',
-    height: 300,
-    borderTopLeftRadius: 15, // Rounded top-left corner
-    borderTopRightRadius: 15, // Rounded top-right corner
+    height: 250,
   },
-  whitebg: {
-    padding: 20,
+  detailsCard: {
     backgroundColor: 'white',
-    borderBottomLeftRadius: 15, // Rounded bottom-left corner
-    borderBottomRightRadius: 15, // Rounded bottom-right corner
+    borderRadius: 12,
+    padding: 20,
+    margin: 16,
+    marginTop: -20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  eventName: { fontSize: 30, color: '#ff69b4', fontWeight: 'bold', marginBottom: 15, fontFamily: 'Inter_700Bold' },
-  event: { fontFamily: 'Inter_400Regular', fontSize: 16, color:'#353935', marginBottom: 5 },
-  divider: { marginVertical: 10 },
-  buttonContainer: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 30 },
-  editbtn: { padding: 10, marginHorizontal: 5, backgroundColor: '#a6cb7e', width: 90, height: 40, borderRadius: 5 },
-  editbtntext: { fontSize: 18, color: 'white', textAlign: 'center', fontFamily: 'Inter_700Bold' },
-  deletebtn: { padding: 10, marginHorizontal: 5, backgroundColor: '#d95555', width: 90, height: 40, borderRadius: 5 },
-  deletebtntext: { fontSize: 18, color: 'white', textAlign: 'center', fontFamily: 'Inter_700Bold' },
+  eventTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ff69b4',
+    marginBottom: 16,
+    fontFamily: 'Inter_700Bold',
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  detailIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  detailTextContainer: {
+    flex: 1,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontFamily: 'Inter_500Medium',
+    marginBottom: 2,
+  },
+  detailValue: {
+    fontSize: 16,
+    color: '#333',
+    fontFamily: 'Inter_400Regular',
+  },
+  divider: {
+    marginVertical: 16,
+    backgroundColor: '#eee',
+    height: 1,
+  },
+  descriptionContainer: {
+    marginTop: 8,
+  },
+  descriptionLabel: {
+    fontSize: 16,
+    color: '#666',
+    fontFamily: 'Inter_500Medium',
+    marginBottom: 8,
+  },
+  descriptionText: {
+    fontSize: 15,
+    color: '#333',
+    lineHeight: 22,
+    fontFamily: 'Inter_400Regular',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  button: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  editButton: {
+    backgroundColor: '#4CAF50',
+    marginRight: 8,
+  },
+  deleteButton: {
+    backgroundColor: '#F44336',
+    marginLeft: 8,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontFamily: 'Inter_700Bold',
+  },
 });
 
 export default ViewEvent;

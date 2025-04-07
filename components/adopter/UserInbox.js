@@ -50,7 +50,7 @@ const UserInbox = ({ navigation }) => {
   return (
     <PaperProvider>
     <View style={styles.container}>
-      <AdminSearch></AdminSearch>
+      
       <Text style={styles.welcome}>Messages</Text>
       <View style={styles.searchContainer}>
         <TextInput
@@ -65,7 +65,7 @@ const UserInbox = ({ navigation }) => {
         renderItem={renderMessageItem}
         keyExtractor={(item) => item.id}
       />
-      <UserNavbar></UserNavbar>
+      
     </View>
     </PaperProvider>
   );

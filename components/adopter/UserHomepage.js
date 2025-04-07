@@ -1,119 +1,208 @@
-import React, { useState } from 'react';
-import { Button, StyleSheet, Text, View, Image, TouchableOpacity, ScrollView, ImageBackground } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  Button, 
+  StyleSheet, 
+  Text, 
+  View, 
+  Image, 
+  TouchableOpacity, 
+  ScrollView, 
+  FlatList 
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-
-import UserNavbar from '../design/UserNavbar';
-import UserUpperNavbar from '../design/UserUpperNavbar';
-import {  useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
+import { useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
+import axios from 'axios';
+import config from '../../server/config/config';
 
 const UserHomepage = ({ navigation }) => {
-  const [selectedNav, setSelectedNav] = useState(null); // State to track which nav item is clicked
-
-  const handleNearby = () => {
-    navigation.navigate('User Nearby Services');
-  };
-  const handleEvent = () => {
-    navigation.navigate('User Events');
-  };
-  const handlePet = () => {
-    navigation.navigate('Adopt A Pet');
-  };
-  const handleAboutus = () => {
-    navigation.navigate('About Us');
-  };
-
-  let [fontsLoaded] = useFonts({
+  const [fontsLoaded] = useFonts({
     Inter_700Bold,
     Inter_500Medium,
   });
+  const [pets, setPets] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState({
+    pets: true,
+    events: true,
+    services: true
+  });
 
-  if (!fontsLoaded) {
-    return null;
-  }
+  useEffect(() => {
+    fetchRandomPets();
+    fetchRandomEvents();
+    fetchRandomServices();
+  }, []);
+
+  const fetchRandomPets = async () => {
+    try {
+      const response = await axios.get(`${config.address}/api/pet/all`);
+      const shuffled = response.data.sort(() => 0.5 - Math.random());
+      setPets(shuffled.slice(0, 3));
+      setLoading(prev => ({ ...prev, pets: false }));
+    } catch (error) {
+      console.error('Error fetching pets:', error);
+      setLoading(prev => ({ ...prev, pets: false }));
+    }
+  };
+
+  const fetchRandomEvents = async () => {
+    try {
+      const response = await axios.get(`${config.address}/api/events/all`);
+      const shuffled = response.data.sort(() => 0.5 - Math.random());
+      setEvents(shuffled.slice(0, 3));
+      setLoading(prev => ({ ...prev, events: false }));
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      setLoading(prev => ({ ...prev, events: false }));
+    }
+  };
+
+  const fetchRandomServices = async () => {
+    try {
+      const response = await axios.get(`${config.address}/api/service/all`);
+      const shuffled = response.data.sort(() => 0.5 - Math.random());
+      setServices(shuffled.slice(0, 3));
+      setLoading(prev => ({ ...prev, services: false }));
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      setLoading(prev => ({ ...prev, services: false }));
+    }
+  };
+
+  if (!fontsLoaded) return null;
+
+  const renderPetItem = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.petCard}
+      onPress={() => navigation.navigate('Pet Details', { petId: item._id })}
+    >
+      <Image 
+        source={{ uri: `${config.address}${item.pet_img?.[0]}` }} 
+        style={styles.petImage} 
+      />
+      <Text style={styles.petName}>{item.p_name}</Text>
+      <Text style={styles.petBreed}>{item.breed}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderEventItem = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.eventCard}
+      onPress={() => navigation.navigate('Event Details', { eventId: item._id })}
+    >
+      <Image 
+        source={{ uri: `${config.address}${item.event_image}` }} 
+        style={styles.eventImage} 
+      />
+      <View style={styles.eventInfo}>
+        <Text style={styles.eventTitle}>{item.event_name}</Text>
+        <Text style={styles.eventDate}>{new Date(item.event_date).toLocaleDateString()}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderServiceItem = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.serviceItem}
+      onPress={() => navigation.navigate('Service Details', { serviceId: item._id })}
+    >
+      <Image 
+        source={{ uri: `${config.address}${item.service_image}` }} 
+        style={styles.serviceImage} 
+      />
+      <View style={styles.serviceInfo}>
+        <Text style={styles.serviceName}>{item.service_name}</Text>
+        <Text style={styles.serviceLocation}>{item.location}</Text>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <ScrollView style={styles.container}>
-      <UserUpperNavbar></UserUpperNavbar>
-      <ImageBackground
-        source={require('../../assets/Images/pasayshelter.jpg')} // Replace with your image URL
-        style={styles.mainSection}
-      >
-        {/* Gradient Overlay */}
-        <LinearGradient
-          colors={['rgba(255,255,255,1)', 'rgba(255,105,180,0.5)', 'rgba(255,255,255,0.1)']}
-          style={styles.gradient}
+      {/* ADOPT A PET SECTION */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Adopt A Pet</Text>
+        <TouchableOpacity 
+          style={styles.primaryButton}
+          onPress={() => navigation.navigate('Adopt A Pet')}
         >
-          {/* White Overlay Gradient */}
-              <View style={styles.textRow}>
-              <Text style={styles.mainTitle}>Providing </Text>
-                <Text style={styles.subTextt}>pets a </Text>
-                <Text style={styles.homeText}>Home,</Text>
-                <Text style={styles.subTextt}>and a </Text>
-                <Text style={styles.familyText}>Family</Text>
-                <Text style={styles.subTextt}> to grow.</Text>
-                <TouchableOpacity style={styles.aboutus} onPress={handleAboutus}>
-                <Text style={styles.aboutusText}>About Us</Text>
-              </TouchableOpacity>
-              </View>
-              <TouchableOpacity style={styles.aboutus} onPress={handleAboutus}>
-                <Text style={styles.aboutusText}>About Us</Text>
-              </TouchableOpacity>
-              
-            
-          
-        </LinearGradient>
-      </ImageBackground>
-
-      {/* Service Section */}
-      <View style={styles.servicesSection}>
-        {/* Nearby Services */}
-        <TouchableOpacity style={styles.serviceCard} onPress={handleNearby}>
-          <Image
-            source={require('../../assets/Images/logo1.jpg')} // Replace with your image URL or local asset
-            style={styles.serviceIcon}
-          />
-          <View style={styles.descript}>
-            <Text style={styles.serviceText}>Nearby Services</Text>
-          </View>
+          <Text style={styles.buttonText}>Browse Pets</Text>
         </TouchableOpacity>
-
-        {/* Events */}
-        <TouchableOpacity style={styles.serviceCard} onPress={handleEvent}>
-          <Image
-            source={require('../../assets/Images/logo2.jpg')} // Replace with your image URL or local asset
-            style={styles.serviceIcon}
+        
+        {loading.pets ? (
+          <Text style={styles.loadingText}>Loading pets...</Text>
+        ) : (
+          <FlatList
+            horizontal
+            data={pets}
+            renderItem={renderPetItem}
+            keyExtractor={item => item._id}
+            contentContainerStyle={styles.listContainer}
+            showsHorizontalScrollIndicator={false}
           />
-          <View style={styles.descript}>
-            <Text style={styles.serviceText}>Events</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Adopt a Pet */}
-        <TouchableOpacity style={styles.serviceCard} onPress={handlePet}>
-          <Image
-           source={require('../../assets/Images/logo3.jpg')} // Replace with your image URL or local asset
-            style={styles.serviceIcon}
-          />
-          <View style={styles.descript}>
-            <Text style={styles.serviceText}>Adopt a Pet</Text>
-          </View>
-        </TouchableOpacity>
+        )}
       </View>
 
-      {/* Why Adopt Section */}
-      <View style={styles.whyAdoptSection}>
-        <ImageBackground
-          source={require('../../assets/Images/catdog.jpg')} // Replace with your pet-related image
-          style={styles.petImage}
+      {/* WHY ADOPT SECTION */}
+      <View style={[styles.section, styles.whyAdoptSection]}>
+        <Text style={styles.sectionTitle}>Why Adopt?</Text>
+        <Image 
+          source={require('../../assets/Images/catdog.jpg')} 
+          style={styles.whyAdoptImage}
         />
-        <Text style={styles.whyAdoptTitle}>Why <Text style={styles.adoptHighlight}>Adopt?</Text></Text>
-        <Text style={styles.whyAdoptDescription}>
-          By adopting from the Pasay Animal Shelter, you're opening your heart and home to a wonderful pet who's ready to shower you with love and companionship. Each adoption creates space for more animals to be rescued, giving you the chance to make a meaningful difference in both their lives and your community.
+        <Text style={styles.whyAdoptText}>
+          By adopting, you're opening your heart and home to a wonderful pet who's ready to shower you with love. Each adoption creates space for more animals to be rescued, giving you the chance to make a meaningful difference.
         </Text>
-        <Text style={styles.footerText}>(C) 2024 Websiters</Text>
-
       </View>
-      <UserNavbar></UserNavbar>
+
+      {/* EVENTS SECTION */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Events</Text>
+        <TouchableOpacity 
+          style={styles.primaryButton}
+          onPress={() => navigation.navigate('User Events')}
+        >
+          <Text style={styles.buttonText}>View All Events</Text>
+        </TouchableOpacity>
+        
+        {loading.events ? (
+          <Text style={styles.loadingText}>Loading events...</Text>
+        ) : (
+          <FlatList
+            horizontal
+            data={events}
+            renderItem={renderEventItem}
+            keyExtractor={item => item._id}
+            contentContainerStyle={styles.listContainer}
+            showsHorizontalScrollIndicator={false}
+          />
+        )}
+      </View>
+
+      {/* NEARBY SERVICES SECTION */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Nearby Services</Text>
+        <TouchableOpacity 
+          style={styles.primaryButton}
+          onPress={() => navigation.navigate('User Nearby Services')}
+        >
+          <Text style={styles.buttonText}>Explore Services</Text>
+        </TouchableOpacity>
+        
+        {loading.services ? (
+          <Text style={styles.loadingText}>Loading services...</Text>
+        ) : (
+          <FlatList
+            horizontal
+            data={services}
+            renderItem={renderServiceItem}
+            keyExtractor={item => item._id}
+            contentContainerStyle={styles.listContainer}
+            showsHorizontalScrollIndicator={false}
+          />
+        )}
+      </View>
     </ScrollView>
   );
 };
@@ -121,172 +210,139 @@ const UserHomepage = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FAF9F6',
+    paddingTop: 20,
   },
-
-  // MIDDLE SECTION
-  mainSection: {
-    width: '100%',
-    height: 500,
-    marginTop: 10,
-    elevation: 5,
+  section: {
+    marginBottom: 30,
+    paddingHorizontal: 20,
   },
-  gradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-  },
-  whiteOverlay: {
-    position: 'relative',
-  },
-  mainTitle: {
-    fontSize: 45,
-    textAlign: 'left',
+  sectionTitle: {
+    fontSize: 24,
     fontFamily: 'Inter_700Bold',
-    color: '#ff69b4',
-    textShadowColor: 'white',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 10,
-    marginTop:-250,
+    color: '#2a2a2a',
+    marginBottom: 15,
   },
-  
-  textRow: {
-    marginLeft: 20,
-    marginTop: 160,
-    height: '100%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'baseline',
-  },
-
-  subTextt: {
-    fontSize: 30,
-    color: '#545454',
-    textAlign: 'left',
-    fontFamily: 'Inter_500Medium',
-    textShadowColor: 'white',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 10,
-  },
-  
-  homeText: {
-    fontStyle: 'italic',
-    fontSize: 40,
-    color: '#545454',
-    fontFamily: 'serif',
-    fontWeight:'bold',
-    textShadowColor: 'white',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 10,
-  },
-  
-  familyText: {
-    fontSize: 45,
-    color: '#ff69b4',
-    fontFamily: 'Inter_700Bold',
-    textShadowColor: 'white',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 10,
-  },
-  
-  adoptBtn: {
-    width: 160,
-    height: 50,
+  primaryButton: {
     backgroundColor: '#ff69b4',
+    paddingVertical: 12,
     borderRadius: 25,
-  },
-  
-  adoptText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-
-  // SERVICES SECTION
-  servicesSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 20,
-    paddingTop: 100,
-    paddingBottom: 50,
-    backgroundColor: '#fff',
-    marginTop: -255,
-    marginBottom: -50,
-  },
-  serviceCard: {
     alignItems: 'center',
-    width: '30%',
-    padding: 10,
-    marginBottom: -0.5,
-    marginTop: -100,
+    marginBottom: 20,
+    elevation: 2,
   },
-  serviceIcon: {
-    width: 90,
-    height: 100,
-    marginBottom: 5,
-    elevation: 10,
-  },
-  serviceText: {
-    width: 200,
-    fontSize: 16,
-    textAlign: 'center',
+  buttonText: {
+    color: 'white',
     fontFamily: 'Inter_700Bold',
-    marginBottom: 5,
+    fontSize: 16,
   },
-  subText: {
-    fontSize: 12,
-    color: '#777',
-    textAlign: 'center',
-    marginTop: 5,
+  listContainer: {
+    paddingRight: 20,
   },
-  whyAdoptSection: {
-    marginBottom: -0.5,
-    padding: 30,
-    alignItems: 'center',
-    backgroundColor: '#fce4ec',
+  petCard: {
+    width: 150,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 10,
+    marginRight: 15,
+    elevation: 2,
   },
   petImage: {
-    width: 200,
-    height: 130,
-    borderRadius: 40,
-    marginBottom: 20,
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    marginBottom: 8,
   },
-  whyAdoptTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  adoptHighlight: {
-    color: '#ff69b4',
-  },
-  whyAdoptDescription: {
-    textAlign: 'center',
-    color: 'black',
-  },
-  footerText: {
-    marginTop: 20,
-    color: '#777',
-  },
-  aboutus: {
-    marginTop: 40,
-    width: 160,
-    height: 50,
-    backgroundColor: '#ff69b4',
+  petName: {
     fontFamily: 'Inter_700Bold',
+    fontSize: 16,
+    color: '#2a2a2a',
+  },
+  petBreed: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: '#666',
+  },
+  whyAdoptSection: {
+    backgroundColor: '#fff9f9',
+    paddingVertical: 25,
+  },
+  whyAdoptImage: {
+    width: '100%',
+    height: 180,
     borderRadius: 10,
-    alignContent: 'center',
-    justifyContent: 'center',
+    marginBottom: 15,
   },
-  aboutusText: {
-    fontSize: 25,
-    fontFamily: 'Inter_700Bold',
-    color: 'white',
+  whyAdoptText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 16,
+    color: '#444',
+    lineHeight: 24,
     textAlign: 'center',
-    alignContent: 'center',
-    justifyContent: 'center',
   },
-
+  eventCard: {
+    width: 200,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginRight: 15,
+    elevation: 2,
+  },
+  eventImage: {
+    width: '100%',
+    height: 120,
+  },
+  eventInfo: {
+    padding: 10,
+  },
+  eventTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 16,
+    color: '#2a2a2a',
+    marginBottom: 5,
+  },
+  eventDate: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: '#666',
+  },
+  serviceItem: {
+    width: 200,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 10,
+    marginRight: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 2,
+  },
+  serviceImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 10,
+  },
+  serviceInfo: {
+    flex: 1,
+  },
+  serviceName: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 16,
+    color: '#2a2a2a',
+    marginBottom: 3,
+  },
+  serviceLocation: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: '#666',
+  },
+  loadingText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    marginVertical: 20,
+  },
 });
 
 export default UserHomepage;

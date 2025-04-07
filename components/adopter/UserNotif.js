@@ -3,7 +3,7 @@ import { StyleSheet, Image, Text, TouchableOpacity, View, Modal, TextInput } fro
 import { FontAwesome } from '@expo/vector-icons';
 
 import { PaperProvider } from 'react-native-paper';
-import UserNavbar from '../design/UserNavbar';
+
 
 const UserNotif = ({ navigation }) => {
   const [hasNotification, setHasNotification] = useState(false);
@@ -44,7 +44,7 @@ const UserNotif = ({ navigation }) => {
   return (
     <PaperProvider>
     <View style={styles.container}>
-      <AdminSearch></AdminSearch>
+      
       <Text style={styles.welcome}>Notifications</Text>
       <View style={styles.notificationList}>
         {notificationsData.map((notification) => (
@@ -71,7 +71,7 @@ const UserNotif = ({ navigation }) => {
           </TouchableOpacity>
         ))}
       </View>
-      <UserNavbar></UserNavbar>
+      
     </View>
     </PaperProvider>
   );

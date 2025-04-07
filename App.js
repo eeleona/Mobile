@@ -50,6 +50,7 @@ import StaffDetails from './components/admin/StaffDetails';
 import AdminDetails from './components/admin/AdminDetails';
 import ViewEvent from './components/admin/ViewEvent';
 import AdminLogs from './components/admin/AdminLogs';
+import UserPage from './components/adopter/UserPage';
 
 
 export default function App() {
@@ -70,9 +71,10 @@ export default function App() {
         <Stack.Screen name='Events' component={Events} options={{ headerShown: false }} />
         <Stack.Screen name='View Event' component={ViewEvent} options={{ headerShown: false }} />
         <Stack.Screen name='Edit Event' component={EditEvent} options={{ headerShown: false }} />
-
+        <Stack.Screen name='Add Event' component={AddEvent} options={{ headerShown: false }} />
         
         <Stack.Screen name='Manage Pet' component={ManagePets} options={{ headerShown: false }} />
+        <Stack.Screen name='View Pet Details' component={PetDetails} options={{ headerShown: false }} />
         <Stack.Screen name='Feedback' component={Feedbacks} options={{ headerShown: false }} />
         <Stack.Screen name='Admin Logs' component={AdminLogs} options={{ headerShown: false }} />
         <Stack.Screen name='Manage Nearby Services' component={ManageNearby} options={{ headerShown: false }} />
@@ -88,7 +90,6 @@ export default function App() {
         <Stack.Screen name='Staff' component={Staff} options={{ headerShown: false }} />
         <Stack.Screen name="View Staff" component={StaffDetails} />
         <Stack.Screen name="View Admin" component={AdminDetails} />
-        <Stack.Screen name='Add Event' component={AddEvent} options={{ headerShown: false }} />
         <Stack.Screen name='Add Staff' component={AddStaff} options={{ headerShown: false }} />
 
         <Stack.Screen name='Manage Adoptions' component={ManageAdoptions} options={{ headerShown: false }} />
@@ -104,6 +105,7 @@ export default function App() {
         <Stack.Screen name='Welcome' component={Welcome} options={{ headerShown: false }} />
         
         {/* ADOPTER TOP NAVIGATIONS */}
+        <Stack.Screen name='User Page' component={UserPage} options={{ headerShown: false }} />
         <Stack.Screen name='About Us' component={AboutUs} options={{ headerShown: false }} />
         <Stack.Screen name='User Homepage' component={UserHomepage} options={{ headerShown: false }} />
         

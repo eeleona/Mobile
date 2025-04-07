@@ -13,81 +13,195 @@ const AdoptionDetails = ({ route }) => {
 
     return (
         <View style={styles.container}>
-            {/* Fixed AppBar at the top */}
-            <AppBar />
-
-            {/* Scrollable Content */}
-            <ScrollView contentContainerStyle={styles.content}>
-                <View style={styles.header}>
-                    <Text style={styles.title}>Adoption Application Form</Text>
-                    <Text style={styles.label}>Submitted At: {adoption.a_submitted_at}</Text>
-                    <Text style={styles.label}>Status: {adoption.status}</Text>
-                    <ProgressBar style={styles.progressBar} progress={0.3} color={MD3Colors.tertiary90} />
+            <AppBar title="Adoption Details" onBackPress={() => navigation.goBack()} />
+            
+            <ScrollView contentContainerStyle={styles.scrollContainer}>
+                {/* Header Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Adoption Application</Text>
+                    <Divider style={styles.sectionDivider} />
+                    <DetailRow label="Submitted At:" value={adoption.a_submitted_at} />
+                    <DetailRow label="Status:" value={adoption.status} />
+                    <ProgressBar 
+                        style={styles.progressBar} 
+                        progress={0.3} 
+                        color={MD3Colors.tertiary90} 
+                    />
                 </View>
-                <View style={styles.petDetails}>
-                    <Text style={styles.title}>Pet Details</Text>
-                    {/* Check if Pet Image Exists Before Rendering */}
+
+                {/* Pet Details */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Pet Details</Text>
+                    <Divider style={styles.sectionDivider} />
                     {adoption.p_id?.pet_img?.[0] ? (
-                        <Image source={{ uri: `${config.address}${adoption.p_id.pet_img[0]}` }} style={styles.profileImage} />
+                        <Image 
+                            source={{ uri: `${config.address}${adoption.p_id.pet_img[0]}` }} 
+                            style={styles.petImage} 
+                        />
                     ) : (
-                        <Text style={styles.noImageText}>No image available</Text>
+                        <View style={styles.imagePlaceholder}>
+                            <Text style={styles.placeholderText}>No image available</Text>
+                        </View>
                     )}
+                    <DetailRow label="Name:" value={adoption.p_id?.p_name} />
+                    <DetailRow label="Type:" value={adoption.p_id?.p_type} />
+                    <DetailRow label="Breed:" value={adoption.p_id?.p_breed} />
+                    <DetailRow label="Gender:" value={adoption.p_id?.p_gender} />
+                    <DetailRow label="Age:" value={adoption.p_id?.p_age ? `${adoption.p_id.p_age} years` : null} />
+                </View>
 
-                    <Text style={styles.label}>Name: {adoption.p_id?.p_name}</Text>
-                    <Text style={styles.label}>Type: {adoption.p_id?.p_type}</Text>
-                    <Text style={styles.label}>Breed: {adoption.p_id?.p_breed}</Text>
-                    <Text style={styles.label}>Gender: {adoption.p_id?.p_gender}</Text>
-                    <Text style={styles.label}>Age: {adoption.p_id?.p_age} years</Text>
-                </View>
-                <View style={styles.adopterDetails}>
-                    <Text style={styles.title}>Adopter Details</Text>
-                    {/* Check if Image Exists Before Rendering */}
+                {/* Adopter Details */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Adopter Details</Text>
+                    <Divider style={styles.sectionDivider} />
                     {adoption.v_id?.v_img ? (
-                        <Image source={{ uri: `${config.address}${adoption.v_id.v_img}` }} style={styles.profileImage} />
+                        <Image 
+                            source={{ uri: `${config.address}${adoption.v_id.v_img}` }} 
+                            style={styles.profileImage} 
+                        />
                     ) : (
-                        <Text style={styles.noImageText}>No image available</Text>
+                        <View style={styles.imagePlaceholder}>
+                            <Text style={styles.placeholderText}>No image available</Text>
+                        </View>
                     )}
-                    
-                    <View style={styles.labelrow}>
-                        <Text style={styles.label}>Name: {adoption.v_id?.v_fname} {adoption.v_id?.v_lname}</Text>
-                    </View>
-                        <Text style={styles.label}>Username: {adoption.v_id?.v_username}</Text>
-                    <Text style={styles.label}>Email: {adoption.v_id?.v_emailadd}</Text>
-                    <Text style={styles.label}>Contact: {adoption.v_id?.v_contactnumber}</Text>
-                    <Text style={styles.label}>Address: {adoption.v_id?.v_add}</Text>
-                    <Text style={styles.label}>Birthdate: {adoption.v_id?.v_birthdate}</Text>
-                    <Text style={styles.label}>Gender: {adoption.v_id?.v_gender}</Text>
-                    <Text style={styles.label}>Occupation: {adoption.occupation}</Text>
-                    <Text style={styles.label}>Years resided in current address: {adoption.years_resided}</Text>
-                    <Text style={styles.label}>Number of Adults in the Household: {adoption.adutls_in_household}</Text>
-                    <Text style={styles.label}>Number of Children in the Household: {adoption.children_in_household}</Text>
-                    <Text style={styles.label}>Allergy to Pets: {adoption.allergic_to_pets}</Text>
-                    <Text style={styles.label}>Household Description: {adoption.household_description}</Text>
+                    <DetailRow label="Name:" value={`${adoption.v_id?.v_fname} ${adoption.v_id?.v_lname}`} />
+                    <DetailRow label="Username:" value={adoption.v_id?.v_username} />
+                    <DetailRow label="Email:" value={adoption.v_id?.v_emailadd} />
+                    <DetailRow label="Contact:" value={adoption.v_id?.v_contactnumber} />
+                    <DetailRow label="Address:" value={adoption.v_id?.v_add} />
+                    <DetailRow label="Birthdate:" value={adoption.v_id?.v_birthdate} />
+                    <DetailRow label="Gender:" value={adoption.v_id?.v_gender} />
                 </View>
-                
+
+                {/* Household Details */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Household Information</Text>
+                    <Divider style={styles.sectionDivider} />
+                    <DetailRow label="Occupation:" value={adoption.occupation} />
+                    <DetailRow label="Years in current address:" value={adoption.years_resided} />
+                    <DetailRow label="Adults in household:" value={adoption.adutls_in_household} />
+                    <DetailRow label="Children in household:" value={adoption.children_in_household} />
+                    <DetailRow label="Allergic to pets:" value={adoption.allergic_to_pets} />
+                    <DetailRow label="Home type:" value={adoption.home_type} />
+                    <View style={styles.householdDescription}>
+                        <Text style={styles.detailLabel}>Household Description:</Text>
+                        <Text style={styles.descriptionText}>{adoption.household_description}</Text>
+                    </View>
+                </View>
             </ScrollView>
         </View>
     );
 };
 
-// Styles
+const DetailRow = ({ label, value }) => (
+    <View>
+        <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>{label}</Text>
+            <Text style={styles.detailValue}>{value || 'N/A'}</Text>
+        </View>
+        <Divider style={styles.rowDivider} />
+    </View>
+);
+
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f6f6f6' },
-    content: { padding: 20, }, // Extra padding for better spacing
-    header: {backgroundColor: 'white', borderRadius: 10, padding: 15},
-    adopterDetails: {backgroundColor: 'white', borderRadius: 10, padding: 15, marginTop: 15},
-    petDetails: {backgroundColor: 'white', borderRadius: 10, padding: 15, marginTop: 15},
-    title: { fontSize: 28, fontWeight: 'bold', color: '#ff69b4', marginBottom: 10, fontFamily: 'Inter_700Bold', },
-    label: { fontSize: 16, marginBottom: 5, justifyContent: 'space-between', fontFamily: 'Inter_500Medium', },
-    profileImage: { 
-        width: 120, 
-        height: 120, 
-        borderRadius: 60, 
-        alignSelf: 'center', 
-        marginVertical: 10 
+    container: {
+        flex: 1,
+        backgroundColor: '#f6f6f6',
     },
-    noImageText: { textAlign: 'center', fontSize: 14, color: 'gray', marginBottom: 10 },
-    progressBar: { marginTop: 20 },
+    scrollContainer: {
+        padding: 16,
+        paddingBottom: 24,
+    },
+    section: {
+        backgroundColor: 'white',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#ff69b4',
+        marginBottom: 12,
+        fontFamily: 'Inter_700Bold',
+    },
+    sectionDivider: {
+        marginBottom: 12,
+        backgroundColor: '#eee',
+        height: 1,
+    },
+    rowDivider: {
+        marginVertical: 8,
+        backgroundColor: '#f0f0f0',
+        height: 1,
+    },
+    petImage: {
+        width: '100%',
+        height: 200,
+        borderRadius: 8,
+        marginBottom: 16,
+        backgroundColor: '#f0f0f0',
+    },
+    profileImage: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        alignSelf: 'center',
+        marginBottom: 16,
+        backgroundColor: '#f0f0f0',
+    },
+    imagePlaceholder: {
+        width: '100%',
+        height: 120,
+        borderRadius: 8,
+        backgroundColor: '#f0f0f0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    placeholderText: {
+        color: '#999',
+        fontSize: 14,
+        fontFamily: 'Inter_500Medium',
+    },
+    detailRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingVertical: 8,
+    },
+    detailLabel: {
+        fontSize: 14,
+        color: '#666',
+        fontWeight: '500',
+        fontFamily: 'Inter_500Medium',
+    },
+    detailValue: {
+        fontSize: 14,
+        color: '#333',
+        textAlign: 'right',
+        flex: 1,
+        paddingLeft: 16,
+        fontFamily: 'Inter_500Medium',
+    },
+    progressBar: {
+        marginTop: 12,
+        height: 6,
+        borderRadius: 3,
+    },
+    householdDescription: {
+        marginTop: 8,
+    },
+    descriptionText: {
+        fontSize: 14,
+        color: '#333',
+        marginTop: 4,
+        fontFamily: 'Inter_500Medium',
+    },
 });
 
 export default AdoptionDetails;

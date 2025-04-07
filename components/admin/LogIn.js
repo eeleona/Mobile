@@ -6,9 +6,6 @@ import * as eva from '@eva-design/eva';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import jwt_decode from 'jwt-decode';
-
-
-
 import config from '../../server/config/config';
 
 const LogIn = ({ navigation }) => {
@@ -44,11 +41,11 @@ const LogIn = ({ navigation }) => {
   
       // ✅ 5) Navigate based on role
       if (userRole === 'pending' || userRole === 'verified') {
-        navigation.navigate('User Homepage');
+        navigation.navigate('User Page');
       } else if (userRole === 'admin' || userRole === 'super-admin') {
         navigation.navigate('Admin Page');
       } else if (userRole === 'pending-admin') {
-        navigation.navigate('Admin Homepage');
+        navigation.navigate('Admin Page');
       } else {
         setError('Unauthorized role.');
       }

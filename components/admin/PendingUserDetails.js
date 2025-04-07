@@ -1,14 +1,13 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Divider } from 'react-native-paper';
-import AppBar from '../design/AppBar'; // Import your custom AppBar
+import AppBar from '../design/AppBar';
 import axios from 'axios';
 import config from '../../server/config/config';
 
 const PendingUserDetails = ({ route, navigation }) => {
   const { user } = route.params;
 
-  // Handle Verify User
   const handleVerify = async () => {
     try {
       await axios.put(`${config.address}/${user._id}/role`, { p_role: 'verified' });
@@ -20,7 +19,6 @@ const PendingUserDetails = ({ route, navigation }) => {
     }
   };
 
-  // Handle Reject User
   const handleReject = async () => {
     try {
       await axios.delete(`${config.address}/api/user/delete/${user._id}`);
@@ -35,40 +33,79 @@ const PendingUserDetails = ({ route, navigation }) => {
   return (
     <View style={styles.container}>
       <AppBar title="Pending User Details" onBackPress={() => navigation.goBack()} />
+
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.profile}>
+        {/* Profile Section */}
+        <View style={styles.card}>
           <View style={styles.imageContainer}>
             <Image
               style={styles.profileImage}
               source={{ uri: `${config.address}${user.p_img}` }}
-              resizeMode="contain"
+              defaultSource={require('../../assets/Images/user.png')}
+              resizeMode="cover"
             />
           </View>
-          <Text style={styles.name}>{user.p_fname} {user.p_mname}. {user.p_lname}</Text>
+
+          <Text style={styles.name}>{user.p_fname} {user.p_mname} {user.p_lname}</Text>
+          <Text style={styles.role}>{user.p_role}</Text>
+          
           <Divider style={styles.divider} />
-          <Text style={styles.detail}>Username: {user.p_username}</Text>
-          <Text style={styles.detail}>Email Address: {user.p_emailadd}</Text>
-          <Text style={styles.detail}>Contact Number: {user.p_contactnumber}</Text>
-          <Text style={styles.detail}>Address: {user.p_add}</Text>
-          <Text style={styles.detail}>Gender: {user.p_gender}</Text>
-          <Text style={styles.detail}>Birthday: {user.p_birthdate}</Text>
-          <Text style={styles.detail}>Role: {user.p_role}</Text>
-        </View>
-        <View style={styles.validID}>
-          <Text style={styles.sectionTitle}>Valid ID</Text>
-          <View style={styles.imageContainer}>
-            <Image
-              style={styles.validIdImage}
-              source={{ uri: `${config.address}${user.p_validID}` }}
-              resizeMode="contain"
-            />
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Username:</Text>
+            <Text style={styles.detailValue}>{user.p_username}</Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Email:</Text>
+            <Text style={styles.detailValue}>{user.p_emailadd}</Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Contact:</Text>
+            <Text style={styles.detailValue}>{user.p_contactnumber}</Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Address:</Text>
+            <Text style={styles.detailValue}>{user.p_add}</Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Gender:</Text>
+            <Text style={styles.detailValue}>{user.p_gender}</Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Birthday:</Text>
+            <Text style={styles.detailValue}>{user.p_birthdate}</Text>
           </View>
         </View>
+
+        {/* Valid ID Section */}
+        <View style={[styles.card, { marginTop: 16 }]}>
+          <Text style={styles.sectionTitle}>Valid ID</Text>
+          <Divider style={styles.divider} />
+          <Image
+            style={styles.validIdImage}
+            source={{ uri: `${config.address}${user.p_validID}` }}
+            resizeMode="contain"
+          />
+        </View>
+
+        {/* Action Buttons */}
         <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.rejectButton} onPress={handleReject}>
+          <TouchableOpacity 
+            style={[styles.button, styles.rejectButton]} 
+            onPress={handleReject}
+          >
             <Text style={styles.buttonText}>Reject</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.verifyButton} onPress={handleVerify}>
+          
+          <TouchableOpacity 
+            style={[styles.button, styles.verifyButton]} 
+            onPress={handleVerify}
+          >
             <Text style={styles.buttonText}>Verify</Text>
           </TouchableOpacity>
         </View>
@@ -80,82 +117,104 @@ const PendingUserDetails = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f6f6',
+    backgroundColor: '#FAF9F6',
   },
   scrollContainer: {
-    paddingHorizontal: 20,
+    padding: 16,
+    paddingBottom: 32,
   },
-  profile: {
+  card: {
     backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
-  },
-  validID: {
-    marginTop: 10,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
+    borderRadius: 12,
+    padding: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   imageContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   profileImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    borderWidth: 3,
+    borderColor: '#ff69b4',
+  },
+  name: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#2a2a2a',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  role: {
+    fontSize: 16,
+    color: '#ff69b4',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  divider: {
+    marginVertical: 12,
+    backgroundColor: '#e0e0e0',
+    height: 1,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  detailLabel: {
+    fontSize: 15,
+    color: '#666',
+    fontWeight: '500',
+    flex: 1,
+  },
+  detailValue: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '600',
+    flex: 2,
+    textAlign: 'right',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2a2a2a',
+    marginBottom: 12,
   },
   validIdImage: {
     width: '100%',
     height: 200,
-    borderRadius: 10,
-  },
-  name: {
-    fontSize: 24,
-    color: '#ff69b4',
-    textAlign: 'center',
-    fontFamily: 'Inter_700Bold',
-  },
-  detail: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 5,
-    fontFamily: 'Inter_500Medium',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    color: '#333',
-    marginBottom: 10,
-    fontFamily: 'Inter_700Bold',
-  },
-  divider: {
-    marginVertical: 15,
-    backgroundColor: '#ccc',
-    height: 1,
+    borderRadius: 8,
+    marginTop: 8,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 20,
+    marginTop: 24,
+    gap: 16,
+  },
+  button: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   verifyButton: {
-    backgroundColor: '#adc890',
-    padding: 15,
-    borderRadius: 5,
-    flex: 1,
-    
+    backgroundColor: '#4CAF50',
   },
   rejectButton: {
-    backgroundColor: '#d95555',
-    padding: 15,
-    borderRadius: 5,
-    flex: 1,
-    marginRight: 10,
+    backgroundColor: '#F44336',
   },
   buttonText: {
     color: 'white',
-    textAlign: 'center',
     fontWeight: 'bold',
+    fontSize: 16,
   },
 });
 
