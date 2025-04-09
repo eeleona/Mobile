@@ -28,63 +28,88 @@ const UserHomepage = ({ navigation }) => {
     services: true
   });
 
-  useEffect(() => {
-    fetchRandomPets();
-    fetchRandomEvents();
-    fetchRandomServices();
-  }, []);
-
   const fetchRandomPets = async () => {
     try {
       const response = await axios.get(`${config.address}/api/pet/all`);
-      const shuffled = response.data.sort(() => 0.5 - Math.random());
+  
+      const petsArray = response.data?.thePet || [];
+      const petsWithImages = petsArray.filter(pet => pet.pet_img?.[0]);
+      const shuffled = [...petsWithImages].sort(() => 0.5 - Math.random());
+  
       setPets(shuffled.slice(0, 3));
       setLoading(prev => ({ ...prev, pets: false }));
     } catch (error) {
       console.error('Error fetching pets:', error);
+      setPets([]);
       setLoading(prev => ({ ...prev, pets: false }));
     }
   };
+  
 
   const fetchRandomEvents = async () => {
     try {
       const response = await axios.get(`${config.address}/api/events/all`);
-      const shuffled = response.data.sort(() => 0.5 - Math.random());
+      
+      // Check if response.data.theEvent exists and is an array
+      const eventsArray = response.data?.theEvent || [];
+      
+      // Filter out events without images and shuffle
+      const eventsWithImages = eventsArray.filter(event => event.e_image);
+      const shuffled = [...eventsWithImages].sort(() => 0.5 - Math.random());
       setEvents(shuffled.slice(0, 3));
       setLoading(prev => ({ ...prev, events: false }));
     } catch (error) {
       console.error('Error fetching events:', error);
       setLoading(prev => ({ ...prev, events: false }));
+      setEvents([]);
     }
   };
 
   const fetchRandomServices = async () => {
     try {
       const response = await axios.get(`${config.address}/api/service/all`);
-      const shuffled = response.data.sort(() => 0.5 - Math.random());
+      
+      // Change from response.data?.theService to just response.data
+      const servicesArray = Array.isArray(response.data) ? response.data : [];
+      
+      // Change from service.service_image to item.ns_image
+      const servicesWithImages = servicesArray.filter(service => service.ns_image);
+      const shuffled = [...servicesWithImages].sort(() => 0.5 - Math.random());
+      
       setServices(shuffled.slice(0, 3));
       setLoading(prev => ({ ...prev, services: false }));
     } catch (error) {
       console.error('Error fetching services:', error);
+      setServices([]);
       setLoading(prev => ({ ...prev, services: false }));
     }
   };
+  
+
+  useEffect(() => {
+    fetchRandomPets();
+    fetchRandomEvents();
+    fetchRandomServices();
+  }, []);
 
   if (!fontsLoaded) return null;
 
   const renderPetItem = ({ item }) => (
     <TouchableOpacity 
-      style={styles.petCard}
+      style={styles.eventCard}  // Match card style
       onPress={() => navigation.navigate('Pet Details', { petId: item._id })}
     >
       <Image 
-        source={{ uri: `${config.address}${item.pet_img?.[0]}` }} 
-        style={styles.petImage} 
+        source={{ uri: `${config.address}${item.pet_img[0]}` }} 
+        style={styles.eventImage} // Match image style
       />
-      <Text style={styles.petName}>{item.p_name}</Text>
-      <Text style={styles.petBreed}>{item.breed}</Text>
+      <View style={styles.eventInfo}>
+        <Text style={styles.eventTitle}>{item.p_name}</Text>
+        <Text style={styles.eventDate}>{item.breed}</Text>
+      </View>
     </TouchableOpacity>
   );
+  
 
   const renderEventItem = ({ item }) => (
     <TouchableOpacity 
@@ -92,47 +117,80 @@ const UserHomepage = ({ navigation }) => {
       onPress={() => navigation.navigate('Event Details', { eventId: item._id })}
     >
       <Image 
-        source={{ uri: `${config.address}${item.event_image}` }} 
-        style={styles.eventImage} 
+        source={{ uri: `${config.address}${item.e_image}` }}
+        style={styles.eventImage}
+        onError={(e) => console.log('Failed to load event image:', e.nativeEvent.error)}
       />
       <View style={styles.eventInfo}>
-        <Text style={styles.eventTitle}>{item.event_name}</Text>
-        <Text style={styles.eventDate}>{new Date(item.event_date).toLocaleDateString()}</Text>
+        <Text style={styles.eventTitle}>{item.e_title}</Text>
+        <Text style={styles.eventDate}>{new Date(item.e_date).toLocaleDateString()}</Text>
       </View>
     </TouchableOpacity>
   );
 
   const renderServiceItem = ({ item }) => (
     <TouchableOpacity 
-      style={styles.serviceItem}
+      style={styles.eventCard}
       onPress={() => navigation.navigate('Service Details', { serviceId: item._id })}
     >
       <Image 
-        source={{ uri: `${config.address}${item.service_image}` }} 
-        style={styles.serviceImage} 
+        source={{ uri: `${config.address}${item.ns_image}` }} 
+        style={styles.eventImage}
       />
-      <View style={styles.serviceInfo}>
-        <Text style={styles.serviceName}>{item.service_name}</Text>
-        <Text style={styles.serviceLocation}>{item.location}</Text>
+      <View style={styles.eventInfo}>
+        <Text style={styles.eventTitle}>{item.ns_name}</Text>
+        <Text style={styles.eventDate}>{item.ns_type}</Text>
       </View>
     </TouchableOpacity>
   );
+  
 
   return (
     <ScrollView style={styles.container}>
-      {/* ADOPT A PET SECTION */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Adopt A Pet</Text>
+      {/* HEADER SECTION */}
+
+      {/* MAIN BUTTONS SECTION */}
+      <View style={styles.buttonContainer}>
         <TouchableOpacity 
-          style={styles.primaryButton}
+          style={styles.mainButton}
           onPress={() => navigation.navigate('Adopt A Pet')}
         >
-          <Text style={styles.buttonText}>Browse Pets</Text>
+          <Image 
+            source={require('../../assets/Images/userpet.png')} 
+            style={styles.buttonImage}
+          />
+          <Text style={styles.mainButtonText}>Adopt A Pet</Text>
         </TouchableOpacity>
-        
+
+        <TouchableOpacity 
+          style={styles.mainButton}
+          onPress={() => navigation.navigate('User Events')}
+        >
+          <Image 
+            source={require('../../assets/Images/userevent.png')} 
+            style={styles.buttonImage}
+          />
+          <Text style={styles.mainButtonText}>View Events</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.mainButton}
+          onPress={() => navigation.navigate('User Nearby Services')}
+        >
+          <Image 
+            source={require('../../assets/Images/usernearby.png')} 
+            style={styles.buttonImage}
+          />
+          <Text style={styles.mainButtonText}>Nearby Services</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ADOPT A PET CAROUSEL */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Pets Available for Adoption</Text>
         {loading.pets ? (
           <Text style={styles.loadingText}>Loading pets...</Text>
-        ) : (
+        ) : pets.length > 0 ? (
           <FlatList
             horizontal
             data={pets}
@@ -141,10 +199,10 @@ const UserHomepage = ({ navigation }) => {
             contentContainerStyle={styles.listContainer}
             showsHorizontalScrollIndicator={false}
           />
+        ) : (
+          <Text style={styles.loadingText}>No pets available</Text>
         )}
       </View>
-
-      {/* WHY ADOPT SECTION */}
       <View style={[styles.section, styles.whyAdoptSection]}>
         <Text style={styles.sectionTitle}>Why Adopt?</Text>
         <Image 
@@ -156,19 +214,12 @@ const UserHomepage = ({ navigation }) => {
         </Text>
       </View>
 
-      {/* EVENTS SECTION */}
+      {/* EVENTS CAROUSEL */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Events</Text>
-        <TouchableOpacity 
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('User Events')}
-        >
-          <Text style={styles.buttonText}>View All Events</Text>
-        </TouchableOpacity>
-        
+        <Text style={styles.sectionTitle}>Upcoming Events</Text>
         {loading.events ? (
           <Text style={styles.loadingText}>Loading events...</Text>
-        ) : (
+        ) : events.length > 0 ? (
           <FlatList
             horizontal
             data={events}
@@ -177,22 +228,17 @@ const UserHomepage = ({ navigation }) => {
             contentContainerStyle={styles.listContainer}
             showsHorizontalScrollIndicator={false}
           />
+        ) : (
+          <Text style={styles.loadingText}>No events available</Text>
         )}
       </View>
 
-      {/* NEARBY SERVICES SECTION */}
+      {/* SERVICES CAROUSEL */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Nearby Services</Text>
-        <TouchableOpacity 
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('User Nearby Services')}
-        >
-          <Text style={styles.buttonText}>Explore Services</Text>
-        </TouchableOpacity>
-        
         {loading.services ? (
           <Text style={styles.loadingText}>Loading services...</Text>
-        ) : (
+        ) : services.length > 0 ? (
           <FlatList
             horizontal
             data={services}
@@ -201,40 +247,69 @@ const UserHomepage = ({ navigation }) => {
             contentContainerStyle={styles.listContainer}
             showsHorizontalScrollIndicator={false}
           />
+        ) : (
+          <Text style={styles.loadingText}>No services available</Text>
         )}
       </View>
+
+      {/* WHY ADOPT SECTION */}
     </ScrollView>
   );
 };
+
+// ... (keep your existing styles unchanged)
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAF9F6',
-    paddingTop: 20,
+    paddingVertical: 150
+  },
+  header: {
+    padding: 20,
+    backgroundColor: '#ff69b4',
+    marginBottom: 20,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter_700Bold',
+    color: 'white',
+    textAlign: 'center',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    marginBottom: 25,
+  },
+  mainButton: {
+    alignItems: 'center',
+    width: '30%',
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: 'white',
+    elevation: 3,
+  },
+  buttonImage: {
+    width: 50,
+    height: 50,
+    marginBottom: 8,
+  },
+  mainButtonText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: '#2a2a2a',
+    textAlign: 'center',
   },
   section: {
     marginBottom: 30,
     paddingHorizontal: 20,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontFamily: 'Inter_700Bold',
     color: '#2a2a2a',
     marginBottom: 15,
-  },
-  primaryButton: {
-    backgroundColor: '#ff69b4',
-    paddingVertical: 12,
-    borderRadius: 25,
-    alignItems: 'center',
-    marginBottom: 20,
-    elevation: 2,
-  },
-  buttonText: {
-    color: 'white',
-    fontFamily: 'Inter_700Bold',
-    fontSize: 16,
   },
   listContainer: {
     paddingRight: 20,

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import { Button, Divider, PaperProvider, Modal, Portal} from 'react-native-paper';
+import config from '../../server/config/config';
 
 import AppBar from '../design/AppBar';
 
@@ -14,7 +15,7 @@ const AdoptAPet = ({ navigation }) => {
   const containerStyle = {backgroundColor: 'white', padding: 20};
   
   const fetchPets = () => {
-    axios.get('http://192.168.0.110:8000/api/pet/all')
+    axios.get(`${config.address}/api/pet/all`)
     .then((response)=>{
       console.log(response.data.thePet)
       setPets(response.data.thePet)

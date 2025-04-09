@@ -1,183 +1,263 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground, ActivityIndicator, Image } from 'react-native';
 import { Appbar } from 'react-native-paper';
-import UserNavbar from '../design/UserNavbar';
 import AppBar from '../design/AppBar';
-import { LinearGradient } from 'expo-linear-gradient';
-import App from '../../App';
-
-// Import your background image
-const backgroundImage = require('../../assets/Images/pasayshelter.jpg'); // Adjust the path as necessary
-
-const events = [
-  {
-    id: 1,
-    date: '7',
-    day: 'THURS',
-    month: 'AUG, 2024',
-    time: '12:30 PM',
-    title: 'Free Anti-Rabies',
-    description: 'Come and bring your pets for a free anti-rabbies shot at Pasay Animal Shelter.',
-  },
-  {
-    id: 2,
-    date: '7',
-    day: 'THURS',
-    month: 'SEPT, 2024',
-    time: '1:00 PM',
-    title: 'Free Vaccination',
-    description: 'Come and bring your pets for a free vaccination session at Pasay Animal Shelter.',
-  },
-  {
-    id: 3,
-    date: '7',
-    day: 'THURS',
-    month: 'NOV, 2024',
-    time: '2:00 PM',
-    title: 'Free Check-Up',
-    description: 'Come and bring your pets for a free check-up session at Pasay Animal Shelter.',
-  },
-];
-
-const EventItem = ({ date, day, month, time, title, description }) => {
-  return (
-    <View style={styles.eventCard}>
-      <View style={styles.dateContainer}>
-        <Text style={styles.dateText}>{date}</Text>
-        <Text style={styles.dayText}>{day}</Text>
-        <Text style={styles.monthText}>{month}</Text>
-      </View>
-      <View style={styles.detailsContainer}>
-        <Text style={styles.eventTitle}>{title}</Text>
-        <Text style={styles.eventTime}>{time}</Text>
-        <Text style={styles.eventDescription}>{description}</Text>
-      </View>
-    </View>
-  );
-};
+import axios from 'axios';
+import config from '../../server/config/config';
 
 const UserEvents = () => {
-  return (
-    <View style={styles.container}>
-    <AppBar></AppBar>
-      <ScrollView style={styles.container}>
-        <Text style={styles.headerText}>UPCOMING EVENTS</Text>
-        <Text style={styles.subHeaderText}>in Pasay Animal Shelter</Text>
-        {events.map(event => (
-          <EventItem
-            key={event.id}
-            date={event.date}
-            day={event.day}
-            month={event.month}
-            time={event.time}
-            title={event.title}
-            description={event.description}
-          />
-        ))}
-        <View style={styles.pagination}>
-          <TouchableOpacity>
-            <Text style={styles.pageLink}>Prev</Text>
-          </TouchableOpacity>
-          <Text style={styles.pageNumber}>1</Text>
-          <TouchableOpacity>
-            <Text style={styles.pageLink}>Next</Text>
-          </TouchableOpacity>
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await axios.get(`${config.address}/api/events/all`);
+        // Filter events with images
+        const eventsWithImages = (response.data?.theEvent || []).filter(event => event.e_image);
+        setEvents(eventsWithImages);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return {
+      date: date.getDate(),
+      day: date.toLocaleString('en-US', { weekday: 'short' }).toUpperCase(),
+      month: date.toLocaleString('en-US', { month: 'short' }).toUpperCase() + ', ' + date.getFullYear(),
+      time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    };
+  };
+
+  const EventItem = ({ event }) => {
+    const { date, day, month, time } = formatDate(event.e_date);
+    
+    return (
+      <View style={styles.eventCard}>
+        <View style={styles.dateContainer}>
+          <Text style={styles.dateText}>{date}</Text>
+          <Text style={styles.dayText}>{day}</Text>
+          <Text style={styles.monthText}>{month}</Text>
         </View>
-        <UserNavbar></UserNavbar>
+        
+        <Image 
+          source={{ uri: `${config.address}${event.e_image}` }}
+          style={styles.eventImage}
+          resizeMode="cover"
+        />
+        
+        <View style={styles.detailsContainer}>
+          <Text style={styles.eventTitle}>{event.e_title}</Text>
+          <Text style={styles.eventTime}>{time}</Text>
+          <View style={styles.locationContainer}>
+            <Image 
+              source={require('../../assets/Images/usernearby.png')} 
+              style={styles.locationIcon}
+            />
+            <Text style={styles.eventLocation}>Pasay Animal Shelter</Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <ImageBackground 
+      source={require('../../assets/Images/pasayshelter.jpg')} 
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <View style={styles.overlay}>
+        <AppBar />
+        <ScrollView style={styles.container}>
+          <Text style={styles.headerText}>UPCOMING EVENTS</Text>
+          <Text style={styles.subHeaderText}>at Pasay Animal Shelter</Text>
+          
+          {loading ? (
+            <ActivityIndicator size="large" color="#F9739A" style={styles.loader} />
+          ) : events.length > 0 ? (
+            events.map(event => (
+              <TouchableOpacity key={event._id} activeOpacity={0.9}>
+                <EventItem event={event} />
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.noEventsContainer}>
+              <Image 
+                source={require('../../assets/Images/profiledp.png')}
+                style={styles.noEventsImage}
+              />
+              <Text style={styles.noEventsText}>No upcoming events</Text>
+            </View>
+          )}
+
+          <View style={styles.pagination}>
+            <TouchableOpacity style={styles.paginationButton}>
+              <Text style={styles.pageLink}>Previous</Text>
+            </TouchableOpacity>
+            <Text style={styles.pageNumber}>1</Text>
+            <TouchableOpacity style={styles.paginationButton}>
+              <Text style={styles.pageLink}>Next</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
-    </View>
+      </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  },
   container: {
     flex: 1,
+    paddingTop: 20,
   },
   headerText: {
-    fontSize: 40,
+    fontSize: 32,
     fontFamily: 'Inter_700Bold',
     textAlign: 'center',
     marginVertical: 10,
     color: '#F9739A',
-    marginTop: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   subHeaderText: {
     fontSize: 18,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 25,
     fontFamily: 'Inter_500Medium',
+    color: '#555',
   },
   eventCard: {
-    fontFamily: 'Inter_700Bold',
     flexDirection: 'row',
     backgroundColor: '#FFF',
-    borderRadius: 10,
-    marginBottom: 10,
-    padding: 10,
-    marginLeft: 10,
-    marginRight: 10,
+    borderRadius: 15,
+    marginBottom: 20,
+    marginHorizontal: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 5,
+    overflow: 'hidden',
+    height: 120,
   },
   dateContainer: {
-    fontFamily: 'Inter_700Bold',
     backgroundColor: '#F9739A',
-    padding: 10,
-    borderRadius: 10,
+    padding: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 60,
+    width: 70,
   },
   dateText: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#FFF',
+    fontFamily: 'Inter_700Bold',
   },
   dayText: {
     fontSize: 14,
     color: '#FFF',
+    fontFamily: 'Inter_500Medium',
+    marginVertical: 2,
   },
   monthText: {
     fontSize: 12,
     color: '#FFF',
+    fontFamily: 'Inter_500Medium',
+  },
+  eventImage: {
+    width: 100,
+    height: '100%',
   },
   detailsContainer: {
-    marginLeft: 20,
     flex: 1,
+    padding: 15,
+    justifyContent: 'center',
   },
   eventTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 5,
     fontFamily: 'Inter_700Bold',
+    color: '#333',
   },
   eventTime: {
     fontSize: 14,
-    color: '#888',
+    color: '#F9739A',
     fontFamily: 'Inter_500Medium',
+    marginBottom: 8,
   },
-  eventDescription: {
-    fontSize: 14,
-    color: '#555',
-    marginTop: 5,
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationIcon: {
+    width: 14,
+    height: 14,
+    marginRight: 5,
+    tintColor: '#888',
+  },
+  eventLocation: {
+    fontSize: 13,
+    color: '#888',
     fontFamily: 'Inter_500Medium',
   },
   pagination: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginVertical: 20,
+    marginVertical: 25,
+    alignItems: 'center',
+  },
+  paginationButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
   },
   pageLink: {
     fontSize: 16,
     color: '#F9739A',
-    marginHorizontal: 10,
+    fontFamily: 'Inter_700Bold',
   },
   pageNumber: {
     fontSize: 16,
     color: '#333',
+    fontFamily: 'Inter_500Medium',
+    marginHorizontal: 15,
+  },
+  loader: {
+    marginVertical: 40,
+  },
+  noEventsContainer: {
+    alignItems: 'center',
+    marginTop: 40,
+    paddingHorizontal: 40,
+  },
+  noEventsImage: {
+    width: 150,
+    height: 150,
+    marginBottom: 20,
+    opacity: 0.7,
+  },
+  noEventsText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#555',
+    fontFamily: 'Inter_500Medium',
   },
 });
 
