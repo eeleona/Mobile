@@ -36,29 +36,7 @@ function UserPage({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Image 
-          source={require('../../assets/Images/nobglogo.png')} 
-          style={styles.logo} 
-          accessibilityLabel="App logo"
-        />
-        <View style={styles.searchBox}>
-          <MaterialIcons 
-            name="search" 
-            size={20} 
-            color="#ff69b4" 
-            style={styles.searchIcon} 
-            accessibilityRole="imagebutton"
-          />
-          <TextInput 
-            placeholder="Search..." 
-            placeholderTextColor="#ff69b4" 
-            style={styles.input}
-            accessibilityLabel="Search input"
-          />
-        </View>
-      </View>
+      
 
       {/* Logout Confirmation Modal - Will be triggered from Account tab */}
       <Modal

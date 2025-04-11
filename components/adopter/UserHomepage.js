@@ -3,6 +3,7 @@ import {
   Button, 
   StyleSheet, 
   Text, 
+  TextInput, 
   View, 
   Image, 
   TouchableOpacity, 
@@ -13,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
 import axios from 'axios';
 import config from '../../server/config/config';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const UserHomepage = ({ navigation }) => {
   const [fontsLoaded] = useFonts({
@@ -155,6 +157,29 @@ const UserHomepage = ({ navigation }) => {
         end={{ x: 1, y: 0 }}
         style={styles.header}
       >
+        {/* Search Bar */}
+              <View style={styles.searchContainer}>
+                <Image 
+                  source={require('../../assets/Images/nobglogo.png')} 
+                  style={styles.logo} 
+                  accessibilityLabel="App logo"
+                />
+                <View style={styles.searchBox}>
+                  <MaterialIcons 
+                    name="search" 
+                    size={20} 
+                    color="#ff69b4" 
+                    style={styles.searchIcon} 
+                    accessibilityRole="imagebutton"
+                  />
+                  <TextInput 
+                    placeholder="Search..." 
+                    placeholderTextColor="#ff69b4" 
+                    style={styles.input}
+                    accessibilityLabel="Search input"
+                  />
+                </View>
+              </View>
         <Text style={styles.headerTitle}>Find your perfect companion with E-Pet Adopt</Text>
         <Text style={styles.headerSubtitle}>Adopt, Connect, and Discover</Text>
       </LinearGradient>
@@ -308,6 +333,46 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAF9F6',
   },
+  searchContainer: {
+    position: 'absolute',
+    top: 40,
+    left: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 30,
+    paddingVertical: 5,
+    paddingHorizontal: 15,
+    elevation: 3,
+    zIndex: 10,
+    marginVertical: 5,
+  },
+  logo: {
+    width: 60,
+    height: 60,
+    resizeMode: 'contain',
+    marginRight: 10,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ff69b4',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    backgroundColor: 'white',
+  },
+  searchIcon: {
+    marginRight: 5,
+  },
+  input: {
+    flex: 1,
+    height: 40,
+    fontSize: 14,
+    color: '#ff69b4',
+  },
   header: {
     padding: 25,
     paddingTop: 140,
@@ -353,7 +418,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderColor: '#FF66C4',
     borderWidth: 2,
     borderRadius: 14,
     padding: 14,

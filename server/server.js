@@ -83,12 +83,14 @@ io.on("connection", (socket) => {
   });
 
   socket.on("sendMessage", async ({ senderId, receiverId, message }) => {
+    console.log("🔹 Received sendMessage event:", { senderId, receiverId, message });
     try {
       const newMessage = new Message({ senderId, receiverId, message });
       await newMessage.save();
+      console.log("✅ Message saved to database:", newMessage);
       io.to(receiverId).emit("receiveMessage", newMessage);
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("❌ Error sending message:", error);
     }
   });
 
@@ -101,3 +103,5 @@ io.on("connection", (socket) => {
 server.listen(port, "0.0.0.0", () => {
   console.log(`🚀 HTTPS Server running on port ${port}`);
 });
+
+module.exports.io = io;

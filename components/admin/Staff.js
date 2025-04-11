@@ -109,10 +109,10 @@ const Staff = () => {
                     <Text style={styles.modalText}>{selectedStaff.s_position}</Text>
 
                     <Text style={styles.modalLabel}>Address:</Text>
-                    <Text style={styles.modalText}>{selectedStaff.s_address}</Text>
+                    <Text style={styles.modalText}>{selectedStaff.s_add}</Text>
 
                     <Text style={styles.modalLabel}>Contact Number:</Text>
-                    <Text style={styles.modalText}>{selectedStaff.s_contact}</Text>
+                    <Text style={styles.modalText}>{selectedStaff.s_contactnumber}</Text>
 
                     <Text style={styles.modalLabel}>Date of Birth:</Text>
                     <Text style={styles.modalText}>

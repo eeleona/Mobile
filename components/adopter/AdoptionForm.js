@@ -1,100 +1,292 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView, ImageBackground, Image, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Checkbox, List, PaperProvider, Modal, Portal } from 'react-native-paper';
+import { PaperProvider, Modal, Portal } from 'react-native-paper';
 import AppBar from '../design/AppBar';
-import { ApplicationProvider, CheckBox, Datepicker, DatepickerProps, Radio, IndexPath, Select, SelectItem, Input, Text } from '@ui-kitten/components';
-import {  useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
+import { ApplicationProvider, CheckBox, Input, Text } from '@ui-kitten/components';
+import { useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
 import * as eva from '@eva-design/eva';
- 
-const AdoptionForm = ({ navigation }) => {
-    const [dateOfBirth, setDateOfBirth] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [expanded, setExpanded] = React.useState(true);
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import config from '../../server/config/config';
+
+const AdoptionForm = ({ navigation, route }) => {
+    // Add pet ID from route params
+    const { id } = route.params;
+    
     const [visible, setVisible] = React.useState(false);
     const showModal = () => setVisible(true);
     const hideModal = () => setVisible(false);
     const containerStyle = {backgroundColor: 'white', padding: 20};
-    const [activeChecked, setActiveChecked] = React.useState(false);
-    const handlePress = () => setExpanded(!expanded);
-    const [checked, setChecked] = React.useState(false);
+    
+    // Add form state
+    const [occupation, setOccupation] = useState('');
+    const [homeType, setHomeType] = useState('');
+    const [yearsResided, setYearsResided] = useState('');
+    const [adultsInHousehold, setAdultsInHousehold] = useState('');
+    const [childrenInHousehold, setChildrenInHousehold] = useState('');
+    const [householdDescription, setHouseholdDescription] = useState('');
+    const [allergicToPets, setAllergicToPets] = useState(false);
+    
+    // Add user information state
+    const [userInfo, setUserInfo] = useState({
+        fullName: '',
+        gender: '',
+        birthdate: '',
+        contactNumber: '',
+        address: ''
+    });
+    
+    // Add loading state
+    const [loading, setLoading] = useState(true);
+    
+    useEffect(() => {
+        // Function to fetch user profile information
+        const fetchUserProfile = async () => {
+            try {
+                // Get the token from AsyncStorage
+                const token = await AsyncStorage.getItem('authToken');
+                
+                if (!token) {
+                    Alert.alert('Authentication Error', 'You need to login first.');
+                    navigation.navigate('Login'); // Navigate to login screen
+                    return;
+                }
+                
+                // Fetch user profile information
+                const response = await axios.get(
+                    `${config.address}/api/user/profile`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+                
+                const userData = response.data.user;
+                
+                // Format the full name from the response
+                const fullName = `${userData.firstName} ${userData.middleName ? userData.middleName + ' ' : ''}${userData.lastName}`;
+                
+                // Format the birthdate (assuming it comes as a date string)
+                const birthdate = userData.birthdate ? new Date(userData.birthdate).toLocaleDateString() : '';
+                
+                // Format contact number if needed (similar to web version)
+                const formattedContact = formatContactNumber(userData.contactNumber);
+                
+                // Update user info state
+                setUserInfo({
+                    fullName: fullName,
+                    gender: userData.gender || '',
+                    birthdate: birthdate,
+                    contactNumber: formattedContact,
+                    address: userData.address || ''
+                });
+                
+                setLoading(false);
+            } catch (error) {
+                console.error('Error fetching user profile:', error.response?.data || error.message);
+                Alert.alert('Error', 'Failed to load user information. Please try again.');
+                setLoading(false);
+            }
+        };
+        
+        // Call the function to fetch user profile
+        fetchUserProfile();
+    }, [navigation]);
+    
+    // Function to format contact number (similar to web version)
+    const formatContactNumber = (number) => {
+        if (!number) return '';
+        const numStr = String(number);
+        if (numStr.startsWith('63')) {
+            return `+63 ${numStr.slice(2, 5)} ${numStr.slice(5, 8)} ${numStr.slice(8)}`;
+        }
+        return numStr;
+    };
+    
     let [fontsLoaded] = useFonts({
         Inter_700Bold,
         Inter_500Medium,
-      });
+    });
     
-      if (!fontsLoaded) {
-        return null;
-      }
+    if (!fontsLoaded) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#ff69b4" />
+            </View>
+        );
+    }
 
-      const handleLogin = () => {
-        navigation.navigate('Adoption Process');
-      };
+    const handleSubmitAdoption = async () => {
+        try {
+            // Get the token from AsyncStorage
+            const token = await AsyncStorage.getItem('authToken');
+            
+            if (!token) {
+                Alert.alert('Authentication Error', 'You need to login first.');
+                return;
+            }
+            
+            // Create the adoption form data
+            const formData = {
+                pet_id: id,
+                occupation,
+                home_type: homeType,
+                years_resided: yearsResided,
+                adults_in_household: adultsInHousehold,
+                children_in_household: childrenInHousehold,
+                household_description: householdDescription,
+                allergic_to_pets: allergicToPets ? 'Yes' : 'No'
+            };
+            
+            // Send the request with the token in the header
+            const response = await axios.post(
+                `${config.address}/api/adoption/submit`, 
+                formData,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            
+            Alert.alert('Success', 'Adoption form submitted successfully!');
+            navigation.navigate('Adoption Process');
+            
+        } catch (error) {
+            console.error('Error submitting adoption form:', error.response?.data || error.message);
+            Alert.alert('Error', 'Failed to submit adoption form. Please try again.');
+        }
+    };
+
     return (
         <ApplicationProvider {...eva} theme={eva.light}>
             <PaperProvider>
                 <LinearGradient
-                colors={['rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.7)']}
-                style={styles.gradientOverlay}
+                    colors={['rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.7)']}
+                    style={styles.gradientOverlay}
                 >
-                <ScrollView style={styles.container}>
-                    <AppBar></AppBar>
-                    <Text style={styles.formHeader}>Adoption Form</Text>
-                        <View style={styles.formContainer}>
-                            <Text style={styles.formsubHeader}>Account Information</Text>
-                            <View style={styles.info}>
-                                <Text style={styles.label}>Full Name: Bunnie A. Brown</Text>
-                                <Text style={styles.label}>Gender: Female</Text>
-                                <Text style={styles.label}>Birthdate: 09/19/2000</Text>
-                                <Text style={styles.label}>Contact Number: 9284878278</Text>
-                                <Text style={styles.label}>Address: 22 CarrotVille Pasay City</Text>
+                    <ScrollView style={styles.container}>
+                        <AppBar />
+                        <Text style={styles.formHeader}>Adoption Form</Text>
+                        
+                        {loading ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color="#ff69b4" />
+                                <Text style={styles.loadingText}>Loading user information...</Text>
                             </View>
-                        </View>
-                        <View style={styles.formContainer2}>
-                            <Text style={styles.formsubHeader}>Personal Information</Text>
-                            <View style={styles.info2}>
-                            <Text style={styles.mlabel}>What is your Occupation?</Text>
-                            <Input style={styles.input}/>
-                                <Text style={styles.mlabel}>What type of Home do you live in?</Text>
-                                <Input style={styles.input}/>
-                                <Text style={styles.mlabel}>Number of Years Resided:</Text>
-                                <Input style={styles.input}/>
-                                <Text style={styles.mlabel}>How many Adults live in your Household?</Text>
-                                <Input style={styles.input}/>
-                                <Text style={styles.mlabel}>How many Children live in your Household?</Text>
-                                <Input style={styles.input}/>
-                                <Text style={styles.mlabel}>Please describe your household:</Text>
-                                <Input style={styles.input}/>
-                            </View>
-                            <View style={styles.btnC}>
-                                <TouchableOpacity style={styles.btn} onPress={showModal}>
-                                    <Text style={styles.btnlabel}>Submit Adoption</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                    
-                        <View style={styles.pinfo}>
+                        ) : (
+                            <>
+                                <View style={styles.formContainer}>
+                                    <Text style={styles.formsubHeader}>Account Information</Text>
+                                    <View style={styles.info}>
+                                        <Text style={styles.label}>Full Name: {userInfo.fullName}</Text>
+                                        <Text style={styles.label}>Gender: {userInfo.gender}</Text>
+                                        <Text style={styles.label}>Birthdate: {userInfo.birthdate}</Text>
+                                        <Text style={styles.label}>Contact Number: {userInfo.contactNumber}</Text>
+                                        <Text style={styles.label}>Address: {userInfo.address}</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.formContainer2}>
+                                    <Text style={styles.formsubHeader}>Personal Information</Text>
+                                    <View style={styles.info2}>
+                                        <Text style={styles.mlabel}>What is your Occupation?</Text>
+                                        <Input 
+                                            style={styles.input}
+                                            value={occupation}
+                                            onChangeText={setOccupation}
+                                        />
+                                        <Text style={styles.mlabel}>What type of Home do you live in?</Text>
+                                        <Input 
+                                            style={styles.input}
+                                            value={homeType}
+                                            onChangeText={setHomeType}
+                                        />
+                                        <Text style={styles.mlabel}>Number of Years Resided:</Text>
+                                        <Input 
+                                            style={styles.input}
+                                            value={yearsResided}
+                                            onChangeText={setYearsResided}
+                                            keyboardType="numeric"
+                                        />
+                                        <Text style={styles.mlabel}>How many Adults live in your Household?</Text>
+                                        <Input 
+                                            style={styles.input}
+                                            value={adultsInHousehold}
+                                            onChangeText={setAdultsInHousehold}
+                                            keyboardType="numeric"
+                                        />
+                                        <Text style={styles.mlabel}>How many Children live in your Household?</Text>
+                                        <Input 
+                                            style={styles.input}
+                                            value={childrenInHousehold}
+                                            onChangeText={setChildrenInHousehold}
+                                            keyboardType="numeric"
+                                        />
+                                        <Text style={styles.mlabel}>Please describe your household:</Text>
+                                        <Input 
+                                            style={styles.input}
+                                            value={householdDescription}
+                                            onChangeText={setHouseholdDescription}
+                                            multiline={true}
+                                        />
+                                        <View style={styles.checkboxContainer}>
+                                            <CheckBox
+                                                checked={allergicToPets}
+                                                onChange={nextChecked => setAllergicToPets(nextChecked)}
+                                                style={styles.checkbox}
+                                            >
+                                                <Text style={styles.checkboxText}>Anyone allergic to pets?</Text>
+                                            </CheckBox>
+                                        </View>
+                                    </View>
+                                    <View style={styles.btnC}>
+                                        <TouchableOpacity style={styles.btn} onPress={showModal}>
+                                            <Text style={styles.btnlabel}>Submit Adoption</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </>
+                        )}
+                        
                         <Portal>
-                            <Modal style={styles.mContainer} visible={visible} onDismiss={hideModal} contentContainerStyle={containerStyle}>
+                            <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={containerStyle}>
                                 <View style={styles.modalcontainer}>
-                                <Text style={styles.successtext}>Submit Adoption Application?</Text>
-                                <TouchableOpacity style={styles.submitButton2}>
-                                    <Text style={styles.submitButtonText} onPress={handleLogin}>Submit</Text>
-                                </TouchableOpacity>
+                                    <Text style={styles.successtext}>Submit Adoption Application?</Text>
+                                    <TouchableOpacity style={styles.submitButton2}>
+                                        <Text 
+                                            style={styles.submitButtonText} 
+                                            onPress={() => {
+                                                hideModal();
+                                                handleSubmitAdoption();
+                                            }}
+                                        >Submit</Text>
+                                    </TouchableOpacity>
                                 </View>
                             </Modal>
                         </Portal>
-                        
-                    </View>
-                </ScrollView>
-            </LinearGradient>
-        </PaperProvider>
+                    </ScrollView>
+                </LinearGradient>
+            </PaperProvider>
         </ApplicationProvider>
     );
 };
  
 const styles = StyleSheet.create({
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20
+    },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 16,
+        fontFamily: 'Inter_500Medium'
+    },
     container: {
         flex: 1,
     },
@@ -103,7 +295,7 @@ const styles = StyleSheet.create({
     },
     containers: {
         minHeight: 128,
-      },
+    },
     logo: {
         width: 40,
         height: 40,
@@ -111,34 +303,34 @@ const styles = StyleSheet.create({
         
     },
     label2: {
-    marginTop: 15,
-    marginBottom: 5,
-  },
-  labels: {
-    fontFamily: 'Inter_500Medium',
-    marginBottom: 10,
-  },
-  btnC: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 35,
-  },
-  btn: {
-    backgroundColor: '#cad47c',
-    width: '60%',
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 5,
-    marginTop: 10,
-  },
-  btnlabel: {
-    fontFamily: 'Inter_700Bold',
-    color: 'white',
-    fontSize: 19,
-  },
+        marginTop: 15,
+        marginBottom: 5,
+    },
+    labels: {
+        fontFamily: 'Inter_500Medium',
+        marginBottom: 10,
+    },
+    btnC: {
+        flexDirection: 'row',
+        marginHorizontal: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: 35,
+    },
+    btn: {
+        backgroundColor: '#cad47c',
+        width: '60%',
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 5,
+        marginTop: 10,
+    },
+    btnlabel: {
+        fontFamily: 'Inter_700Bold',
+        color: 'white',
+        fontSize: 19,
+    },
     background: {
         width: '100%',
         height: '100%',
@@ -163,11 +355,10 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     formContainer2: {
-        
         backgroundColor: '#fff',
         margin: 15,
         marginTop: -10,
-        height: 560,
+        height: 600, // Increased height for checkbox
         borderRadius: 5,
         shadowColor: '#000',
         shadowOpacity: 0.2,
@@ -213,7 +404,7 @@ const styles = StyleSheet.create({
         marginLeft: -145,
     },
     info2: {
-        
+        width: '90%',
     },
     mlabel: {
         marginTop: 5,
@@ -241,7 +432,7 @@ const styles = StyleSheet.create({
     input: {
         marginTop: 5,
         marginBottom: 10,
-        width: '90%',
+        width: '100%',
         backgroundColor: 'white',
         borderRadius: 5,
         alignItems: 'center',
@@ -353,7 +544,19 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontFamily: 'Inter',
         marginBottom: 5,
-      },
+    },
+    checkboxContainer: {
+        flexDirection: 'row',
+        marginTop: 10,
+        marginBottom: 10,
+    },
+    checkbox: {
+        marginRight: 10,
+    },
+    checkboxText: {
+        fontFamily: 'Inter_500Medium',
+        fontSize: 15,
+    },
 });
  
 export default AdoptionForm;

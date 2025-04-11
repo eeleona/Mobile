@@ -52,7 +52,7 @@ import ViewEvent from './components/admin/ViewEvent';
 import AdminLogs from './components/admin/AdminLogs';
 import UserPage from './components/adopter/UserPage';
 import OneMessage from './components/admin/OneMessage';
-
+import AdoptThePet from './components/adopter/AdoptThePet';
 
 export default function App() {
   const Stack = createNativeStackNavigator();
@@ -113,6 +113,7 @@ export default function App() {
         
         {/* ADOPTER MODULES */}
         <Stack.Screen name='Adopt A Pet' component={AdoptAPet} options={{ headerShown: false }} />
+        <Stack.Screen name='Adopt The Pet' component={AdoptThePet} options={{ headerShown: false }} />
         <Stack.Screen name='Adoption Process' component={AdoptionProcess} options={{ headerShown: false }} />
         <Stack.Screen name='Submission' component={Submission} options={{ headerShown: false }} />
         <Stack.Screen name='User Nearby Services' component={UserNearby} options={{ headerShown: false }} />
@@ -122,6 +123,7 @@ export default function App() {
         {/* ADOPTER SUB-MODULES */}
         <Stack.Screen name='Data Privacy' component={DataPrivacy} options={{ headerShown: false }} />
         <Stack.Screen name='User Events' component={UserEvents} options={{ headerShown: false }} />
+        <Stack.Screen name='Event Details' component={AdoptThePet} options={{ headerShown: false }} />
         <Stack.Screen name='User Inbox' component={UserInbox} options={{ headerShown: false }} />
         <Stack.Screen name='User Notif' component={UserNotif} options={{ headerShown: false }} />
         <Stack.Screen name='Adoption Form' component={AdoptionForm} options={{ headerShown: false }} />

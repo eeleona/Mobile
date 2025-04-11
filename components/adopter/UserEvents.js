@@ -4,10 +4,14 @@ import { Appbar } from 'react-native-paper';
 import AppBar from '../design/AppBar';
 import axios from 'axios';
 import config from '../../server/config/config';
+import { useNavigation } from '@react-navigation/native';
+
 
 const UserEvents = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigation = useNavigation();
+
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -84,9 +88,14 @@ const UserEvents = () => {
             <ActivityIndicator size="large" color="#F9739A" style={styles.loader} />
           ) : events.length > 0 ? (
             events.map(event => (
-              <TouchableOpacity key={event._id} activeOpacity={0.9}>
+              <TouchableOpacity
+                key={event._id}
+                activeOpacity={0.9}
+                onPress={() => navigation.navigate('Event Details', { eventId: event._id })}
+              >
                 <EventItem event={event} />
               </TouchableOpacity>
+
             ))
           ) : (
             <View style={styles.noEventsContainer}>
@@ -98,15 +107,7 @@ const UserEvents = () => {
             </View>
           )}
 
-          <View style={styles.pagination}>
-            <TouchableOpacity style={styles.paginationButton}>
-              <Text style={styles.pageLink}>Previous</Text>
-            </TouchableOpacity>
-            <Text style={styles.pageNumber}>1</Text>
-            <TouchableOpacity style={styles.paginationButton}>
-              <Text style={styles.pageLink}>Next</Text>
-            </TouchableOpacity>
-          </View>
+          
         </ScrollView>
       </View>
     </ImageBackground>

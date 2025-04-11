@@ -42,21 +42,6 @@ const ViewEvent = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.button, styles.editButton]}
-            onPress={handleEdit}
-          >
-            <Text style={styles.buttonText}>Edit Event</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.button, styles.deleteButton]}
-            onPress={() => console.log('Delete Event', event._id)}
-          >
-            <Text style={styles.buttonText}>Delete Event</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
     </View>
   );

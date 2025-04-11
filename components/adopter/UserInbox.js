@@ -1,228 +1,96 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView } from 'react-native';
+import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
+import config from '../../server/config/config';
 
-import { PaperProvider } from 'react-native-paper';
-import UserNavbar from '../design/UserNavbar';
-import {  useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
+const UserPh = require('../../assets/Images/user.png');
 
 const UserInbox = ({ navigation }) => {
-  const [messages, setMessages] = useState([
-    { id: '1', sender: 'Pasay Animal Shelter', message: 'You: Thank you so much!', image: require('../../assets/Images/nobglogo.png') },
-  ]);
+  const [conversations, setConversations] = useState([]);
+  const [userId, setUserId] = useState(null);
 
-  const [searchText, setSearchText] = useState('');
-  const [personSearchText, setPersonSearchText] = useState('');
+  useEffect(() => {
+    const fetchConversations = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
 
-  const showMessageDetails = (item) => {
-    navigation.navigate('Chat', { message: item });
+      try {
+        const decoded = jwtDecode(token);
+        setUserId(decoded.id);
+
+        const res = await axios.get(`${config.address}/api/messages/inbox/${decoded.id}`);
+        setConversations(res.data); // Assume your backend returns an array of { receiverId, receiverName, receiverImage, lastMessage }
+      } catch (err) {
+        console.error('Error fetching inbox:', err);
+      }
+    };
+
+    fetchConversations();
+  }, []);
+
+  const handleChatPress = (conversation) => {
+    navigation.navigate('ChatScreen', {
+      receiverId: conversation.receiverId,
+      receiverName: conversation.receiverName,
+      receiverImage: conversation.receiverImage,
+    });
   };
-
-  let [fontsLoaded] = useFonts({
-    Inter_700Bold,
-    Inter_500Medium,
-  });
-
-  if (!fontsLoaded) {
-    return null;
-  }
-
-  const handleLogin = () => {
-    navigation.navigate('Login');
-  };
-
-  const renderMessageItem = ({ item }) => (
-    <TouchableOpacity onPress={() => showMessageDetails(item)}>
-      <View style={styles.messageItem}>
-        <Image source={item.image} style={styles.avatar} />
-        <View style={styles.messageDetails}>
-          <Text style={styles.sender}>{item.sender}</Text>
-          <Text style={styles.message}>{item.message}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
-  const filteredMessages = messages.filter((msg) =>
-    msg.sender.toLowerCase().includes(searchText.toLowerCase())
-  );
-
 
   return (
-    <PaperProvider>
-    <View style={styles.container}>
-      
-      <Text style={styles.welcome}>Messages</Text>
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search messages..."
-          value={searchText}
-          onChangeText={setSearchText}
-        />
-      </View>
-      <FlatList
-        data={filteredMessages}
-        renderItem={renderMessageItem}
-        keyExtractor={(item) => item.id}
-      />
-      
-    </View>
-    </PaperProvider>
+    <ScrollView style={styles.container}>
+      <Text style={styles.header}>Inbox</Text>
+      {conversations.map((conv, index) => (
+        <TouchableOpacity key={index} style={styles.chatPreview} onPress={() => handleChatPress(conv)}>
+          <Image
+            source={conv.receiverImage ? { uri: `${config.address}${conv.receiverImage}` } : UserPh}
+            style={styles.avatar}
+          />
+          <View style={styles.textContainer}>
+            <Text style={styles.name}>{conv.receiverName}</Text>
+            <Text style={styles.message} numberOfLines={1}>{conv.lastMessage}</Text>
+          </View>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#fff',
+    paddingHorizontal: 10,
   },
-  logo: {
-    width: 40,
-    height: 40,
+  header: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginVertical: 15,
+    color: '#FF66C4',
   },
-  welcome: {
-    fontFamily: 'Inter',
-    marginTop: 110,
-    
-    color: 'black',
-    fontSize: 30,
-    marginLeft: 15,
-    fontFamily: 'Inter_700Bold',
-  },
-  navBar: {
-    height: 50,
-    flexDirection: 'row',
-    paddingHorizontal: 8,
-    backgroundColor: '#FFFFFF', 
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  buttonsContainer: {
-    flexDirection: 'row',
-  },
-  buttonText: {
-    fontSize: 12,
-    color: '#000000',
-  },
-  button: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 5,
-    marginHorizontal: 5,
-},
-  searchContainer: {
-    marginBottom: 10,
-    marginTop: 20,
-    marginHorizontal: 10,
-  },
-  searchInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 8,
-  },
-  messageItem: {
+  chatPreview: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
-    borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    borderBottomWidth: 1,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     marginRight: 10,
-    marginLeft: 5,
   },
-  messageDetails: {
+  textContainer: {
     flex: 1,
   },
-  sender: {
+  name: {
     fontWeight: 'bold',
+    fontSize: 16,
   },
   message: {
+    fontSize: 14,
     color: '#666',
-  },
-  addButton: {
-    backgroundColor: '#ff66c4',
-    padding: 15,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  editButton: {
-    backgroundColor: '#FF66C4',
-    padding: 5,
-    borderRadius: 5,
-    marginLeft: 10,
-  },
-  editButtonText: {
-    color: '#fff',
-  },
-  deleteButton: {
-    backgroundColor: '#44c856',
-    padding: 5,
-    borderRadius: 5,
-    marginLeft: 10,
-  },
-  deleteButtonText: {
-    color: '#fff',
-  },
-  modalContainer: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 10,
-  },
-  personItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  selectedPersonItem: {
-    backgroundColor: '#e0e0e0',
-  },
-  personName: {
-    marginLeft: 10,
-  },
-  sendButton: {
-    backgroundColor: '#FF66C4',
-    padding: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 8,
-  },
-  sendButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  saveButton: {
-    backgroundColor: '#FF66C4',
-    padding: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 8,
   },
 });
 
