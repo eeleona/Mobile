@@ -1,293 +1,262 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity, ScrollView, ImageBackground, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  TouchableOpacity,
+  TextInput,
+  FlatList,
+  StyleSheet,
+  Text,
+  Image,
+  Dimensions,
+  Animated,
+} from 'react-native';
+import { WebView } from 'react-native-webview';
+import axios from 'axios';
+import config from '../../server/config/config';
 import AppBar from '../design/AppBar';
- 
-const { width } = Dimensions.get('window');
- 
-export default function Index() {
-  const [selectedService, setSelectedService] = useState('Pet Grooming'); // Default service is Pet Grooming
- 
-  // Data for each service
-  const servicesData = {
-    'Pet Grooming': [
-      {
-        name: 'Happy Tails Pet Salon',
-        address: '32 C Clemente Jose, Malibay, Pasay, 1300 Kalakhang Maynila',
-        imageUrl: require('../../assets/Images/nss1.jpg'),
-        description: 'Contact Number: 1234567',
-      },
-      {
-        name: 'Dogs and The City',
-        address: '116-117 South Parking SM Mall of Asia, Marina Way, Pasay, 1300',
-        imageUrl: require('../../assets/Images/nss2.jpg'),
-        description: 'Contact Number: 1234567',
-      },
-    ],
-    'Pet Clinic': [
-      {
-        name: 'Carveldon Veterinary Center',
-        address: '123 Clinic CPC, 21 Cartimar Ave, Pasay, 1300 Metro Manila, Pasay City',
-        imageUrl: require('../../assets/Images/vc1.jpg'),
-        description: 'Contact Number: 1234567',
-      },
-      {
-        name: 'Cruz Veterinary Clinicl Clinic',
-        address: 'Stall G, Felimarc Pet Center, 2189 A. Luna, Pasay, 1300 Metro Manila',
-        imageUrl: require('../../assets/Images/vc2.jpg'),
-        description: 'Contact Number: 1234567',
-      },
-    ],
-    'Neutering': [
-      {
-        name: 'Pet Allies Animal Clinic',
-        address: 'Unit 6, Megal Taft Bldg., 2140 Taft Ave.Cor. Taylo St., 55 Zone 7, Pasay, 1300 Metro Manila',
-        imageUrl: require('../../assets/Images/nc1.jpg'),
-        description: 'Contact Number: 1234567',
-      },
-      {
-        name: 'Neuter for a Cause',
-        address: 'The Veterinary Hub Pte. Corp',
-        imageUrl: require('../../assets/Images/nc2.jpg'),
-        description: 'Contact Number: 1234567',
-      },
-    ],
-    'Pet Hotels': [
-      {
-        name: 'Dog Friend Hotel & SPA',
-        address: 'Unit K & C Felimarc Center Taft Avenue (nearby Cartimar), Pasay City, Philippines',
-        imageUrl: require('../../assets/Images/ph1.jpg'),
-        description: 'Contact Number: 1234567',
-      },
-      {
-        name: 'The Pup Club ',
-        address: '31 Armstrong Ave corner Von Braun, Parañaque, Philippines',
-        imageUrl: require('../../assets/Images/ph2.jpg'),
-        description: 'Contact Number: 1234567',
-      },
-    ],
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const UserNearby = () => {
+  const [clinics, setClinics] = useState([]);
+  const [activeButton, setActiveButton] = useState('veterinary');
+  const [services, setServices] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [mapSrc, setMapSrc] = useState("https://www.google.com/maps/embed?...");
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const response = await axios.get(`${config.address}/api/service/all`);
+        const fetchedServices = response.data;
+        setServices(fetchedServices);
+        handleFilter('veterinary', fetchedServices);
+      } catch (error) {
+        console.error('Error fetching services:', error);
+      }
+    };
+    fetchServices();
+  }, []);
+
+  const handleFilter = (type, servicesList = services) => {
+    setActiveButton(type);
+    const filteredServices = servicesList.filter(service => service.ns_type === type);
+    setClinics(filteredServices);
   };
- 
-  return (
-    <ImageBackground
-      source={require('../../assets/Images/shelter.jpg')} // Replace with your image URL
-      style={styles.background}
-      resizeMode="cover"
-    >
-      <AppBar></AppBar>
-      {/* Gradient overlay for better text contrast */}
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.7)']}
-        style={styles.gradientOverlay}
-      >
-        <ScrollView style={styles.container}>
-          {/* Header */}
- 
-          {/* Main Title with Image */}
-          <View style={styles.titleContainer}>
-            <View style={styles.textWithImageContainer}>
-              <View>
-                <Text style={styles.nearbyText}>Nearby</Text>
-                <Text style={styles.servicesText}>Services</Text>
-                <Text style={styles.locationText}>IN PASAY CITY</Text>
-              </View>
-              <Image
-                source={require('../../assets/Images/catdog.jpg')} // Replace with the correct path to your image
-                style={styles.titleImage}
-              />
-            </View>
-          </View>
- 
-          {/* Middle Navbar */}
-          <View style={styles.middleNavBar}>
-       
-            <TouchableOpacity onPress={() => setSelectedService('Pet Grooming')}>
-              <Text style={[styles.navLinkk, selectedService === 'Pet Grooming' ? styles.selectedNavLinkk : null]}>Pet Grooming</Text>
-            </TouchableOpacity>
- 
-            <TouchableOpacity onPress={() => setSelectedService('Pet Clinic')}>
-              <Text style={[styles.navLinkk, selectedService === 'Pet Clinic' ? styles.selectedNavLinkk : null]}>Pet Clinic</Text>
-            </TouchableOpacity>
- 
-            <TouchableOpacity onPress={() => setSelectedService('Neutering')}>
-              <Text style={[styles.navLinkk, selectedService === 'Neutering' ? styles.selectedNavLinkk : null]}>Neutering</Text>
-            </TouchableOpacity>
- 
-            <TouchableOpacity onPress={() => setSelectedService('Pet Hotels')}>
-              <Text style={[styles.navLinkk, selectedService === 'Pet Hotels' ? styles.selectedNavLinkk : null]}>Pet Hotels</Text>
-            </TouchableOpacity>
-          </View>
-         
-          {/* White Background and Content Below Middle Navbar */}
-          <View style={styles.whiteBackground}>
-            <Text style={styles.serviceTitle}>{selectedService.toUpperCase()}</Text>
-            {servicesData[selectedService].map((service, index) => (
-              <View key={index} style={styles.serviceCard}>
-                <Image source={service.imageUrl} style={styles.serviceImage} />
-                <Text style={styles.serviceName}>{service.name}</Text>
-                <Text style={styles.serviceAddress}>{service.address}</Text>
-                <Text style={styles.serviceDescription}>{service.description}</Text>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-      </LinearGradient>
-    </ImageBackground>
+
+  const handleBoxClick = (ns_pin) => setMapSrc(ns_pin);
+
+  const filteredClinics = clinics.filter(clinic =>
+    clinic.ns_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    clinic.ns_address.toLowerCase().includes(searchQuery.toLowerCase())
   );
-}
- 
+
+  const generateMapHtml = (mapUrl) => `
+    <!DOCTYPE html>
+    <html><head><style>
+      body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+      iframe { width: 100%; height: 100%; border: 0; }
+    </style></head>
+    <body>
+      <iframe src="${mapUrl}" allowfullscreen loading="lazy"></iframe>
+    </body></html>
+  `;
+
+  const animatedPress = new Animated.Value(1);
+
+  const animateIn = () => Animated.spring(animatedPress, { toValue: 0.95, useNativeDriver: true }).start();
+  const animateOut = () => Animated.spring(animatedPress, { toValue: 1, friction: 3, useNativeDriver: true }).start();
+
+  return (
+    <View style={styles.container}>
+      <AppBar />
+
+      {/* Map Section */}
+      <View style={styles.mapContainer}>
+        <WebView
+          originWhitelist={['*']}
+          source={{ html: generateMapHtml(mapSrc) }}
+          style={styles.mapWebView}
+          javaScriptEnabled
+          domStorageEnabled
+          startInLoadingState
+        />
+      </View>
+
+      {/* Search Bar */}
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Search clinics or address..."
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholderTextColor="#999"
+      />
+
+      {/* Filter Buttons */}
+      <View style={styles.buttonContainer}>
+        {['veterinary', 'neutering', 'hotel', 'grooming'].map(type => (
+          <TouchableOpacity
+            key={type}
+            activeOpacity={0.8}
+            style={[
+              styles.filterButton,
+              activeButton === type
+                ? styles.activeFilterButton
+                : styles.inactiveFilterButton
+            ]}
+            onPress={() => handleFilter(type)}
+            onPressIn={animateIn}
+            onPressOut={animateOut}
+          >
+            <Animated.Text
+              style={[
+                styles.filterButtonText,
+                activeButton === type
+                  ? styles.activeFilterButtonText
+                  : styles.inactiveFilterButtonText,
+                { transform: [{ scale: animatedPress }] }
+              ]}
+            >
+              {type.charAt(0).toUpperCase() + type.slice(1)}
+            </Animated.Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Clinics List */}
+      <FlatList
+        data={filteredClinics}
+        renderItem={({ item }) => (
+          <View style={styles.clinicBox} key={item._id}>
+            <View style={styles.clinicRow}>
+              <Image
+                source={{ uri: item.ns_image ? `${config.address}${item.ns_image}` : 'https://via.placeholder.com/60' }}
+                style={styles.clinicImage}
+              />
+              <View style={styles.clinicDetails}>
+                <Text style={styles.clinicName}>{item.ns_name}</Text>
+                <Text style={styles.clinicAddress}>{item.ns_address}</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.mapButton} onPress={() => handleBoxClick(item.ns_pin)}>
+              <Text style={styles.mapButtonText}>📍 View on Map</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          <Text style={styles.emptyState}>No results found. Try another type or keyword.</Text>
+        }
+      />
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container: { flex: 1, backgroundColor: '#FAF9F6' },
+
+  mapContainer: {
+    height: SCREEN_HEIGHT * 0.35,
+    marginBottom: 16,
+    marginHorizontal: 20,
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 4,
+    backgroundColor: '#ccc',
   },
-  background: {
-    width: '100%',
-    height: '100%', // Ensure the background covers the entire screen
-    flex: 1,
+  mapWebView: { flex: 1 },
+
+  searchInput: {
+    height: 48,
+    borderRadius: 10,
+    marginHorizontal: 20,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    fontSize: 15,
+    backgroundColor: '#fff',
+    marginBottom: 12,
   },
-  gradientOverlay: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  header: {
+
+  buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 20,
-    backgroundColor: '#ff69b4',
+    gap: 8,
+    marginHorizontal: 20,
+    marginBottom: 16,
   },
-  logo: {
-    fontSize: 25,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  navBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  navLink: {
-    marginHorizontal: 10,
-    fontSize: 16,
-    color: 'white',
-  },
-  selectedNavLink: {
-    color: 'black',
-    fontWeight: 'bold',
-    borderBottomWidth: 2,
-    borderBottomColor: '#ff69b4',
-  },
-  signUpBtn: {
-    backgroundColor: '#fff',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-  },
-  signUpText: {
-    color: '#ff69b4',
-    fontWeight: 'bold',
-  },
-  titleContainer: {
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  textWithImageContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  nearbyText: {
-    fontSize: 58,
-    color: '#f06292',
-    marginBottom: -9,
-    marginTop: 30,
-    fontFamily: 'Inter_700Bold',
-  },
-  servicesText: {
-    fontSize: 45,
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 10,
-    marginLeft: 5,
-  },
-  locationText: {
-    fontSize: 20,
-    color: '#555',
-    marginLeft: 20,
-    fontFamily: 'Inter_500Medium',
-  },
-  titleImage: {
-    width: 200, // Set the width of the image
-    height: 140, // Set the height of the image
-    borderRadius: 10,
-    marginLeft: 19, // Space between the text and the image
-    fontFamily: 'Inter_700Bold',
-  },
-  middleNavBar: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    backgroundColor: '#fff5EE',
+  filterButton: {
+    flex: 1,
     paddingVertical: 10,
-    marginBottom: 20,
-  },
-  navLinkk: {
-    marginHorizontal: 10,
-    fontSize: 16,
-    fontWeight:'bold',
-    color: '#a0522d',
-    paddingVertical: 8,
-    paddingHorizontal: 1,
-    borderRadius: 0, // Rounded corners
-    borderStyle:'solid',
-    fontFamily: 'Inter_700Bold',
-    overflow: 'hidden',
-  },
-  selectedNavLinkk: {
-    color: 'black',
-    fontFamily: 'Inter_700Bold',
-    borderTopWidth:3,
-    borderColor:'#ff69b4',
-    borderStartColor:'#ff69b4',
-    borderBottomWidth: 3,
-    overflow: 'hidden',
-  },
-  whiteBackground: {
-    backgroundColor: '#fff', // White background added for the content section
-    padding: 40,
-    marginTop:-20,
- 
-  },
-  serviceTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  serviceCard: {
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 20,
+    borderRadius: 8,
     alignItems: 'center',
-    
   },
-  serviceImage: {
-    width: width * 0.9,
-    height: 200,
-    borderRadius: 10,
-    marginBottom: 10,
+  activeFilterButton: {
+    backgroundColor: '#0B3D24',
   },
-  serviceName: {
-    fontSize: 20,
-    fontFamily: 'Inter_700Bold'
+  inactiveFilterButton: {
+    borderWidth: 1,
+    borderColor: '#6e6e6e',
+    backgroundColor: '#fff',
   },
-  serviceAddress: {
+  filterButtonText: { fontSize: 14, fontWeight: '600' },
+  activeFilterButtonText: { color: '#fff' },
+  inactiveFilterButtonText: { color: '#6e6e6e' },
+
+  clinicBox: {
+    backgroundColor: '#fff',
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderRadius: 12,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  clinicRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  clinicImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 12,
+    backgroundColor: '#eee',
+  },
+  clinicDetails: { flex: 1 },
+  clinicName: {
     fontSize: 16,
-    color: '#555',
-    textAlign: 'center',
-    fontFamily: 'Inter_500Medium',
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
   },
-  serviceDescription: {
+  clinicAddress: {
     fontSize: 14,
-    color: '#777',
+    color: '#666',
+  },
+  mapButton: {
+    marginTop: 4,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#0B3D24',
+    alignItems: 'center',
+  },
+  mapButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  listContent: { paddingBottom: 24 },
+  emptyState: {
     textAlign: 'center',
-    marginTop: 5,
-    fontFamily: 'Inter_500Medium',
+    fontSize: 16,
+    color: '#999',
+    marginTop: 40,
   },
 });
+
+export default UserNearby;

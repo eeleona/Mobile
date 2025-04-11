@@ -1,27 +1,112 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Divider } from 'react-native-paper';
 import AppBar from '../design/AppBar';
 import axios from 'axios';
 import config from '../../server/config/config';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PendingAdoptionDetails = ({ route, navigation }) => {
   const { adoption } = route.params;
   const [loading, setLoading] = useState(false);
   const [actionType, setActionType] = useState(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [visitDate, setVisitDate] = useState(new Date());
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [visitTime, setVisitTime] = useState(new Date());
+  const [token, setToken] = useState(null);
+
+  // Get token when component mounts
+  useEffect(() => {
+    const getToken = async () => {
+      try {
+        const storedToken = await AsyncStorage.getItem('token');
+        setToken(storedToken);
+      } catch (error) {
+        console.error('Error getting token:', error);
+      }
+    };
+    getToken();
+  }, []);
 
   const handleAccept = async () => {
+    if (!token) {
+      Alert.alert('Error', 'Authentication required. Please login again.');
+      return;
+    }
+
     setActionType('accept');
+    setShowDatePicker(true);
+  };
+
+  const handleDateConfirm = async (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setVisitDate(selectedDate);
+      setShowTimePicker(true);
+    }
+  };
+
+  const handleTimeConfirm = async (event, selectedTime) => {
+    setShowTimePicker(false);
+    if (selectedTime) {
+      setVisitTime(selectedTime);
+      await submitAcceptance();
+    }
+  };
+
+  const submitAcceptance = async () => {
     try {
       setLoading(true);
-      await axios.patch(`${config.address}${adoption._id}`, {
-        visitDate: new Date().toISOString().split('T')[0],
-        visitTime: '10:00',
+      
+      const formattedDate = visitDate.toISOString().split('T')[0];
+      const hours = visitTime.getHours();
+      const minutes = visitTime.getMinutes();
+      const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+      // Validate time is between 9 AM and 3 PM
+      if (hours < 9 || hours > 15) {
+        Alert.alert('Invalid Time', 'Please select a time between 9:00 AM and 3:00 PM.');
+        return;
+      }
+
+      console.log('Submitting with:', {
+        url: `${config.address}/api/adoption/approve/${adoption._id}`,
+        token: token ? `Bearer ${token}` : 'No token',
+        date: formattedDate,
+        time: formattedTime
       });
-      Alert.alert('Success', 'Adoption has been accepted.');
-      navigation.goBack();
+
+      const response = await axios.patch(
+        `${config.address}/api/adoption/approve/${adoption._id}`,
+        { 
+          visitDate: formattedDate,
+          visitTime: formattedTime 
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('Response:', response);
+
+      if (response.status === 200) {
+        Alert.alert('Success', 'Adoption has been accepted and visit scheduled.');
+        navigation.goBack();
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to accept adoption.');
+      console.error('Full error:', error);
+      console.error('Error response:', error.response);
+      Alert.alert(
+        'Error', 
+        error.response?.data?.message || 
+        error.message || 
+        'Failed to accept adoption. Please try again.'
+      );
     } finally {
       setLoading(false);
       setActionType(null);
@@ -29,16 +114,37 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
   };
 
   const handleReject = async () => {
+    if (!token) {
+      Alert.alert('Error', 'Authentication required. Please login again.');
+      return;
+    }
+
     setActionType('reject');
     try {
       setLoading(true);
-      await axios.patch(`${config.address}${adoption._id}`, {
-        rejection_reason: 'Not Suitable',
-      });
-      Alert.alert('Success', 'Adoption has been rejected.');
-      navigation.goBack();
+      
+      const response = await axios.patch(
+        `${config.address}/api/adoption/decline/${adoption._id}`,
+        { rejection_reason: 'Not Suitable' },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.status === 200) {
+        Alert.alert('Success', 'Adoption has been rejected.');
+        navigation.goBack();
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to reject adoption.');
+      console.error('Error rejecting adoption:', error);
+      Alert.alert(
+        'Error', 
+        error.response?.data?.message || 
+        'Failed to reject adoption. Please try again.'
+      );
     } finally {
       setLoading(false);
       setActionType(null);
@@ -130,6 +236,26 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Hidden Pickers */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={visitDate}
+          mode="date"
+          display="default"
+          minimumDate={new Date()}
+          onChange={handleDateConfirm}
+        />
+      )}
+      
+      {showTimePicker && (
+        <DateTimePicker
+          value={visitTime}
+          mode="time"
+          display="default"
+          onChange={handleTimeConfirm}
+        />
+      )}
     </View>
   );
 };
@@ -147,7 +273,7 @@ const DetailRow = ({ label, value }) => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f6f6',
+    backgroundColor: '#FAF9F6',
   },
   scrollContainer: {
     padding: 16,
@@ -182,7 +308,7 @@ const styles = StyleSheet.create({
   },
   petImage: {
     width: '100%',
-    height: 200,
+    height: 400,
     borderRadius: 8,
     marginBottom: 16,
     backgroundColor: '#f0f0f0',

@@ -1,54 +1,163 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, Image, Modal, Button, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, FlatList } from 'react-native';
+import io from 'socket.io-client/dist/socket.io';
+import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
+import config from '../../server/config/config';
 
-import { PaperProvider } from 'react-native-paper';
+// Placeholder images
+const AdminImg = require('../../assets/Images/nobglogo.png');
+const UserPh = require('../../assets/Images/user.png');
 
 const Messages = ({ navigation }) => {
-  const [messages, setMessages] = useState([
-    { id: '1', sender: 'Bunnie A. Brown', message: 'You: Thank you so much!', image: require('../../assets/Images/verified.jpg') },
-    { id: '2', sender: 'Mahra L. Amil', message: 'You: Your verification is pending.', image: require('../../assets/Images/mahra.jpg') },
-  ]);
+  const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showSearchBox, setShowSearchBox] = useState(false);
+  const adminId = '670a04a34f63c22acf3d8c9a';
+  const [senderId, setSenderId] = useState(null);
 
-  const [searchText, setSearchText] = useState('');
-  const [personSearchText, setPersonSearchText] = useState('');
+  // Initialize socket
+  const socket = useRef(null);
 
-  const showMessageDetails = (item) => {
-    navigation.navigate('Chat', { message: item });
+  useEffect(() => {
+    socket.current = io(`${config.address}`, {
+      transports: ['websocket'],
+      forceNew: true,
+      jsonp: false
+    });
+
+    if (adminId) {
+      socket.current.emit('joinRoom', adminId);
+    }
+
+    return () => {
+      if (socket.current) {
+        socket.current.off('receiveMessage');
+        socket.current.disconnect();
+      }
+    };
+  }, [adminId]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    if (!socket.current) return;
+
+    socket.current.on('receiveMessage', (newMessage) => {
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user._id === newMessage.senderId || user._id === newMessage.receiverId
+            ? { ...user, latestMessage: newMessage }
+            : user
+        )
+      );
+    });
+
+    return () => {
+      if (socket.current) socket.current.off('receiveMessage');
+    };
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get(`${config.address}/api/messages/users`);
+      if (Array.isArray(response.data)) {
+        const sortedUsers = response.data.map(user => ({
+          ...user,
+          latestMessage: user.latestMessage || { message: 'No messages yet' },
+        }));
+        setUsers(sortedUsers);
+        setFilteredUsers(sortedUsers);
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
   };
 
+  const handleSearchChange = (text) => {
+    const value = text.toLowerCase();
+    setSearchTerm(value);
+    setFilteredUsers(
+      value.trim() === '' ? users : users.filter(user => 
+        user.name.toLowerCase().includes(value)
+      )
+    );
+  };
 
-  const renderMessageItem = ({ item }) => (
-    <TouchableOpacity onPress={() => showMessageDetails(item)}>
-      <View style={styles.messageItem}>
-        <Image source={item.image} style={styles.avatar} />
-        <View style={styles.messageDetails}>
-          <Text style={styles.sender}>{item.sender}</Text>
-          <Text style={styles.message}>{item.message}</Text>
+  const handleUserSelection = (user) => {
+    navigation.navigate('Chat History', { 
+      userId: user._id,
+      userName: user.name,
+      userImage: user.image 
+        ? `${config.address}/${user.image.replace(/^\/+/, '')}`.replace('undefined/', '')
+        : null
+    });
+  };
+
+  const formatMessageTime = (timestamp) => {
+    if (!timestamp) return '';
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const renderUserItem = ({ item }) => {
+    const userImage = item.image 
+      ? { uri: `${config.address}/${item.image.replace(/^\/+/, '')}`.replace('undefined/', '') }
+      : UserPh;
+
+    return (
+      <TouchableOpacity
+        style={styles.userItem}
+        onPress={() => handleUserSelection(item)}
+      >
+        <Image source={userImage} style={styles.userImage} />
+        <View style={styles.userInfo}>
+          <Text style={styles.userName}>{item.name}</Text>
+          <Text style={styles.userLastMessage} numberOfLines={1}>
+            {item.latestMessage?.message || 'No messages yet'}
+          </Text>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
-
-  const filteredMessages = messages.filter((msg) =>
-    msg.sender.toLowerCase().includes(searchText.toLowerCase())
-  );
-
+        <Text style={styles.messageTimeSmall}>
+          {item.latestMessage?.createdAt 
+            ? formatMessageTime(item.latestMessage.createdAt)
+            : ''}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <PaperProvider>
     <View style={styles.container}>
-      
-      <Text style={styles.welcome}>Messages</Text>
-      <View style={styles.whitebg}>
-      
-      <FlatList
-        data={filteredMessages}
-        renderItem={renderMessageItem}
-        keyExtractor={(item) => item.id}
-      />
+      {/* Navigation Bar */}
+      <View style={styles.navBar}>
+        <Text style={styles.navTitle}>Messages</Text>
       </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search for people"
+          value={searchTerm}
+          onChangeText={handleSearchChange}
+          onFocus={() => setShowSearchBox(true)}
+        />
+      </View>
+
+      {/* User List */}
+      <FlatList
+        data={filteredUsers}
+        renderItem={renderUserItem}
+        keyExtractor={item => item._id}
+        style={styles.userList}
+        contentContainerStyle={styles.listContent}
+      />
     </View>
-    </PaperProvider>
   );
 };
 
@@ -57,143 +166,68 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAF9F6',
   },
-  logo: {
-    width: 40,
-    height: 40,
-  },
-  whitebg: { backgroundColor: 'white'},
-  welcome: {
-    fontFamily: 'Inter',
-    marginTop: 130,
-    fontWeight: 'bold',
-    color: 'black',
-    fontSize: 32,
-    marginLeft: 15,
-    marginBottom: 15,
-  },
   navBar: {
-    height: 50,
-    flexDirection: 'row',
-    paddingHorizontal: 8,
-    backgroundColor: '#FFFFFF', 
+    height: 60,
+    backgroundColor: '#ff69b4',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    height: 100,
   },
-  buttonsContainer: {
-    flexDirection: 'row',
-  },
-  buttonText: {
-    fontSize: 12,
-    color: '#000000',
-  },
-  button: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 5,
-    marginHorizontal: 5,
-},
-  messageItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-    marginLeft: 5,
-  },
-  messageDetails: {
-    flex: 1,
-  },
-  sender: {
+  navTitle: {
+    color: 'white',
+    fontSize: 24,
     fontWeight: 'bold',
+    marginTop: 40,
   },
-  message: {
-    color: '#666',
-  },
-  addButton: {
-    backgroundColor: '#ff66c4',
+  searchContainer: {
     padding: 15,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  editButton: {
-    backgroundColor: '#FF66C4',
-    padding: 5,
-    borderRadius: 5,
-    marginLeft: 10,
-  },
-  editButtonText: {
-    color: '#fff',
-  },
-  deleteButton: {
-    backgroundColor: '#44c856',
-    padding: 5,
-    borderRadius: 5,
-    marginLeft: 10,
-  },
-  deleteButtonText: {
-    color: '#fff',
-  },
-  modalContainer: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  modalInput: {
+  searchInput: {
+    height: 40,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 10,
+    borderColor: '#ddd',
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    backgroundColor: '#f5f5f5',
   },
-  personItem: {
+  userList: {
+    flex: 1,
+    width: '100%',
+  },
+  listContent: {
+    paddingBottom: 20,
+  },
+  userItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
+    padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
   },
-  selectedPersonItem: {
-    backgroundColor: '#e0e0e0',
+  userImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 15,
   },
-  personName: {
-    marginLeft: 10,
-  },
-  sendButton: {
-    backgroundColor: '#FF66C4',
-    padding: 8,
-    alignItems: 'center',
+  userInfo: {
+    flex: 1,
     justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 8,
   },
-  sendButtonText: {
-    color: '#fff',
+  userName: {
+    fontWeight: 'bold',
     fontSize: 16,
+    marginBottom: 3,
   },
-  saveButton: {
-    backgroundColor: '#FF66C4',
-    padding: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 8,
+  userLastMessage: {
+    color: '#666',
+    fontSize: 14,
+  },
+  messageTimeSmall: {
+    fontSize: 12,
+    color: '#999',
   },
 });
 

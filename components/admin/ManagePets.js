@@ -90,12 +90,6 @@ const ManagePets = ({ navigation }) => {
   const renderItem = ({ item }) => (
     <Animated.View style={{ opacity: fadeAnim }}>
       <TouchableOpacity onPress={() => navigateToPetDetails(item)} style={styles.petCard}>
-        <LinearGradient
-          colors={['#FF66C4', '#FF8E53']}
-          style={styles.gradientBackground}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
         <Image 
           source={{ uri: `${config.address}${item.pet_img[0]}` }} 
           style={styles.petImage} 
@@ -215,7 +209,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 15,
-    paddingTop: 10,
+    
     paddingBottom: 5,
   },
   searchInput: {
@@ -270,19 +264,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  gradientBackground: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    opacity: 0.1,
-  },
   petImage: {
     width: '100%',
     height: 150,
     resizeMode: 'cover',
   },
   petInfoContainer: {
-    padding: 12,
+    padding: 10,
   },
   petName: {
     fontSize: 18,
@@ -299,9 +287,9 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   chip: {
-    marginRight: 5,
+    marginRight: 3,
     marginBottom: 5,
-    backgroundColor: '#EDF2F7',
+    backgroundColor: '#ff99ce',
     height: 32,
     justifyContent: 'center',
   },

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Divider } from 'react-native-paper';
 import AppBar from '../design/AppBar';
 import axios from 'axios';
@@ -7,26 +7,63 @@ import config from '../../server/config/config';
 
 const PendingUserDetails = ({ route, navigation }) => {
   const { user } = route.params;
+  const [loading, setLoading] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
+  const [otherReason, setOtherReason] = useState('');
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
 
   const handleVerify = async () => {
+    setLoading(true);
     try {
-      await axios.put(`${config.address}/${user._id}/role`, { p_role: 'verified' });
-      Alert.alert('Success', 'User has been verified.');
+      // Transfer user from pending to verified collection
+      await axios.delete(`${config.address}/api/user/delete/transfer/${user._id}`);
+      
+      // Send verification email
+      const emailData = {
+        to: user.p_emailadd,
+        subject: 'Your Account Has Been Verified',
+        text: `Dear ${user.p_fname},\n\nWe are pleased to inform you that your account has been verified. You can now log in and start using our services.\n\nBest regards,\nThe Pet Adoption Team`
+      };
+      await axios.post(`${config.address}/api/send-email`, emailData);
+      
+      Alert.alert('Success', 'User has been verified and notified via email.');
       navigation.goBack();
     } catch (error) {
       console.error('Error verifying user:', error);
-      Alert.alert('Error', 'Failed to verify user.');
+      Alert.alert('Error', error.response?.data?.message || 'Failed to verify user.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleReject = async () => {
+    if (!declineReason) {
+      Alert.alert('Error', 'Please select a reason for rejection');
+      return;
+    }
+
+    setLoading(true);
     try {
+      // Delete the pending user
       await axios.delete(`${config.address}/api/user/delete/${user._id}`);
-      Alert.alert('Success', 'User has been rejected.');
+      
+      // Send rejection email
+      const reasonText = declineReason === 'Other' ? otherReason : declineReason;
+      const emailData = {
+        to: user.p_emailadd,
+        subject: 'Your Account Application Status',
+        text: `Dear ${user.p_fname},\n\nWe regret to inform you that your account application has been declined. Reason: ${reasonText}\n\nIf you have any questions, please contact us.\n\nBest regards,\nThe Pet Adoption Team`
+      };
+      await axios.post(`${config.address}/api/send-email`, emailData);
+      
+      Alert.alert('Success', 'User has been rejected and notified via email.');
       navigation.goBack();
     } catch (error) {
       console.error('Error rejecting user:', error);
-      Alert.alert('Error', 'Failed to reject user.');
+      Alert.alert('Error', error.response?.data?.message || 'Failed to reject user.');
+    } finally {
+      setLoading(false);
+      setShowDeclineModal(false);
     }
   };
 
@@ -78,7 +115,9 @@ const PendingUserDetails = ({ route, navigation }) => {
           
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Birthday:</Text>
-            <Text style={styles.detailValue}>{user.p_birthdate}</Text>
+            <Text style={styles.detailValue}>
+              {new Date(user.p_birthdate).toLocaleDateString()}
+            </Text>
           </View>
         </View>
 
@@ -97,18 +136,86 @@ const PendingUserDetails = ({ route, navigation }) => {
         <View style={styles.buttonContainer}>
           <TouchableOpacity 
             style={[styles.button, styles.rejectButton]} 
-            onPress={handleReject}
+            onPress={() => setShowDeclineModal(true)}
+            disabled={loading}
           >
-            <Text style={styles.buttonText}>Reject</Text>
+            {loading && showDeclineModal ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.buttonText}>Reject</Text>
+            )}
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={[styles.button, styles.verifyButton]} 
             onPress={handleVerify}
+            disabled={loading}
           >
-            <Text style={styles.buttonText}>Verify</Text>
+            {loading && !showDeclineModal ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.buttonText}>Verify</Text>
+            )}
           </TouchableOpacity>
         </View>
+
+        {/* Decline Reason Modal */}
+        {showDeclineModal && (
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Reason for Rejection</Text>
+              
+              <View style={styles.reasonContainer}>
+                <TouchableOpacity 
+                  style={[styles.reasonButton, declineReason === 'Invalid details' && styles.selectedReason]}
+                  onPress={() => setDeclineReason('Invalid details')}
+                >
+                  <Text>Invalid details</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.reasonButton, declineReason === 'Not qualified' && styles.selectedReason]}
+                  onPress={() => setDeclineReason('Not qualified')}
+                >
+                  <Text>Not qualified</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.reasonButton, declineReason === 'Other' && styles.selectedReason]}
+                  onPress={() => setDeclineReason('Other')}
+                >
+                  <Text>Other</Text>
+                </TouchableOpacity>
+                
+                {declineReason === 'Other' && (
+                  <TextInput
+                    style={styles.reasonInput}
+                    placeholder="Please specify"
+                    value={otherReason}
+                    onChangeText={setOtherReason}
+                  />
+                )}
+              </View>
+              
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setShowDeclineModal(false)}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.confirmButton]}
+                  onPress={handleReject}
+                  disabled={!declineReason || (declineReason === 'Other' && !otherReason)}
+                >
+                  <Text style={styles.modalButtonText}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -215,6 +322,71 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  // Modal styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  reasonContainer: {
+    marginBottom: 20,
+  },
+  reasonButton: {
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  selectedReason: {
+    backgroundColor: '#f0f0f0',
+    borderColor: '#ff69b4',
+  },
+  reasonInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  cancelButton: {
+    backgroundColor: '#e0e0e0',
+  },
+  confirmButton: {
+    backgroundColor: '#F44336',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
 });
 

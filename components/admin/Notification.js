@@ -1,184 +1,163 @@
-import React, { useState } from 'react';
-import { StyleSheet, Image, Text, TouchableOpacity, View, Modal, TextInput } from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
-import { PaperProvider } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image } from 'react-native';
+import { io } from 'socket.io-client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import config from '../../server/config/config';
 
-const Notification = ({ navigation }) => {
-  const [hasNotification, setHasNotification] = useState(false);
-  const [notificationsData, setNotificationsData] = useState([
-    { id: 1, type: 'Adoption', message: 'Chris Turbo submitted an Adoption Application for Bella.', read: false },
-    { id: 2, type: 'Adoption', message: 'Jake Lonio submitted an Adoption Application for Labubu.', read: false },
-    { id: 3, type: 'Adoption', message: 'Julia Manolo added Bella in their favorites.', read: false },
-    { id: 7, type: 'Adoption', message: 'Update: Event successfully updated', read: false },
-  ]);
+const Notification = () => {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [socket, setSocket] = useState(null);
 
-  const [selectedNotificationId, setSelectedNotificationId] = useState(null);
-  const [editMessage, setEditMessage] = useState('');
-  const [modalVisible, setModalVisible] = useState(false);
+  useEffect(() => {
+    const initializeNotifications = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const userString = await AsyncStorage.getItem('user');
+        const user = JSON.parse(userString);
 
-  const updateNotification = () => {
-    if (selectedNotificationId && editMessage.trim()) {
-      const updatedNotifications = notificationsData.map((notification) => {
-        if (notification.id === selectedNotificationId) {
-          return { ...notification, message: editMessage };
+        if (token && user) {
+          // Initialize socket connection
+          const newSocket = io(config.address, {
+            transports: ['websocket'],
+            auth: { token }
+          });
+
+          setSocket(newSocket);
+
+          // Join admin notification room
+          newSocket.emit('joinAdminNotifications', user.id);
+
+          // Fetch existing notifications
+          const response = await fetch(`${config.address}/api/notifications`, {
+            headers: { 
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+          });
+          
+          const data = await response.json();
+          setNotifications(data);
+
+          // Listen for new notifications
+          newSocket.on('receiveAdminNotification', (newNotification) => {
+            setNotifications(prev => [newNotification, ...prev]);
+          });
         }
-        return notification;
-      });
-      setNotificationsData(updatedNotifications);
-      setSelectedNotificationId(null);
-      setEditMessage('');
-      setModalVisible(false);
-    }
-  };
-
-  const toggleNotificationReadStatus = (notificationId) => {
-    const updatedNotifications = notificationsData.map((notification) => {
-      if (notification.id === notificationId) {
-        return { ...notification, read: !notification.read };
+      } catch (error) {
+        console.error('Error initializing notifications:', error);
+      } finally {
+        setLoading(false);
       }
-      return notification;
-    });
-    setNotificationsData(updatedNotifications);
-  };
+    };
+
+    initializeNotifications();
+
+    return () => {
+      if (socket) {
+        socket.off('receiveAdminNotification');
+        socket.disconnect();
+      }
+    };
+  }, []);
+
+  const renderNotificationItem = ({ item }) => (
+    <TouchableOpacity style={styles.notificationItem}>
+      <Image 
+        source={require('../../assets/Images/pawicon.png')} 
+        style={styles.notificationImage} 
+      />
+      <View style={styles.notificationContent}>
+        <Text style={styles.notificationText}>{item.message}</Text>
+        <Text style={styles.notificationTime}>
+          {new Date(item.createdAt).toLocaleString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+          })}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text>Loading notifications...</Text>
+      </View>
+    );
+  }
 
   return (
-    <PaperProvider>
     <View style={styles.container}>
+      <Text style={styles.header}>Notifications</Text>
       
-      <Text style={styles.welcome}>Notifications</Text>
-      <View style={styles.notificationList}>
-        {notificationsData.map((notification) => (
-          <TouchableOpacity
-            key={notification.id}
-            style={[styles.notificationItem, notification.read && styles.readNotification]}
-            onPress={() => handleNotificationDetails(notification.id)}
-            onLongPress={() => {
-              toggleNotificationReadStatus(notification.id);
-              setSelectedNotificationId(notification.id);
-              setEditMessage(notification.message);
-              setModalVisible(true);
-            }}
-          >
-            <FontAwesome
-              name={notification.type === 'Adoption' ? 'paw' : 'stethoscope'}
-              size={24}
-              color={notification.type === 'Adoption' ? '#FF66C4' : 'orange'} 
-              style={styles.icon}
-            />
-            <View style={styles.textContainer}>
-              <Text style={styles.message}>{notification.message}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-      
+      {notifications.length > 0 ? (
+        <FlatList
+          data={notifications}
+          renderItem={renderNotificationItem}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.listContainer}
+        />
+      ) : (
+        <Text style={styles.emptyText}>No notifications available</Text>
+      )}
     </View>
-    </PaperProvider>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '##FAF9F6',
+    backgroundColor: '#F8F6F6',
+    padding: 16,
   },
-  logo: {
-    width: 40,
-    height: 40,
-  },
-  navBar: {
-    height: 50,
-    flexDirection: 'row',
-    paddingHorizontal: 8,
-    backgroundColor: '#FFFFFF', 
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  welcome: {
-    fontFamily: 'Inter',
-    marginTop: 130,
-    fontWeight: 'bold',
-    color: 'black',
-    fontSize: 30,
-    marginLeft: 15,
-  },
-  buttonsContainer: {
-    flexDirection: 'row',
-  },
-  buttonText: {
-    fontSize: 12,
-    color: '#000000',
-  },
-  button: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 5,
-    marginHorizontal: 5,
-},
-  heading: {
+  header: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 20,
+    color: '#000',
   },
-  notificationList: {
-    flex: 1,
-    paddingTop: 15,
+  listContainer: {
+    paddingBottom: 20,
   },
   notificationItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    marginHorizontal: 15,
     backgroundColor: '#fff',
     borderRadius: 8,
-    marginBottom: 10,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
   },
-  readNotification: {
-    backgroundColor: '#f0f0f0', 
+  notificationImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
   },
-  icon: {
-    marginRight: 16,
-  },
-  textContainer: {
+  notificationContent: {
     flex: 1,
   },
-  message: {
+  notificationText: {
     fontSize: 16,
+    marginBottom: 4,
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  notificationTime: {
+    fontSize: 12,
+    color: '#666',
   },
-  modalContent: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    width: '80%',
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 10,
-  },
-  updateButton: {
-    backgroundColor: '#FF66C4',
-    padding: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  updateButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
+    color: '#666',
   },
 });
 

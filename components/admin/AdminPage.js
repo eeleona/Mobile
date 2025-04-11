@@ -41,28 +41,7 @@ function AdminPage({ navigation }) {
   return (
     <View style={styles.container}>
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Image 
-          source={require('../../assets/Images/nobglogo.png')} 
-          style={styles.logo} 
-          accessibilityLabel="App logo"
-        />
-        <View style={styles.searchBox}>
-          <MaterialIcons 
-            name="search" 
-            size={20} 
-            color="#ff69b4" 
-            style={styles.searchIcon} 
-            accessibilityRole="imagebutton"
-          />
-          <TextInput 
-            placeholder="Search..." 
-            placeholderTextColor="#ff69b4" 
-            style={styles.input}
-            accessibilityLabel="Search input"
-          />
-        </View>
-      </View>
+      
 
       {/* Logout Confirmation Modal */}
       <Modal
@@ -161,48 +140,8 @@ function AdminPage({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF9F6',
   },
-  searchContainer: {
-    position: 'absolute',
-    top: 40,
-    left: 10,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 30,
-    paddingVertical: 5,
-    paddingHorizontal: 15,
-    elevation: 3,
-    zIndex: 10,
-    marginVertical: 5,
-  },
-  logo: {
-    width: 60,
-    height: 60,
-    resizeMode: 'contain',
-    marginRight: 10,
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ff69b4',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    backgroundColor: 'white',
-  },
-  searchIcon: {
-    marginRight: 5,
-  },
-  input: {
-    flex: 1,
-    height: 40,
-    fontSize: 14,
-    color: '#ff69b4',
-  },
+  
   tabBar: {
     position: 'absolute',
     bottom: 25,

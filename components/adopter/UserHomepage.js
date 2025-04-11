@@ -148,7 +148,16 @@ const UserHomepage = ({ navigation }) => {
   return (
     <ScrollView style={styles.container}>
       {/* HEADER SECTION */}
-
+      
+      <LinearGradient
+        colors={['#FF66C4', '#FF8E53']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.header}
+      >
+        <Text style={styles.headerTitle}>Find your perfect companion with E-Pet Adopt</Text>
+        <Text style={styles.headerSubtitle}>Adopt, Connect, and Discover</Text>
+      </LinearGradient>
       {/* MAIN BUTTONS SECTION */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
@@ -187,7 +196,12 @@ const UserHomepage = ({ navigation }) => {
 
       {/* ADOPT A PET CAROUSEL */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pets Available for Adoption</Text>
+      <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Pets to Adopt</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Adopt A Pet')}>
+            <Text style={styles.seeAll}>See All</Text>
+          </TouchableOpacity>
+        </View>
         {loading.pets ? (
           <Text style={styles.loadingText}>Loading pets...</Text>
         ) : pets.length > 0 ? (
@@ -204,7 +218,10 @@ const UserHomepage = ({ navigation }) => {
         )}
       </View>
       <View style={[styles.section, styles.whyAdoptSection]}>
-        <Text style={styles.sectionTitle}>Why Adopt?</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: '#fff' }]}>Why Adopt?</Text>
+          
+        </View>
         <Image 
           source={require('../../assets/Images/catdog.jpg')} 
           style={styles.whyAdoptImage}
@@ -213,10 +230,32 @@ const UserHomepage = ({ navigation }) => {
           By adopting, you're opening your heart and home to a wonderful pet who's ready to shower you with love. Each adoption creates space for more animals to be rescued, giving you the chance to make a meaningful difference.
         </Text>
       </View>
+      <TouchableOpacity 
+        style={styles.aboutContainer}
+        onPress={() => navigation.navigate('About Us')}
+      >
+        <Image 
+          source={require('../../assets/Images/nobglogo.png')} 
+          style={styles.aboutLogo} 
+        />
+        <View style={styles.aboutTextContainer}>
+          <Text style={styles.aboutTitle}>Know more about us</Text>
+          <Text style={styles.aboutDetails}>📞 (02) 1234 5678</Text>
+          <Text style={styles.aboutDetails}>📍 Pasay City Animal Shelter</Text>
+        </View>
+      </TouchableOpacity>
+
+
 
       {/* EVENTS CAROUSEL */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Upcoming Events</Text>
+      <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Upcoming Events</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('User Events')}>
+            <Text style={styles.seeAll}>See All</Text>
+          </TouchableOpacity>
+        </View>
+        
         {loading.events ? (
           <Text style={styles.loadingText}>Loading events...</Text>
         ) : events.length > 0 ? (
@@ -234,8 +273,13 @@ const UserHomepage = ({ navigation }) => {
       </View>
 
       {/* SERVICES CAROUSEL */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Nearby Services</Text>
+      <View style={styles.sectionNearby}>
+      <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Nearby Services</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('User Nearby')}>
+            <Text style={styles.seeAll}>See All</Text>
+          </TouchableOpacity>
+        </View>
         {loading.services ? (
           <Text style={styles.loadingText}>Loading services...</Text>
         ) : services.length > 0 ? (
@@ -263,41 +307,95 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAF9F6',
-    paddingVertical: 150
   },
   header: {
-    padding: 20,
-    backgroundColor: '#ff69b4',
-    marginBottom: 20,
+    padding: 25,
+    paddingTop: 140,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    marginBottom: 25,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontFamily: 'Inter_700Bold',
     color: 'white',
-    textAlign: 'center',
+    marginBottom: 5,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Inter_500Medium',
+    color: 'white',
+    opacity: 0.9,
+    marginTop: 18,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 15,
+    paddingHorizontal: 10,
     marginBottom: 25,
   },
   mainButton: {
     alignItems: 'center',
-    width: '30%',
-    padding: 10,
+    width: '32%',
+    padding: 15,
     borderRadius: 10,
     backgroundColor: 'white',
     elevation: 3,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
+  aboutContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderColor: '#FF66C4',
+    borderWidth: 2,
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 20,
+    marginBottom: 30,
+    elevation: 3,
+  },
+  aboutLogo: {
+    width: 60,
+    height: 60,
+    marginRight: 16,
+    resizeMode: 'contain',
+  },
+  aboutTextContainer: {
+    flex: 1,
+  },
+  aboutTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 16,
+    color: '#FF66C4',
+    marginBottom: 4,
+  },
+  aboutDetails: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: '#444',
+  },
+  
+  seeAll: {
+    fontFamily: 'Inter_500Medium',
+    color: '#FF66C4',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
   buttonImage: {
-    width: 50,
-    height: 50,
-    marginBottom: 8,
+    width: 80,
+    height: 80,
+    marginBottom: 10,
   },
   mainButtonText: {
     fontFamily: 'Inter_500Medium',
-    fontSize: 14,
+    fontSize: 15,
     color: '#2a2a2a',
     textAlign: 'center',
   },
@@ -305,8 +403,13 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     paddingHorizontal: 20,
   },
+
+  sectionNearby: {
+    marginBottom: 110,
+    paddingHorizontal: 20,
+  },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontFamily: 'Inter_700Bold',
     color: '#2a2a2a',
     marginBottom: 15,
@@ -339,21 +442,26 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   whyAdoptSection: {
-    backgroundColor: '#fff9f9',
+    backgroundColor: '#ff69b4', // Changed to pink background
     paddingVertical: 25,
+    paddingHorizontal: 20,
+    marginHorizontal: 15,
+    borderRadius: 15,
+    marginBottom: 25,
+  },
+  whyAdoptText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 16,
+    color: '#fff', // Changed text color to white for better contrast
+    lineHeight: 24,
+    textAlign: 'center',
+    marginTop: 10,
   },
   whyAdoptImage: {
     width: '100%',
     height: 180,
     borderRadius: 10,
     marginBottom: 15,
-  },
-  whyAdoptText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 16,
-    color: '#444',
-    lineHeight: 24,
-    textAlign: 'center',
   },
   eventCard: {
     width: 200,

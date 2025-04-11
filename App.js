@@ -51,6 +51,7 @@ import AdminDetails from './components/admin/AdminDetails';
 import ViewEvent from './components/admin/ViewEvent';
 import AdminLogs from './components/admin/AdminLogs';
 import UserPage from './components/adopter/UserPage';
+import OneMessage from './components/admin/OneMessage';
 
 
 export default function App() {
@@ -65,6 +66,7 @@ export default function App() {
         <Stack.Screen name='Admin Page' component={AdminPage} options={{ headerShown: false }} />
         <Stack.Screen name='Admin Homepage' component={AdminHomepage} options={{ headerShown: false }} />
         <Stack.Screen name='Inbox' component={Messages} options={{ headerShown: false }} />
+        <Stack.Screen name='Chat History' component={OneMessage} options={{ headerShown: false }} />
         <Stack.Screen name='Notifications' component={Notification} options={{ headerShown: false }} />
         
         {/* SUPER ADMIN MODULES */}

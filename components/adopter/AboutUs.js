@@ -1,78 +1,90 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity, ScrollView, ImageBackground, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import UserNavbar from '../design/UserNavbar';
+import { MaterialIcons } from '@expo/vector-icons';
 import AppBar from '../design/AppBar';
+import { useFonts, Inter_700Bold, Inter_600SemiBold, Inter_500Medium } from '@expo-google-fonts/inter';
 
 export default function AboutUs() {
-  const [selectedNav, setSelectedNav] = useState(null);
-  const windowHeight = Dimensions.get('window').height;
-
-  // Debugging image paths
-  console.log('Image Path 1:', require('../../assets/Images/shelterbg.jpg'));
-  console.log('Image Path 2:', require('../../assets/Images/websisters.jpg'));
-  console.log('Image Path 3:', require('../../assets/Images/mayor2.jpg'));
+  const [fontsLoaded] = useFonts({
+    Inter_700Bold,
+    Inter_600SemiBold,
+    Inter_500Medium,
+  });
+  
+  if (!fontsLoaded) return null;
 
   return (
     <ImageBackground
-      source={require('../../assets/Images/cdog.jpg')} // Check the path for background image
+      source={require('../../assets/Images/cdog.jpg')}
       style={styles.background}
       resizeMode="cover"
+      blurRadius={2}
     >
-      <AppBar></AppBar>
+      <AppBar />
       <LinearGradient
-        colors={['rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.7)']}
+        colors={['rgba(255, 255, 255, 0.85)', 'rgba(255, 255, 255, 0.9)']}
         style={styles.gradientOverlay}
-        resizeMode="cover"
       >
-        <ScrollView style={styles.container}>
-          {/* Header */}
-
-          {/* Main Section */}
+        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+          {/* Main Content */}
           <View style={styles.mainSection}>
-            <View style={styles.aboutUsSection}>
-              <View style={styles.leftColumn}>
-                {/* Displaying Images */}
+            <View style={styles.aboutUsCard}>
+              <Text style={styles.sectionTitle}>
+                About <Text style={styles.highlight}>Us</Text>
+              </Text>
+              
+              <View style={styles.imageGrid}>
                 <Image
-                  style={styles.aboutImg}
-                  source={require('../../assets/Images/shelterbg.jpg')} // Ensure path is correct
-                  alt="Pasay City Animal Shelter"
+                  style={styles.imageLarge}
+                  source={require('../../assets/Images/shelterbg.jpg')}
                 />
-                <Image
-                  style={styles.aboutImg}
-                  source={require('../../assets/Images/websisters.jpg')} // Ensure path is correct
-                  alt="Team Picture"
-                />
-                <Image
-                  style={styles.aboutImg2}
-                  source={require('../../assets/Images/mayor2.jpg')} // Ensure path is correct
-                  alt="Mayor Image"
-                />
+                <View style={styles.imageRow}>
+                  <Image
+                    style={styles.imageSmall}
+                    source={require('../../assets/Images/websisters.jpg')}
+                  />
+                  <Image
+                    style={styles.imageSmall}
+                    source={require('../../assets/Images/mayor2.jpg')}
+                  />
+                </View>
               </View>
 
-              <View style={styles.rightColumn}>
-                <Text style={styles.aboutTitle}>
-                  About <Text style={styles.highlight}>Us</Text>
-                </Text>
-                <Text style={styles.aboutText}>
-                  Pasay Animal Shelter, founded in 2021 with the support of Mayor Emi Calixto, is dedicated to rescuing and caring for animals in need. The shelter provides a safe haven for abandoned and stray animals, helping them find loving homes.
-                  {'\n\n'}
-                  The shelter's website was developed by students from the College of Information Technology at NU-MOA.
-                </Text>
+              <Text style={styles.aboutText}>
+                Pasay Animal Shelter, founded in 2021 with the support of Mayor Emi Calixto, is dedicated to rescuing and caring for animals in need. The shelter provides a safe haven for abandoned and stray animals, helping them find loving homes.
+                {'\n\n'}
+                The shelter's website was developed by students from the College of Information Technology at NU-MOA.
+              </Text>
+            </View>
+
+            {/* Connect Section */}
+            <View style={styles.connectCard}>
+              <Text style={styles.connectTitle}>Connect With Us</Text>
+              
+              <View style={styles.contactItem}>
+                <MaterialIcons name="facebook" size={24} color="#4267B2" />
+                <Text style={styles.contactText}>Pasay City Veterinary Office</Text>
+              </View>
+              
+              <View style={styles.contactItem}>
+                <MaterialIcons name="phone" size={24} color="#FF66C4" />
+                <Text style={styles.contactText}>123-456-7890</Text>
+              </View>
+              
+              <View style={styles.contactItem}>
+                <MaterialIcons name="email" size={24} color="#FF66C4" />
+                <Text style={styles.contactText}>contact@pasayanimalshelter.com</Text>
+              </View>
+              
+              <View style={styles.contactItem}>
+                <MaterialIcons name="location-on" size={24} color="#FF66C4" />
+                <Text style={styles.contactText}>Pasay City, Metro Manila</Text>
               </View>
             </View>
 
-            <View style={styles.connectSection}>
-              <View style={styles.connectBox}>
-                <Text style={styles.connectTitle}>Connect with Us</Text>
-                <Text style={styles.connectt}>Facebook: Pasay City Veterinary Office</Text>
-                <Text style={styles.connectt}>Contact Number: 123456789</Text>
-              </View>
-              <Text style={styles.footerText}>(C) 2024 Websisters</Text>
-            </View>
+            <Text style={styles.footerText}>© 2024 Websisters | NU-MOA</Text>
           </View>
-
-          <UserNavbar></UserNavbar>
         </ScrollView>
       </LinearGradient>
     </ImageBackground>
@@ -84,120 +96,99 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   background: {
-    width: '100%',
-    height: '100%',
     flex: 1,
+    width: '100%',
   },
   gradientOverlay: {
     flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 20,
-    backgroundColor: '#ff69b4',
-  },
-  logo: {
-    fontSize: 25,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  navBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  navLink: {
-    marginHorizontal: 10,
-    fontSize: 16,
-    color: 'white',
-  },
-  selectedNavLink: {
-    color: 'black',
-  },
-  signUpBtn: {
-    backgroundColor: '#fff',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-  },
-  signUpText: {
-    color: '#ff69b4',
-    fontWeight: 'bold',
+    paddingTop: 20,
   },
   mainSection: {
-    flex: 1,
-    marginTop: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  aboutUsSection: {
-    flexDirection: 'row',
-    padding: 15,
-    backgroundColor: '#ffffffb0',
-    borderRadius: 10,
-  },
-  leftColumn: {
-    flex: 1,
-    marginRight: 10,
-  },
-  aboutImg: {
-    width: '100%',
-    height: 150,
-    marginBottom: 15,
-    borderRadius: 10,
-  },
-  aboutImg2: {
-    width: '100%',
-    height: 150,
-  },
-  rightColumn: {
-    flex: 1,
-  },
-  aboutTitle: {
-    fontSize: 24,
-    marginBottom: 10,
+  sectionTitle: {
+    fontSize: 28,
     fontFamily: 'Inter_700Bold',
+    color: '#333',
+    marginBottom: 20,
+    textAlign: 'center',
   },
   highlight: {
-    fontFamily: 'Inter_700Bold',
-    color: '#ff66b2',
+    color: '#FF66C4',
+  },
+  aboutUsCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 20,
+    padding: 25,
+    marginBottom: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  imageGrid: {
+    marginBottom: 20,
+  },
+  imageLarge: {
+    width: '100%',
+    height: 200,
+    borderRadius: 15,
+    marginBottom: 10,
+  },
+  imageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  imageSmall: {
+    width: '48%',
+    height: 150,
+    borderRadius: 15,
   },
   aboutText: {
-    fontSize: 13,
-    color: '#333',
-    lineHeight: 22,
-    textAlign: 'justify',
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#555',
     fontFamily: 'Inter_500Medium',
+    textAlign: 'justify',
   },
-  connectSection: {
-    padding: 20,
-    backgroundColor: '#f1f1f1',
-  },
-  connectBox: {
-    padding: 20,
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
+  connectCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 20,
+    padding: 25,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
   },
   connectTitle: {
-    fontSize: 20,
-    marginBottom: 20,
-    color: '#ff66b2',
+    fontSize: 22,
     fontFamily: 'Inter_700Bold',
+    color: '#FF66C4',
+    marginBottom: 20,
+    textAlign: 'center',
   },
-  connectt: {
-    fontFamily: 'Inter_500Medium',
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    backgroundColor: '#f9f9f9',
+    padding: 12,
+    borderRadius: 10,
+  },
+  contactText: {
+    marginLeft: 10,
     fontSize: 16,
+    fontFamily: 'Inter_500Medium',
+    color: '#333',
+    flex: 1,
   },
   footerText: {
-    marginTop: 20,
-    color: 'black',
     textAlign: 'center',
+    marginTop: 30,
+    color: '#888',
     fontFamily: 'Inter_500Medium',
   },
 });
