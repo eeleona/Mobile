@@ -1,41 +1,74 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
-import { Divider, ProgressBar, MD3Colors } from 'react-native-paper';
+import { Divider } from 'react-native-paper';
 import AppBar from '../design/AppBar';
 import { useFonts, Inter_500Medium, Inter_700Bold } from '@expo-google-fonts/inter';
 import config from '../../server/config/config';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
-const AdoptionDetails = ({ route }) => {
+const AdoptionDetails = ({ route, navigation }) => {
     const { adoption } = route.params;
 
     let [fontsLoaded] = useFonts({ Inter_700Bold, Inter_500Medium });
     if (!fontsLoaded) return null;
 
-    const renderStatusBar = (status) => {
-        const stages = ['Submitted', 'Accepted/Rejected', 'Completed'];
-        const currentStageIndex = {
-            submitted: 0,
-            accepted: 1,
-            rejected: 1,
-            completed: 2,
-        }[status?.toLowerCase()] ?? 0;
+    // Status Stepper Component
+    const StatusStepper = ({ status }) => {
+        const getSteps = () => {
+            switch (status?.toLowerCase()) {
+                case 'pending': return ['Submitted', 'Under Review'];
+                case 'accepted': return ['Submitted', 'Approved', 'Scheduled'];
+                case 'completed': return ['Submitted', 'Approved', 'Completed'];
+                case 'rejected': return ['Submitted', 'Rejected'];
+                default: return ['Submitted', 'In Progress'];
+            }
+        };
+
+        const getActiveStep = () => {
+            switch (status?.toLowerCase()) {
+                case 'pending': return 1;
+                case 'accepted': return 2;
+                case 'completed': return 3;
+                case 'rejected': return 1;
+                default: return 1;
+            }
+        };
+
+        const steps = getSteps();
+        const activeStep = getActiveStep();
 
         return (
-            <View style={styles.statusBar}>
-                {stages.map((stage, index) => {
-                    const isActive = index <= currentStageIndex;
-                    return (
-                        <View key={index} style={styles.stageContainer}>
-                            <View style={[styles.circle, isActive && styles.activeCircle]} />
-                            <Text style={[styles.stageText, isActive && styles.activeStageText]}>
-                                {stage}
+            <View style={styles.stepperContainer}>
+                {steps.map((step, index) => (
+                    <React.Fragment key={index}>
+                        <View style={styles.stepContainer}>
+                            <View style={[
+                                styles.stepCircle,
+                                index < activeStep && styles.completedStep,
+                                index === activeStep && styles.activeStep
+                            ]}>
+                                {index < activeStep ? (
+                                    <Icon name="check" size={16} color="#FFF" />
+                                ) : (
+                                    <Text style={styles.stepNumber}>{index + 1}</Text>
+                                )}
+                            </View>
+                            <Text style={[
+                                styles.stepLabel,
+                                index < activeStep && styles.completedLabel,
+                                index === activeStep && styles.activeLabel
+                            ]}>
+                                {step}
                             </Text>
-                            {index < stages.length - 1 && (
-                                <View style={[styles.line, isActive && styles.activeLine]} />
-                            )}
                         </View>
-                    );
-                })}
+                        {index < steps.length - 1 && (
+                            <View style={[
+                                styles.stepLine,
+                                index < activeStep - 1 && styles.completedLine
+                            ]} />
+                        )}
+                    </React.Fragment>
+                ))}
             </View>
         );
     };
@@ -49,13 +82,9 @@ const AdoptionDetails = ({ route }) => {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Adoption Application</Text>
                     <Divider style={styles.sectionDivider} />
-                    <DetailRow label="Submitted At:" value={adoption.a_submitted_at} />
+                    <DetailRow label="Submitted At:" value={new Date(adoption.a_submitted_at).toLocaleDateString()} />
                     <DetailRow label="Status:" value={adoption.status} />
-                    <ProgressBar 
-                        style={styles.progressBar} 
-                        progress={0.3} 
-                        color={MD3Colors.tertiary90} 
-                    />
+                    <StatusStepper status={adoption.status} />
                 </View>
 
                 {/* Pet Details */}
@@ -218,11 +247,6 @@ const styles = StyleSheet.create({
         paddingLeft: 16,
         fontFamily: 'Inter_500Medium',
     },
-    progressBar: {
-        marginTop: 12,
-        height: 6,
-        borderRadius: 3,
-    },
     householdDescription: {
         marginTop: 8,
     },
@@ -232,40 +256,59 @@ const styles = StyleSheet.create({
         marginTop: 4,
         fontFamily: 'Inter_500Medium',
     },
-    statusBar: {
+    // Status Stepper Styles
+    stepperContainer: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        marginTop: 16,
+        marginTop: 20,
+        marginBottom: 10,
     },
-    stageContainer: {
-        flexDirection: 'row',
+    stepContainer: {
         alignItems: 'center',
-        marginRight: 16,
+        minWidth: 80,
     },
-    circle: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        backgroundColor: '#ccc',
-        marginRight: 8,
+    stepCircle: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: '#E0E0E0',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    activeCircle: {
-        backgroundColor: '#ff69b4',
+    completedStep: {
+        backgroundColor: '#4CAF50',
     },
-    stageText: {
+    activeStep: {
+        backgroundColor: '#FF66C4',
+    },
+    stepNumber: {
+        color: '#757575',
+        fontWeight: 'bold',
+    },
+    stepLabel: {
+        marginTop: 5,
+        color: '#757575',
         fontSize: 12,
-        color: '#ccc',
+        textAlign: 'center',
+        fontFamily: 'Inter_500Medium',
     },
-    activeStageText: {
-        color: '#ff69b4',
+    completedLabel: {
+        color: '#4CAF50',
+        fontWeight: 'bold',
     },
-    line: {
-        width: 20,
+    activeLabel: {
+        color: '#FF66C4',
+        fontWeight: 'bold',
+    },
+    stepLine: {
+        flex: 1,
         height: 2,
-        backgroundColor: '#ccc',
+        backgroundColor: '#E0E0E0',
+        marginHorizontal: 5,
     },
-    activeLine: {
-        backgroundColor: '#ff69b4',
+    completedLine: {
+        backgroundColor: '#4CAF50',
     },
 });
 

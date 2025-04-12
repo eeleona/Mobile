@@ -56,6 +56,7 @@ import AdoptThePet from './components/adopter/AdoptThePet';
 import EventDetails from './components/adopter/EventDetails';
 import Profile from './components/adopter/Profile';
 import MessageShelter from './components/adopter/MessageShelter';
+import AdoptionTracker from './components/adopter/AdoptionTracker';
 
 export default function App() {
   const Stack = createNativeStackNavigator();
@@ -121,8 +122,9 @@ export default function App() {
         <Stack.Screen name='Submission' component={Submission} options={{ headerShown: false }} />
         <Stack.Screen name='User Nearby Services' component={UserNearby} options={{ headerShown: false }} />
         <Stack.Screen name='Account' component={Account} options={{ headerShown: false }} />
-        <Stack.Screen name='Profile' component={Profile} options={{ headerShown: false }} />
-        <Stack.Screen name='My Adoptions' component={MyAdoptions} options={{ headerShown: false }} />
+        <Stack.Screen name='My Profile' component={Profile} options={{ headerShown: false }} />
+        <Stack.Screen name='MyAdoptions' component={MyAdoptions} options={{ headerShown: false }} />
+        <Stack.Screen name='Adoption Tracker' component={AdoptionTracker} options={{ headerShown: false }} />
 
         {/* ADOPTER SUB-MODULES */}
         <Stack.Screen name='Data Privacy' component={DataPrivacy} options={{ headerShown: false }} />

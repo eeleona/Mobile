@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import AuthContext from '../context/AuthContext';
 import config from '../../server/config/config';
+import AppBar from '../design/AppBar';
 
 const MyAdoptions = () => {
   const navigation = useNavigation();
@@ -32,7 +33,7 @@ const MyAdoptions = () => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [rating, setRating] = useState(0);
   const [feedbackExists, setFeedbackExists] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const { user } = useContext(AuthContext) || {};
 
   const [adoptionRatings, setAdoptionRatings] = useState({
@@ -60,59 +61,9 @@ const MyAdoptions = () => {
     }
   }, [navigation]);
 
-  // Custom Stepper Component
-  const CustomStepper = ({ steps, activeStep }) => {
-    return (
-      <View style={styles.stepperContainer}>
-        {steps.map((step, index) => {
-          const isActive = index === activeStep;
-          const isCompleted = index < activeStep;
-          const isLast = index === steps.length - 1;
-    
-          return (
-            <React.Fragment key={index}>
-              <View style={styles.stepContainer}>
-                <View
-                  style={[
-                    styles.stepCircle,
-                    isActive && styles.activeStepCircle,
-                    isCompleted && styles.completedStepCircle,
-                  ]}
-                >
-                  {isCompleted ? (
-                    <Icon name="check" size={16} color="white" />
-                  ) : (
-                    <Text style={styles.stepNumber}>{index + 1}</Text>
-                  )}
-                </View>
-                <Text
-                  style={[
-                    styles.stepLabel,
-                    isActive && styles.activeStepLabel,
-                    isCompleted && styles.completedStepLabel,
-                  ]}
-                >
-                  {step}
-                </Text>
-              </View>
-              {!isLast && (
-                <View
-                  style={[
-                    styles.stepLine,
-                    isCompleted && styles.completedStepLine,
-                  ]}
-                />
-              )}
-            </React.Fragment>
-          );
-        })}
-      </View>
-    );
-  };
-
   // Get authentication headers
   const getAuthHeaders = async () => {
-    const token = await AsyncStorage.getItem('token');
+    const token = await AsyncStorage.getItem('authToken');
     if (!token) {
       navigation.navigate('Login');
       return {};
@@ -126,13 +77,13 @@ const MyAdoptions = () => {
   // Check token validity periodically
   useEffect(() => {
     const checkToken = async () => {
-      const token = await AsyncStorage.getItem('token');
+      const token = await AsyncStorage.getItem('authToken');
       if (!token) {
         navigation.navigate('Login');
       }
     };
     
-    const interval = setInterval(checkToken, 300000); // Check every 5 minutes
+    const interval = setInterval(checkToken, 300000);
     return () => clearInterval(interval);
   }, [navigation]);
 
@@ -152,7 +103,7 @@ const MyAdoptions = () => {
       } catch (error) {
         console.error('Error fetching profile:', error);
         if (error.response?.status === 403) {
-          await AsyncStorage.removeItem('token');
+          await AsyncStorage.removeItem('authToken');
           navigation.navigate('Login');
         }
         setError(error.response?.data?.message || 'Failed to fetch profile');
@@ -184,7 +135,7 @@ const MyAdoptions = () => {
       } catch (error) {
         console.error('Error fetching adoptions:', error);
         if (error.response?.status === 403) {
-          await AsyncStorage.removeItem('token');
+          await AsyncStorage.removeItem('authToken');
           navigation.navigate('Login');
         }
         setError(error.response?.data?.message || 'Failed to fetch adoptions');
@@ -236,15 +187,9 @@ const MyAdoptions = () => {
     }
   };
 
-  // Handle adoption selection - Updated with better navigation handling
+  // Handle adoption selection
   const handleAdoptionClick = async (adoption) => {
     try {
-      console.log('Attempting navigation to AdoptionDetails...');
-      
-      if (!navigation || !navigation.navigate) {
-        throw new Error('Navigation not available');
-      }
-
       setSelectedAdoption(adoption || null);
       if (adoption?.p_id?._id) {
         await fetchPetById(adoption.p_id._id);
@@ -253,18 +198,20 @@ const MyAdoptions = () => {
         await checkFeedbackExists(adoption._id);
       }
 
-      // Navigate to AdoptionDetails screen
-      navigation.navigate('AdoptionDetails', {
+      // Navigate to AdoptionTracker with all necessary data
+      navigation.navigate('Adoption Tracker', {
         adoptionId: adoption._id,
         petId: adoption.p_id?._id,
         status: adoption.status,
         visitDate: adoption.visitDate,
-        visitTime: adoption.visitTime
+        visitTime: adoption.visitTime,
+        petData: selectedPet,
+        adoptionData: adoption
       });
       
     } catch (error) {
       console.error('Navigation failed:', error);
-      Alert.alert('Error', 'Could not navigate to adoption details');
+      Alert.alert('Error', 'Could not navigate to adoption tracker');
     }
   };
 
@@ -320,7 +267,6 @@ const MyAdoptions = () => {
   const handleSubmitFeedback = async () => {
     setLoading(true);
   
-    // Get user ID from either the adoption object or AuthContext
     const userId = selectedAdoption?.user?.id || user?.id;
     
     if (!userId) {
@@ -399,9 +345,9 @@ const MyAdoptions = () => {
   };
 
   // Filter adoptions by status
-  const filteredAdoptions = statusFilter
-    ? adoptions.filter(adoption => adoption.status === statusFilter)
-    : adoptions;
+  const filteredAdoptions = statusFilter === 'all'
+    ? adoptions
+    : adoptions.filter(adoption => adoption.status === statusFilter);
 
   // Get status badge styles
   const getStatusStyles = (status) => {
@@ -421,21 +367,29 @@ const MyAdoptions = () => {
       style={styles.adoptionItem}
       onPress={() => handleAdoptionClick(item)}
     >
-      {item.p_id?.pet_img?.length > 0 && (
+      {item.p_id?.pet_img?.length > 0 ? (
         <Image
           source={{ uri: `${config.address}${item.p_id.pet_img[0]}` }}
           style={styles.petImage}
         />
+      ) : (
+        <View style={[styles.petImage, styles.petImagePlaceholder]}>
+          <Icon name="pets" size={30} color="#888" />
+        </View>
       )}
       <View style={styles.petInfo}>
-        <Text style={styles.petName}>{item.p_id?.p_name || 'Unknown'}</Text>
+        <Text style={styles.petName}>{item.p_id?.p_name || 'Unknown Pet'}</Text>
         <Text style={styles.petDetails}>
           {item.p_id ? `${item.p_id.p_gender} ${item.p_id.p_type}` : 'No details'}
+        </Text>
+        <Text style={styles.adoptionDate}>
+          Applied: {new Date(item.a_submitted_at).toLocaleDateString()}
         </Text>
       </View>
       <View style={[styles.statusBadge, getStatusStyles(item.status)]}>
         <Text style={styles.statusText}>{item.status?.toUpperCase() || 'UNKNOWN'}</Text>
       </View>
+      <Icon name="chevron-right" size={24} color="#888" />
     </TouchableOpacity>
   );
 
@@ -452,11 +406,10 @@ const MyAdoptions = () => {
     );
   };
 
-  // Get step labels for stepper
-  const steps = selectedAdoption ? getStepLabels(selectedAdoption.status) : [];
-
   return (
     <View style={styles.container}>
+      <AppBar />
+      
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.profileHeader}>
@@ -470,115 +423,54 @@ const MyAdoptions = () => {
             <Text style={styles.userName}>
               {userProfile?.firstName || ''} {userProfile?.lastName || ''}
             </Text>
-            <Text style={styles.userRole}>PET ADOPTER</Text>
+            <Text style={styles.userRole}>MY ADOPTIONS</Text>
           </View>
         </View>
-        <Text style={styles.sectionTitle}>MY ADOPTIONS</Text>
       </View>
 
-      {/* Filter */}
+      {/* Filter Dropdown */}
       <View style={styles.filterContainer}>
-        <Picker
-          selectedValue={statusFilter}
-          onValueChange={handleStatusFilterChange}
-          style={styles.picker}
-          dropdownIconColor="#FF66C4"
-        >
-          <Picker.Item label="All Adoptions" value="" />
-          <Picker.Item label="Pending" value="pending" />
-          <Picker.Item label="Accepted" value="accepted" />
-          <Picker.Item label="Completed" value="complete" />
-          <Picker.Item label="Rejected" value="rejected" />
-          <Picker.Item label="Failed" value="failed" />
-        </Picker>
+        <Text style={styles.filterLabel}>Filter by status:</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={statusFilter}
+            onValueChange={handleStatusFilterChange}
+            style={styles.picker}
+            dropdownIconColor="#FF66C4"
+            mode="dropdown"
+          >
+            <Picker.Item label="All Adoptions" value="all" />
+            <Picker.Item label="Pending" value="pending" />
+            <Picker.Item label="Accepted" value="accepted" />
+            <Picker.Item label="Completed" value="complete" />
+            <Picker.Item label="Rejected" value="rejected" />
+          </Picker>
+        </View>
       </View>
 
-      {/* Main Content */}
-      <View style={styles.mainContent}>
-        {/* Adoption List */}
-        <View style={styles.adoptionList}>
-          {loading ? (
-            <ActivityIndicator size="large" color="#FF66C4" />
-          ) : error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : filteredAdoptions.length > 0 ? (
-            <FlatList
-              data={filteredAdoptions}
-              renderItem={renderAdoptionItem}
-              keyExtractor={item => item._id}
-              contentContainerStyle={styles.listContent}
-            />
-          ) : (
-            <Text style={styles.noAdoptionsText}>No adoptions found</Text>
-          )}
-        </View>
-
-        {/* Adoption Details */}
-        <View style={styles.adoptionDetails}>
-          {selectedPet ? (
-            <ScrollView contentContainerStyle={styles.detailContent}>
-              <Text style={styles.detailTitle}>ADOPTION STATUS</Text>
-              
-              {/* Pet Info */}
-              <View style={styles.petDetailHeader}>
-                {selectedPet.pet_img?.length > 0 && (
-                  <Image
-                    source={{ uri: `${config.address}${selectedPet.pet_img[0]}` }}
-                    style={styles.detailPetImage}
-                  />
-                )}
-                <View style={styles.petDetailInfo}>
-                  <Text style={styles.detailPetName}>{selectedPet.p_name}</Text>
-                  <Text>Age: {selectedPet.p_age}</Text>
-                  <Text>Gender: {selectedPet.p_gender}</Text>
-                  <Text>Type: {selectedPet.p_type}</Text>
-                  <Text>Breed: {selectedPet.p_breed || 'N/A'}</Text>
-                </View>
-              </View>
-
-              {/* Custom Stepper */}
-              {selectedAdoption && (
-                <CustomStepper 
-                  steps={steps}
-                  activeStep={getActiveStep(selectedAdoption.status)}
-                />
-              )}
-
-              {/* Status Message */}
-              <View style={styles.statusMessage}>
-                <Text style={styles.statusTitle}>
-                  Status: <Text style={{ 
-                    color: getStatusStyles(selectedAdoption?.status).backgroundColor 
-                  }}>
-                    {selectedAdoption?.status?.toUpperCase() || 'UNKNOWN'}
-                  </Text>
-                </Text>
-                <Text style={styles.messageText}>
-                  {getStatusMessage(
-                    selectedAdoption?.status, 
-                    selectedAdoption?.visitDate, 
-                    selectedAdoption?.visitTime
-                  )}
-                </Text>
-
-                {selectedAdoption?.status === 'complete' && !feedbackExists && (
-                  <TouchableOpacity
-                    style={styles.feedbackButton}
-                    onPress={() => setShowFeedbackModal(true)}
-                  >
-                    <Text style={styles.feedbackButtonText}>SUBMIT FEEDBACK</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </ScrollView>
-          ) : (
-            <View style={styles.emptyDetails}>
-              <Text style={styles.emptyTitle}>Your Adoption Status</Text>
-              <Text style={styles.emptyText}>will appear here</Text>
-              <Text style={styles.emptyText}>Select a pet to view details</Text>
-            </View>
-          )}
-        </View>
+      {/* Adoption List */}
+      <View style={styles.listContainer}>
+        {loading ? (
+          <ActivityIndicator size="large" color="#FF66C4" style={styles.loader} />
+        ) : error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : filteredAdoptions.length > 0 ? (
+          <FlatList
+            data={filteredAdoptions}
+            renderItem={renderAdoptionItem}
+            keyExtractor={item => item._id}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Icon name="pets" size={50} color="#888" />
+            <Text style={styles.emptyText}>No adoptions found</Text>
+            {statusFilter !== 'all' && (
+              <Text style={styles.emptySubText}>Try changing your filter</Text>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Feedback Modal */}
@@ -701,7 +593,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    padding: 15,
+    padding: 20,
     backgroundColor: '#F8F8F8',
     borderBottomWidth: 1,
     borderBottomColor: '#EEE',
@@ -709,7 +601,6 @@ const styles = StyleSheet.create({
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
   },
   profileImage: {
     width: 60,
@@ -726,33 +617,36 @@ const styles = StyleSheet.create({
   },
   userRole: {
     fontSize: 14,
-    color: '#888',
-    textTransform: 'uppercase',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
     color: '#FF66C4',
     textTransform: 'uppercase',
+    marginTop: 4,
   },
   filterContainer: {
-    paddingHorizontal: 15,
-    marginVertical: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  filterLabel: {
+    fontSize: 16,
+    marginBottom: 8,
+    color: '#555',
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#DDD',
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   picker: {
     width: '100%',
     backgroundColor: '#F8F8F8',
-    borderRadius: 8,
   },
-  mainContent: {
+  listContainer: {
     flex: 1,
-    flexDirection: 'row',
-  },
-  adoptionList: {
-    flex: 1,
-    padding: 10,
-    borderRightWidth: 1,
-    borderRightColor: '#EEE',
+    paddingHorizontal: 15,
+    paddingTop: 10,
   },
   listContent: {
     paddingBottom: 20,
@@ -760,154 +654,83 @@ const styles = StyleSheet.create({
   adoptionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
+    padding: 15,
     marginBottom: 10,
-    backgroundColor: '#F8F8F8',
-    borderRadius: 8,
+    backgroundColor: '#FFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#EEE',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   petImage: {
     width: 60,
     height: 60,
     borderRadius: 30,
     marginRight: 15,
+    backgroundColor: '#F8F8F8',
+  },
+  petImagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   petInfo: {
     flex: 1,
   },
   petName: {
     fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 4,
   },
   petDetails: {
     color: '#666',
     fontSize: 12,
+    marginBottom: 4,
+  },
+  adoptionDate: {
+    fontSize: 11,
+    color: '#888',
   },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 15,
+    marginRight: 10,
   },
   statusText: {
     color: 'white',
     fontSize: 12,
     fontWeight: 'bold',
   },
-  adoptionDetails: {
-    flex: 2,
-    padding: 15,
-  },
-  detailContent: {
-    paddingBottom: 20,
-  },
-  detailTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#FF66C4',
-    textTransform: 'uppercase',
-  },
-  petDetailHeader: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  detailPetImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 10,
-    marginRight: 15,
-  },
-  petDetailInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  detailPetName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  stepperContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  stepContainer: {
-    alignItems: 'center',
-    minWidth: 80,
-  },
-  stepCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#E0E0E0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  activeStepCircle: {
-    backgroundColor: '#FF66C4',
-  },
-  completedStepCircle: {
-    backgroundColor: '#4CAF50',
-  },
-  stepNumber: {
-    color: '#757575',
-    fontWeight: 'bold',
-  },
-  stepLabel: {
-    marginTop: 5,
-    color: '#757575',
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  activeStepLabel: {
-    color: '#FF66C4',
-    fontWeight: 'bold',
-  },
-  completedStepLabel: {
-    color: '#4CAF50',
-  },
-  stepLine: {
-    flex: 1,
-    height: 2,
-    backgroundColor: '#E0E0E0',
-    marginHorizontal: 5,
-  },
-  completedStepLine: {
-    backgroundColor: '#4CAF50',
-  },
-  statusMessage: {
-    marginTop: 20,
-  },
-  statusTitle: {
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  messageText: {
-    marginTop: 10,
-    lineHeight: 22,
-  },
-  feedbackButton: {
-    marginTop: 20,
-    backgroundColor: '#FF66C4',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  feedbackButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  emptyDetails: {
+  emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
+    padding: 40,
   },
   emptyText: {
+    marginTop: 15,
+    fontSize: 16,
     color: '#888',
+    textAlign: 'center',
+  },
+  emptySubText: {
+    marginTop: 5,
+    fontSize: 14,
+    color: '#AAA',
+    textAlign: 'center',
+  },
+  loader: {
+    marginTop: 40,
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginTop: 20,
+    padding: 20,
   },
   modalContainer: {
     flex: 1,
@@ -975,16 +798,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: 'white',
     fontWeight: 'bold',
-  },
-  errorText: {
-    color: 'red',
-    textAlign: 'center',
-    marginTop: 20,
-  },
-  noAdoptionsText: {
-    textAlign: 'center',
-    marginTop: 20,
-    color: '#888',
   },
 });
 

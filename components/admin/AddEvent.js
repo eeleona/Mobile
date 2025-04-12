@@ -1,86 +1,191 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Button, TouchableOpacity, StyleSheet, ScrollView, Platform, Image } from 'react-native';
+import React, { useState, useContext } from 'react';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  ScrollView, 
+  Image, 
+  ActivityIndicator, 
+  Alert,
+  Modal
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import AppBar from '../design/AppBar'; // Adjust path as needed
+import axios from 'axios';
+import config from '../../server/config/config';
+import { useAuth } from '../context/AuthContext';
 
-const AddEvent = () => {
+const AddEvent = ({ navigation }) => {
+  const { token } = useAuth();
   const [formData, setFormData] = useState({
-    name: '',
-    location: '',
-    date: '',
-    description: '',
-    image: null,
+    e_title: '',
+    e_location: '',
+    e_date: '',
+    e_description: '',
+    e_image: null,
   });
+  const [loading, setLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const handleInputChange = (name, value) => {
     setFormData({ ...formData, [name]: value });
   };
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
 
-    if (!result.canceled) {
-      setFormData({ ...formData, image: result.assets[0].uri });
+      if (!result.canceled) {
+        setFormData({ ...formData, e_image: result.assets[0] });
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick image');
     }
   };
 
-  const handleSubmit = () => {
-    console.log('Submitted Data:', formData);
-    // You can handle API request here
+  const validateEvent = () => {
+    if (!formData.e_title.trim()) {
+      Alert.alert('Error', 'Event title is required');
+      return false;
+    }
+    if (!formData.e_date.trim()) {
+      Alert.alert('Error', 'Event date is required');
+      return false;
+    }
+    if (!formData.e_description.trim()) {
+      Alert.alert('Error', 'Event description is required');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateEvent()) return;
+    if (!token) {
+      Alert.alert('Error', 'Authentication required');
+      return;
+    }
+
+    setLoading(true);
+
+    const formDataToSend = new FormData();
+    formDataToSend.append('e_title', formData.e_title);
+    formDataToSend.append('e_location', formData.e_location);
+    formDataToSend.append('e_date', formData.e_date);
+    formDataToSend.append('e_description', formData.e_description);
+    
+    if (formData.e_image) {
+      formDataToSend.append('e_image', {
+        uri: formData.e_image.uri,
+        type: 'image/jpeg',
+        name: 'event_image.jpg'
+      });
+    }
+
+    try {
+      const response = await axios.post(
+        `${config.address}/api/events/new`,
+        formDataToSend,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+
+      if (response.data) {
+        Alert.alert('Success', 'Event created successfully');
+        setFormData({
+          e_title: '',
+          e_location: '',
+          e_date: '',
+          e_description: '',
+          e_image: null,
+        });
+        setShowModal(false);
+        navigation.goBack();
+      }
+    } catch (error) {
+      let errorMessage = 'Failed to create event';
+      if (error.response?.status === 401) {
+        errorMessage = 'Session expired. Please login again.';
+      }
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <AppBar />
+      <View style={styles.formContainer}>
+        <Text style={styles.header}>Create New Event</Text>
 
-    <View style={styles.whitebg}>
-      <TextInput
-        placeholder="Event Name"
-        value={formData.name}
-        onChangeText={(text) => handleInputChange('name', text)}
-        style={styles.input}
-      />
+        <TextInput
+          placeholder="Event Title *"
+          value={formData.e_title}
+          onChangeText={(text) => handleInputChange('e_title', text)}
+          style={styles.input}
+        />
 
-      <TextInput
-        placeholder="Location"
-        value={formData.location}
-        onChangeText={(text) => handleInputChange('location', text)}
-        style={styles.input}
-      />
+        <TextInput
+          placeholder="Location"
+          value={formData.e_location}
+          onChangeText={(text) => handleInputChange('e_location', text)}
+          style={styles.input}
+        />
 
-      <TextInput
-        placeholder="Date (YYYY-MM-DD)"
-        value={formData.date}
-        onChangeText={(text) => handleInputChange('date', text)}
-        style={styles.input}
-      />
+        <TextInput
+          placeholder="Date (YYYY-MM-DD) *"
+          value={formData.e_date}
+          onChangeText={(text) => handleInputChange('e_date', text)}
+          style={styles.input}
+        />
 
-      <TextInput
-        placeholder="Description"
-        value={formData.description}
-        onChangeText={(text) => handleInputChange('description', text)}
-        style={[styles.input, styles.textArea]}
-        multiline
-      />
+        <TextInput
+          placeholder="Description *"
+          value={formData.e_description}
+          onChangeText={(text) => handleInputChange('e_description', text)}
+          style={[styles.input, styles.textArea]}
+          multiline
+          numberOfLines={4}
+        />
 
-      <TouchableOpacity onPress={pickImage} style={styles.imageButton}>
-        <Text style={styles.imageButtonText}>
-          {formData.image ? 'Change Image' : 'Pick an Image'}
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity 
+          onPress={pickImage} 
+          style={styles.imageButton}
+        >
+          <Text style={styles.imageButtonText}>
+            {formData.e_image ? 'Change Image' : 'Select Image'}
+          </Text>
+        </TouchableOpacity>
 
-      {formData.image && (
-        <Image source={{ uri: formData.image }} style={styles.previewImage} />
-      )}
+        {formData.e_image && (
+          <Image 
+            source={{ uri: formData.e_image.uri }} 
+            style={styles.previewImage} 
+            resizeMode="cover"
+          />
+        )}
 
-      <View style={styles.submitButton}>
-        <Button title="Submit" onPress={handleSubmit} color="#007bff" />
-      </View>
+        <TouchableOpacity 
+          onPress={handleSubmit} 
+          style={[styles.submitButton, loading && styles.disabledButton]}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.buttonText}>Create Event</Text>
+          )}
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -88,46 +193,73 @@ const AddEvent = () => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FAF9F6',
     flexGrow: 1,
+    backgroundColor: '#f5f5f5',
+    padding: 20,
   },
-  heading: {
+  formContainer: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  header: {
     fontSize: 22,
     fontWeight: 'bold',
-    marginVertical: 20,
+    marginBottom: 20,
+    color: '#333',
+    textAlign: 'center',
   },
-  whitebg: {backgroundColor: 'white', marginHorizontal: 20, padding: 15, borderRadius: 10,},
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
     marginBottom: 15,
     fontSize: 16,
+    backgroundColor: '#f9f9f9',
   },
   textArea: {
-    height: 100,
+    height: 120,
     textAlignVertical: 'top',
   },
   imageButton: {
-    backgroundColor: '#eee',
-    padding: 12,
+    backgroundColor: '#f0f0f0',
+    padding: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   imageButtonText: {
     color: '#333',
     fontSize: 16,
+    fontWeight: '500',
   },
   previewImage: {
     width: '100%',
     height: 200,
     borderRadius: 8,
-    marginBottom: 15,
+    marginBottom: 20,
   },
   submitButton: {
-    marginTop: 20,
+    backgroundColor: '#FF66C4',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

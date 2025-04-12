@@ -103,11 +103,11 @@ const Account = ({ navigation }) => {
   }
 
   const handleAdopt = () => {
-    navigation.navigate('My Adoptions');
+    navigation.navigate('MyAdoptions');
   };
 
   const handleProfile = () => {
-    navigation.navigate('Profile', { userData });
+    navigation.navigate('My Profile', { userData });
   };
 
   const handleLogout = () => {

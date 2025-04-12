@@ -56,6 +56,8 @@ const Signup = () => {
             newErrors.gender = "Gender is required";
         if (!formData.validId) 
             newErrors.validId = "Valid ID is required";
+        if (!formData.birthDate || isNaN(new Date(formData.birthDate).getTime()))
+            newErrors.birthDate = "Valid birthdate is required";
         
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -102,15 +104,6 @@ const Signup = () => {
         }
     };
 
-    // Format date to YYYY-MM-DD
-    const formatDate = (date) => {
-        const d = new Date(date);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
-
     // Final submission with privacy policy check
     const handleFinalSubmit = async () => {
         if (!privacyAccepted) {
@@ -128,29 +121,38 @@ const Signup = () => {
             formDataToSend.append('p_emailadd', formData.email);
             formDataToSend.append('p_fname', formData.firstName);
             formDataToSend.append('p_lname', formData.lastName);
-            formDataToSend.append('p_mname', formData.middleName);
+            formDataToSend.append('p_mname', formData.middleName || '');
             formDataToSend.append('p_password', formData.password);
             formDataToSend.append('p_repassword', formData.confirmPassword);
             formDataToSend.append('p_add', formData.address);
             formDataToSend.append('p_contactnumber', formData.contactNumber);
             formDataToSend.append('p_gender', formData.gender);
-            formDataToSend.append('p_birthdate', formatDate(formData.birthDate));
+            
+            // Format date to DD/MM/YYYY
+            const formattedDate = `${formData.birthDate.getDate()}/${formData.birthDate.getMonth() + 1}/${formData.birthDate.getFullYear()}`;
+            formDataToSend.append('p_birthdate', formattedDate);
             
             // Append profile image if exists
             if (formData.profileImage) {
+                const profileImageUriParts = formData.profileImage.split('.');
+                const profileImageFileType = profileImageUriParts[profileImageUriParts.length - 1];
+                
                 formDataToSend.append('p_img', {
                     uri: formData.profileImage,
-                    name: `profile_${Date.now()}.jpg`,
-                    type: 'image/jpeg'
+                    name: `profile_${Date.now()}.${profileImageFileType}`,
+                    type: `image/${profileImageFileType}`,
                 });
             }
             
             // Append valid ID if exists
             if (formData.validId) {
+                const validIdUriParts = formData.validId.split('.');
+                const validIdFileType = validIdUriParts[validIdUriParts.length - 1];
+                
                 formDataToSend.append('p_validID', {
                     uri: formData.validId,
-                    name: `validID_${Date.now()}.jpg`,
-                    type: 'image/jpeg'
+                    name: `validID_${Date.now()}.${validIdFileType}`,
+                    type: `image/${validIdFileType}`,
                 });
             }
 
@@ -159,6 +161,7 @@ const Signup = () => {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
+                timeout: 30000,
             });
 
             // Send welcome email
@@ -177,6 +180,14 @@ const Signup = () => {
             );
         } catch (error) {
             console.error('Registration error:', error);
+            
+            if (error.response) {
+                console.log('Response data:', error.response.data);
+                console.log('Response status:', error.response.status);
+            } else if (error.request) {
+                console.log('Request:', error.request);
+            }
+            
             const errorMessage = error.response?.data?.message || 
                                error.message || 
                                "Registration failed. Please try again.";

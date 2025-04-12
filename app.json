@@ -2,6 +2,7 @@
   "expo": {
     "name": "homefurever",
     "slug": "homefurever",
+    "scheme": "homefurever",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,9 +20,7 @@
         }
       ]
     ],
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.eleona.homefurever"
@@ -35,6 +34,13 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "owner": "eleona", 
+    "updates": {
+      "url": "https://u.expo.dev/ffe29be6-e99a-4acd-b4c8-96d65c3565f3"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     },
     "extra": {
       "eas": {

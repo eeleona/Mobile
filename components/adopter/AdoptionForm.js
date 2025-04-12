@@ -8,6 +8,7 @@ import * as eva from '@eva-design/eva';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import config from '../../server/config/config';
+import AppBar from '../design/AppBar';
 
 const AdoptionForm = ({ navigation, route }) => {
     const { id } = route.params;
@@ -176,12 +177,9 @@ const AdoptionForm = ({ navigation, route }) => {
     return (
         <ApplicationProvider {...eva} theme={eva.light}>
             <PaperProvider>
-                <LinearGradient
-                    colors={['rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.7)']}
-                    style={styles.gradientOverlay}
-                >
+            <AppBar></AppBar>
                     <ScrollView style={styles.container}>
-                        <Text style={styles.formHeader}>Adoption Form</Text>
+                        
                         
                         {loading ? (
                             <View style={styles.loadingContainer}>
@@ -199,6 +197,7 @@ const AdoptionForm = ({ navigation, route }) => {
                                             <Text style={styles.infoText}>Type: {petInfo.p_type}</Text>
                                             <Text style={styles.infoText}>Age: {petInfo.p_age} years old</Text>
                                             <Text style={styles.infoText}>Gender: {petInfo.p_gender}</Text>
+                                            <Text style={styles.infoText}>Breed: {petInfo.p_breed}</Text>
                                         </View>
                                     </View>
                                 )}
@@ -208,6 +207,7 @@ const AdoptionForm = ({ navigation, route }) => {
                                     <Text style={styles.sectionTitle}>Your Information</Text>
                                     <View style={styles.infoCard}>
                                         <Text style={styles.infoText}>Full Name: {userInfo.fullName}</Text>
+                                        <Text style={styles.infoText}>Address: {userInfo.gender}</Text>
                                         <Text style={styles.infoText}>Contact: {userInfo.contactNumber}</Text>
                                         <Text style={styles.infoText}>Address: {userInfo.address}</Text>
                                     </View>
@@ -327,7 +327,7 @@ const AdoptionForm = ({ navigation, route }) => {
                             </Modal>
                         </Portal>
                     </ScrollView>
-                </LinearGradient>
+                
             </PaperProvider>
         </ApplicationProvider>
     );
@@ -337,6 +337,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 16,
+        backgroundColor: '#FAF9F6',
     },
     gradientOverlay: {
         flex: 1,
@@ -344,7 +345,7 @@ const styles = StyleSheet.create({
     formHeader: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#ff69b4',
+        color: '#FAF9F6',
         textAlign: 'center',
         marginVertical: 20,
         fontFamily: 'Inter_700Bold',
@@ -433,6 +434,7 @@ const styles = StyleSheet.create({
     modalContainer: {
         alignItems: 'center',
         padding: 20,
+        marginHorizontal: 20,
     },
     modalTitle: {
         fontSize: 22,

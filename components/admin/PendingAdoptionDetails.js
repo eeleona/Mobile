@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { Divider } from 'react-native-paper';
 import AppBar from '../design/AppBar';
@@ -10,7 +10,6 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
   const { adoption } = route.params;
   const [loading, setLoading] = useState(false);
   const [actionType, setActionType] = useState(null);
-  const [token, setToken] = useState(null);
   
   // For accept flow
   const [showDateModal, setShowDateModal] = useState(false);
@@ -22,51 +21,45 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [otherReason, setOtherReason] = useState('');
 
-  // Get token when component mounts
-  useEffect(() => {
-    const getToken = async () => {
-      try {
-        const storedToken = await AsyncStorage.getItem('token');
-        if (!storedToken) {
-          console.warn('No token found in storage');
-          Alert.alert(
-            'Authentication Required', 
-            'Please login to continue.',
-            [
-              { text: 'OK', onPress: () => navigation.navigate('Login') }
-            ]
-          );
-        } else {
-          setToken(storedToken);
-        }
-      } catch (error) {
-        console.error('Error getting token:', error);
+  const verifyAdminAccess = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
         Alert.alert(
-          'Authentication Error', 
-          'There was a problem retrieving your authentication token. Please login again.'
+          'Login Required',
+          'Admin access required. Please log in.',
+          [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
         );
+        return false;
       }
-    };
-    getToken();
-  }, [navigation]);
 
-  const handleAccept = () => {
-    if (!token) {
-      Alert.alert('Error', 'Authentication required. Please login again.', [
-        { text: 'OK', onPress: () => navigation.navigate('Login') }
-      ]);
-      return;
+      // Verify user role
+      const userRole = await AsyncStorage.getItem('userRole');
+      if (!['admin', 'super-admin'].includes(userRole)) {
+        Alert.alert(
+          'Access Denied',
+          'Only administrators can perform this action.'
+        );
+        return false;
+      }
+
+      return token;
+    } catch (error) {
+      console.error('Error verifying access:', error);
+      Alert.alert('Error', 'Failed to verify permissions');
+      return false;
     }
+  };
+
+  const handleAccept = async () => {
+    const token = await verifyAdminAccess();
+    if (!token) return;
     setShowDateModal(true);
   };
 
-  const handleReject = () => {
-    if (!token) {
-      Alert.alert('Error', 'Authentication required. Please login again.', [
-        { text: 'OK', onPress: () => navigation.navigate('Login') }
-      ]);
-      return;
-    }
+  const handleReject = async () => {
+    const token = await verifyAdminAccess();
+    if (!token) return;
     setShowRejectModal(true);
   };
 
@@ -82,47 +75,30 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
       setLoading(true);
       setActionType('accept');
       
-      // Validate empty date
       if (!visitDate) {
         Alert.alert("Error", "Please select a visit date.");
-        setLoading(false);
         return;
       }
 
-      // Validate empty time
       if (!visitTime) {
         Alert.alert("Error", "Please select a visit time.");
-        setLoading(false);
         return;
       }
 
-      // Validate time is between 9 AM and 3 PM
       if (visitTime < "09:00" || visitTime > "15:00") {
         Alert.alert("Invalid Time", "Please select a time between 9:00 AM and 3:00 PM.");
-        setLoading(false);
         return;
       }
 
-      // Get fresh token from AsyncStorage to ensure it's not expired
-      const currentToken = await AsyncStorage.getItem('token');
-      
-      if (!currentToken) {
-        Alert.alert('Authentication Error', 'You are not logged in. Please login again.', [
-          { text: 'OK', onPress: () => navigation.navigate('Login') }
-        ]);
-        setLoading(false);
-        return;
-      }
+      const token = await verifyAdminAccess();
+      if (!token) return;
 
       const response = await axios.patch(
         `${config.address}/api/adoption/approve/${adoption._id}`,
-        { 
-          visitDate,
-          visitTime 
-        },
+        { visitDate, visitTime },
         {
           headers: {
-            'Authorization': `Bearer ${currentToken}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }
@@ -135,13 +111,12 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error('Error accepting adoption:', error);
-      
       let errorMessage = 'Failed to accept adoption. Please try again.';
       
       if (error.response) {
         if (error.response.status === 403) {
-          errorMessage = 'You do not have permission to perform this action. Please login again.';
-        } else if (error.response.data && error.response.data.message) {
+          errorMessage = 'You do not have permission to perform this action.';
+        } else if (error.response.data?.message) {
           errorMessage = error.response.data.message;
         }
       }
@@ -158,33 +133,22 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
       setLoading(true);
       setActionType('reject');
       
-      // Get fresh token
-      const currentToken = await AsyncStorage.getItem('token');
-      
-      if (!currentToken) {
-        Alert.alert('Authentication Error', 'You are not logged in. Please login again.', [
-          { text: 'OK', onPress: () => navigation.navigate('Login') }
-        ]);
-        setLoading(false);
-        return;
-      }
+      const token = await verifyAdminAccess();
+      if (!token) return;
       
       const rejectionReasonToSend = rejectionReason === 'Other' ? otherReason : rejectionReason;
 
       if (!rejectionReasonToSend) {
         Alert.alert('Error', 'Please provide a reason for rejection.');
-        setLoading(false);
         return;
       }
 
       const response = await axios.patch(
         `${config.address}/api/adoption/decline/${adoption._id}`,
-        { 
-          rejection_reason: rejectionReasonToSend 
-        },
+        { rejection_reason: rejectionReasonToSend },
         {
           headers: {
-            'Authorization': `Bearer ${currentToken}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }
@@ -197,13 +161,12 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error('Error rejecting adoption:', error);
-      
       let errorMessage = 'Failed to reject adoption. Please try again.';
       
       if (error.response) {
         if (error.response.status === 403) {
-          errorMessage = 'You do not have permission to perform this action. Please login again.';
-        } else if (error.response.data && error.response.data.message) {
+          errorMessage = 'You do not have permission to perform this action.';
+        } else if (error.response.data?.message) {
           errorMessage = error.response.data.message;
         }
       }
@@ -215,7 +178,6 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
     }
   };
 
-  // Generate time options between 9 AM and 3 PM
   const generateTimeOptions = () => {
     const options = [];
     for (let hour = 9; hour <= 15; hour++) {
@@ -592,7 +554,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
-  // Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

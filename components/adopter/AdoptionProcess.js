@@ -17,8 +17,8 @@ const AdoptionProcess = () => {
         <TouchableOpacity onPress={() => navigation.navigate('User Inbox')} style={[styles.button, { backgroundColor: '#cad47c' }]}>
           <Text style={styles.buttonText}>Contact the shelter</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('user Homepage')} style={[styles.button, { backgroundColor: '#ff69b4' }]}>
-          <Text style={styles.buttonText}>Back to Home</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('MyAdoptions')} style={[styles.button, { backgroundColor: '#ff69b4' }]}>
+          <Text style={styles.buttonText}>Track Adoption</Text>
         </TouchableOpacity>
       </View>
       
