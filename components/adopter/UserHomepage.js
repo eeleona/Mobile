@@ -107,7 +107,7 @@ const UserHomepage = ({ navigation }) => {
       />
       <View style={styles.eventInfo}>
         <Text style={styles.eventTitle}>{item.p_name}</Text>
-        <Text style={styles.eventDate}>{item.breed}</Text>
+        <Text style={styles.eventDate}>{item.p_breed}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -133,7 +133,7 @@ const UserHomepage = ({ navigation }) => {
   const renderServiceItem = ({ item }) => (
     <TouchableOpacity 
       style={styles.eventCard}
-      onPress={() => navigation.navigate('Service Details', { serviceId: item._id })}
+      onPress={() => navigation.navigate('User Nearby', { serviceId: item._id })}
     >
       <Image 
         source={{ uri: `${config.address}${item.ns_image}` }} 
@@ -420,6 +420,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 2,
     borderRadius: 14,
+    borderColor: '#ff69b4',
     padding: 14,
     marginHorizontal: 20,
     marginBottom: 30,

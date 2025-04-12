@@ -60,7 +60,7 @@ const DetailItem = ({ icon, label, value }) => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f6f6',
+    backgroundColor: '#FAF9F6',
   },
   scrollContainer: {
     paddingBottom: 20,

@@ -142,7 +142,7 @@ const Staff = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#FAF9F6',
     paddingTop: 20,
   },
   header: {

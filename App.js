@@ -53,6 +53,9 @@ import AdminLogs from './components/admin/AdminLogs';
 import UserPage from './components/adopter/UserPage';
 import OneMessage from './components/admin/OneMessage';
 import AdoptThePet from './components/adopter/AdoptThePet';
+import EventDetails from './components/adopter/EventDetails';
+import Profile from './components/adopter/Profile';
+import MessageShelter from './components/adopter/MessageShelter';
 
 export default function App() {
   const Stack = createNativeStackNavigator();
@@ -118,13 +121,15 @@ export default function App() {
         <Stack.Screen name='Submission' component={Submission} options={{ headerShown: false }} />
         <Stack.Screen name='User Nearby Services' component={UserNearby} options={{ headerShown: false }} />
         <Stack.Screen name='Account' component={Account} options={{ headerShown: false }} />
+        <Stack.Screen name='Profile' component={Profile} options={{ headerShown: false }} />
         <Stack.Screen name='My Adoptions' component={MyAdoptions} options={{ headerShown: false }} />
 
         {/* ADOPTER SUB-MODULES */}
         <Stack.Screen name='Data Privacy' component={DataPrivacy} options={{ headerShown: false }} />
         <Stack.Screen name='User Events' component={UserEvents} options={{ headerShown: false }} />
-        <Stack.Screen name='Event Details' component={AdoptThePet} options={{ headerShown: false }} />
+        <Stack.Screen name='Event Details' component={EventDetails} options={{ headerShown: false }} />
         <Stack.Screen name='User Inbox' component={UserInbox} options={{ headerShown: false }} />
+        <Stack.Screen name='Message Shelter' component={MessageShelter} options={{ headerShown: false }} />
         <Stack.Screen name='User Notif' component={UserNotif} options={{ headerShown: false }} />
         <Stack.Screen name='Adoption Form' component={AdoptionForm} options={{ headerShown: false }} />
       </Stack.Navigator>

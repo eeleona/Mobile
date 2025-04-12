@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PaperProvider, Modal, Portal } from 'react-native-paper';
-import AppBar from '../design/AppBar';
-import { ApplicationProvider, CheckBox, Input, Text } from '@ui-kitten/components';
+import { ApplicationProvider, CheckBox, Input, Text, Select, SelectItem, IndexPath } from '@ui-kitten/components';
 import { useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
 import * as eva from '@eva-design/eva';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,24 +10,51 @@ import axios from 'axios';
 import config from '../../server/config/config';
 
 const AdoptionForm = ({ navigation, route }) => {
-    // Add pet ID from route params
     const { id } = route.params;
-    
     const [visible, setVisible] = React.useState(false);
     const showModal = () => setVisible(true);
     const hideModal = () => setVisible(false);
     const containerStyle = {backgroundColor: 'white', padding: 20};
     
-    // Add form state
+    // Form state
     const [occupation, setOccupation] = useState('');
-    const [homeType, setHomeType] = useState('');
     const [yearsResided, setYearsResided] = useState('');
     const [adultsInHousehold, setAdultsInHousehold] = useState('');
     const [childrenInHousehold, setChildrenInHousehold] = useState('');
-    const [householdDescription, setHouseholdDescription] = useState('');
-    const [allergicToPets, setAllergicToPets] = useState(false);
     
-    // Add user information state
+    // Dropdown states
+    const [homeTypeIndex, setHomeTypeIndex] = useState(new IndexPath(0));
+    const [householdDescIndex, setHouseholdDescIndex] = useState(new IndexPath(0));
+    const [allergicIndex, setAllergicIndex] = useState(new IndexPath(0));
+    
+    // Dropdown options
+    const homeTypes = [
+        'Select Home Type',
+        'Bungalow',
+        'Condominium',
+        'Apartment',
+        'Townhouse',
+        'Single-Detached',
+        'Single-Attached',
+        'Duplex',
+        'Mansion'
+    ];
+    
+    const householdDescriptions = [
+        'Select Household Description',
+        'Active',
+        'Noisy',
+        'Quiet',
+        'Average'
+    ];
+    
+    const allergicOptions = [
+        'Select Option',
+        'Yes',
+        'No'
+    ];
+    
+    // User info
     const [userInfo, setUserInfo] = useState({
         fullName: '',
         gender: '',
@@ -37,66 +63,53 @@ const AdoptionForm = ({ navigation, route }) => {
         address: ''
     });
     
-    // Add loading state
     const [loading, setLoading] = useState(true);
+    const [petInfo, setPetInfo] = useState(null);
     
     useEffect(() => {
-        // Function to fetch user profile information
-        const fetchUserProfile = async () => {
+        const fetchData = async () => {
             try {
-                // Get the token from AsyncStorage
                 const token = await AsyncStorage.getItem('authToken');
                 
                 if (!token) {
                     Alert.alert('Authentication Error', 'You need to login first.');
-                    navigation.navigate('Login'); // Navigate to login screen
+                    navigation.navigate('Login');
                     return;
                 }
                 
-                // Fetch user profile information
-                const response = await axios.get(
+                // Fetch user profile
+                const userResponse = await axios.get(
                     `${config.address}/api/user/profile`,
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    }
+                    { headers: { 'Authorization': `Bearer ${token}` } }
                 );
                 
-                const userData = response.data.user;
-                
-                // Format the full name from the response
+                const userData = userResponse.data.user;
                 const fullName = `${userData.firstName} ${userData.middleName ? userData.middleName + ' ' : ''}${userData.lastName}`;
-                
-                // Format the birthdate (assuming it comes as a date string)
                 const birthdate = userData.birthdate ? new Date(userData.birthdate).toLocaleDateString() : '';
                 
-                // Format contact number if needed (similar to web version)
-                const formattedContact = formatContactNumber(userData.contactNumber);
-                
-                // Update user info state
                 setUserInfo({
-                    fullName: fullName,
+                    fullName,
                     gender: userData.gender || '',
-                    birthdate: birthdate,
-                    contactNumber: formattedContact,
+                    birthdate,
+                    contactNumber: formatContactNumber(userData.contactNumber),
                     address: userData.address || ''
                 });
                 
+                // Fetch pet info
+                const petResponse = await axios.get(`${config.address}/api/pet/${id}`);
+                setPetInfo(petResponse.data.thePet);
+                
                 setLoading(false);
             } catch (error) {
-                console.error('Error fetching user profile:', error.response?.data || error.message);
-                Alert.alert('Error', 'Failed to load user information. Please try again.');
+                console.error('Error fetching data:', error);
+                Alert.alert('Error', 'Failed to load data. Please try again.');
                 setLoading(false);
             }
         };
         
-        // Call the function to fetch user profile
-        fetchUserProfile();
-    }, [navigation]);
+        fetchData();
+    }, [navigation, id]);
     
-    // Function to format contact number (similar to web version)
     const formatContactNumber = (number) => {
         if (!number) return '';
         const numStr = String(number);
@@ -106,6 +119,47 @@ const AdoptionForm = ({ navigation, route }) => {
         return numStr;
     };
     
+    const handleSubmitAdoption = async () => {
+        try {
+            const token = await AsyncStorage.getItem('authToken');
+            
+            if (!token) {
+                Alert.alert('Authentication Error', 'You need to login first.');
+                return;
+            }
+            
+            // Validate form
+            if (homeTypeIndex.row === 0 || householdDescIndex.row === 0 || allergicIndex.row === 0) {
+                Alert.alert('Validation Error', 'Please complete all required fields');
+                return;
+            }
+            
+            const formData = {
+                pet_id: id,
+                occupation,
+                home_type: homeTypes[homeTypeIndex.row],
+                years_resided: yearsResided,
+                adults_in_household: adultsInHousehold,
+                children_in_household: childrenInHousehold,
+                household_description: householdDescriptions[householdDescIndex.row],
+                allergic_to_pets: allergicOptions[allergicIndex.row]
+            };
+            
+            await axios.post(
+                `${config.address}/api/adoption/submit`, 
+                formData,
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            
+            Alert.alert('Success', 'Adoption form submitted successfully!');
+            navigation.navigate('Adoption Process');
+            
+        } catch (error) {
+            console.error('Error submitting form:', error);
+            Alert.alert('Error', 'Failed to submit adoption form. Please try again.');
+        }
+    };
+
     let [fontsLoaded] = useFonts({
         Inter_700Bold,
         Inter_500Medium,
@@ -119,49 +173,6 @@ const AdoptionForm = ({ navigation, route }) => {
         );
     }
 
-    const handleSubmitAdoption = async () => {
-        try {
-            // Get the token from AsyncStorage
-            const token = await AsyncStorage.getItem('authToken');
-            
-            if (!token) {
-                Alert.alert('Authentication Error', 'You need to login first.');
-                return;
-            }
-            
-            // Create the adoption form data
-            const formData = {
-                pet_id: id,
-                occupation,
-                home_type: homeType,
-                years_resided: yearsResided,
-                adults_in_household: adultsInHousehold,
-                children_in_household: childrenInHousehold,
-                household_description: householdDescription,
-                allergic_to_pets: allergicToPets ? 'Yes' : 'No'
-            };
-            
-            // Send the request with the token in the header
-            const response = await axios.post(
-                `${config.address}/api/adoption/submit`, 
-                formData,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-            
-            Alert.alert('Success', 'Adoption form submitted successfully!');
-            navigation.navigate('Adoption Process');
-            
-        } catch (error) {
-            console.error('Error submitting adoption form:', error.response?.data || error.message);
-            Alert.alert('Error', 'Failed to submit adoption form. Please try again.');
-        }
-    };
-
     return (
         <ApplicationProvider {...eva} theme={eva.light}>
             <PaperProvider>
@@ -170,101 +181,148 @@ const AdoptionForm = ({ navigation, route }) => {
                     style={styles.gradientOverlay}
                 >
                     <ScrollView style={styles.container}>
-                        <AppBar />
                         <Text style={styles.formHeader}>Adoption Form</Text>
                         
                         {loading ? (
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color="#ff69b4" />
-                                <Text style={styles.loadingText}>Loading user information...</Text>
+                                <Text style={styles.loadingText}>Loading information...</Text>
                             </View>
                         ) : (
                             <>
-                                <View style={styles.formContainer}>
-                                    <Text style={styles.formsubHeader}>Account Information</Text>
-                                    <View style={styles.info}>
-                                        <Text style={styles.label}>Full Name: {userInfo.fullName}</Text>
-                                        <Text style={styles.label}>Gender: {userInfo.gender}</Text>
-                                        <Text style={styles.label}>Birthdate: {userInfo.birthdate}</Text>
-                                        <Text style={styles.label}>Contact Number: {userInfo.contactNumber}</Text>
-                                        <Text style={styles.label}>Address: {userInfo.address}</Text>
+                                {/* Pet Information */}
+                                {petInfo && (
+                                    <View style={styles.sectionContainer}>
+                                        <Text style={styles.sectionTitle}>Pet Information</Text>
+                                        <View style={styles.infoCard}>
+                                            <Text style={styles.infoText}>Name: {petInfo.p_name}</Text>
+                                            <Text style={styles.infoText}>Type: {petInfo.p_type}</Text>
+                                            <Text style={styles.infoText}>Age: {petInfo.p_age} years old</Text>
+                                            <Text style={styles.infoText}>Gender: {petInfo.p_gender}</Text>
+                                        </View>
+                                    </View>
+                                )}
+                                
+                                {/* User Information */}
+                                <View style={styles.sectionContainer}>
+                                    <Text style={styles.sectionTitle}>Your Information</Text>
+                                    <View style={styles.infoCard}>
+                                        <Text style={styles.infoText}>Full Name: {userInfo.fullName}</Text>
+                                        <Text style={styles.infoText}>Contact: {userInfo.contactNumber}</Text>
+                                        <Text style={styles.infoText}>Address: {userInfo.address}</Text>
                                     </View>
                                 </View>
-                                <View style={styles.formContainer2}>
-                                    <Text style={styles.formsubHeader}>Personal Information</Text>
-                                    <View style={styles.info2}>
-                                        <Text style={styles.mlabel}>What is your Occupation?</Text>
-                                        <Input 
+                                
+                                {/* Adoption Form */}
+                                <View style={styles.sectionContainer}>
+                                    <Text style={styles.sectionTitle}>Adoption Details</Text>
+                                    <View style={styles.formCard}>
+                                        <Text style={styles.label}>Occupation</Text>
+                                        <Input
                                             style={styles.input}
                                             value={occupation}
                                             onChangeText={setOccupation}
+                                            placeholder="Your occupation"
                                         />
-                                        <Text style={styles.mlabel}>What type of Home do you live in?</Text>
-                                        <Input 
-                                            style={styles.input}
-                                            value={homeType}
-                                            onChangeText={setHomeType}
-                                        />
-                                        <Text style={styles.mlabel}>Number of Years Resided:</Text>
-                                        <Input 
+                                        
+                                        <Text style={styles.label}>Home Type</Text>
+                                        <Select
+                                            style={styles.select}
+                                            selectedIndex={homeTypeIndex}
+                                            onSelect={index => setHomeTypeIndex(index)}
+                                            value={homeTypes[homeTypeIndex.row]}
+                                        >
+                                            {homeTypes.map((type, i) => (
+                                                <SelectItem key={i} title={type} />
+                                            ))}
+                                        </Select>
+                                        
+                                        <Text style={styles.label}>Years Resided</Text>
+                                        <Input
                                             style={styles.input}
                                             value={yearsResided}
                                             onChangeText={setYearsResided}
+                                            placeholder="Number of years"
                                             keyboardType="numeric"
                                         />
-                                        <Text style={styles.mlabel}>How many Adults live in your Household?</Text>
-                                        <Input 
+                                        
+                                        <Text style={styles.label}>Adults in Household</Text>
+                                        <Input
                                             style={styles.input}
                                             value={adultsInHousehold}
                                             onChangeText={setAdultsInHousehold}
+                                            placeholder="Number of adults"
                                             keyboardType="numeric"
                                         />
-                                        <Text style={styles.mlabel}>How many Children live in your Household?</Text>
-                                        <Input 
+                                        
+                                        <Text style={styles.label}>Children in Household</Text>
+                                        <Input
                                             style={styles.input}
                                             value={childrenInHousehold}
                                             onChangeText={setChildrenInHousehold}
+                                            placeholder="Number of children"
                                             keyboardType="numeric"
                                         />
-                                        <Text style={styles.mlabel}>Please describe your household:</Text>
-                                        <Input 
-                                            style={styles.input}
-                                            value={householdDescription}
-                                            onChangeText={setHouseholdDescription}
-                                            multiline={true}
-                                        />
-                                        <View style={styles.checkboxContainer}>
-                                            <CheckBox
-                                                checked={allergicToPets}
-                                                onChange={nextChecked => setAllergicToPets(nextChecked)}
-                                                style={styles.checkbox}
-                                            >
-                                                <Text style={styles.checkboxText}>Anyone allergic to pets?</Text>
-                                            </CheckBox>
-                                        </View>
-                                    </View>
-                                    <View style={styles.btnC}>
-                                        <TouchableOpacity style={styles.btn} onPress={showModal}>
-                                            <Text style={styles.btnlabel}>Submit Adoption</Text>
-                                        </TouchableOpacity>
+                                        
+                                        <Text style={styles.label}>Household Description</Text>
+                                        <Select
+                                            style={styles.select}
+                                            selectedIndex={householdDescIndex}
+                                            onSelect={index => setHouseholdDescIndex(index)}
+                                            value={householdDescriptions[householdDescIndex.row]}
+                                        >
+                                            {householdDescriptions.map((desc, i) => (
+                                                <SelectItem key={i} title={desc} />
+                                            ))}
+                                        </Select>
+                                        
+                                        <Text style={styles.label}>Anyone allergic to pets?</Text>
+                                        <Select
+                                            style={styles.select}
+                                            selectedIndex={allergicIndex}
+                                            onSelect={index => setAllergicIndex(index)}
+                                            value={allergicOptions[allergicIndex.row]}
+                                        >
+                                            {allergicOptions.map((option, i) => (
+                                                <SelectItem key={i} title={option} />
+                                            ))}
+                                        </Select>
                                     </View>
                                 </View>
+                                
+                                <TouchableOpacity 
+                                    style={styles.submitButton} 
+                                    onPress={showModal}
+                                >
+                                    <Text style={styles.submitButtonText}>Submit Application</Text>
+                                </TouchableOpacity>
                             </>
                         )}
                         
                         <Portal>
                             <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={containerStyle}>
-                                <View style={styles.modalcontainer}>
-                                    <Text style={styles.successtext}>Submit Adoption Application?</Text>
-                                    <TouchableOpacity style={styles.submitButton2}>
-                                        <Text 
-                                            style={styles.submitButtonText} 
+                                <View style={styles.modalContainer}>
+                                    <Text style={styles.modalTitle}>Confirm Submission</Text>
+                                    <Text style={styles.modalText}>Are you sure you want to submit this adoption application?</Text>
+                                    
+                                    <View style={styles.modalButtons}>
+                                        <TouchableOpacity 
+                                            style={[styles.modalButton, styles.cancelButton]}
+                                            onPress={hideModal}
+                                        >
+                                            <Text style={styles.buttonText}>Cancel</Text>
+                                        </TouchableOpacity>
+                                        
+                                        <TouchableOpacity 
+                                            style={[styles.modalButton, styles.confirmButton]}
                                             onPress={() => {
                                                 hideModal();
                                                 handleSubmitAdoption();
                                             }}
-                                        >Submit</Text>
-                                    </TouchableOpacity>
+                                        >
+                                            <Text style={styles.buttonText}>Submit</Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
                             </Modal>
                         </Portal>
@@ -274,289 +332,143 @@ const AdoptionForm = ({ navigation, route }) => {
         </ApplicationProvider>
     );
 };
- 
+
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        padding: 16,
+    },
+    gradientOverlay: {
+        flex: 1,
+    },
+    formHeader: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: '#ff69b4',
+        textAlign: 'center',
+        marginVertical: 20,
+        fontFamily: 'Inter_700Bold',
+    },
+    sectionContainer: {
+        marginBottom: 24,
+    },
+    sectionTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#ff69b4',
+        marginBottom: 12,
+        fontFamily: 'Inter_700Bold',
+    },
+    infoCard: {
+        backgroundColor: 'white',
+        borderRadius: 10,
+        padding: 16,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    formCard: {
+        backgroundColor: 'white',
+        borderRadius: 10,
+        padding: 16,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    infoText: {
+        fontSize: 16,
+        marginBottom: 8,
+        fontFamily: 'Inter_500Medium',
+    },
+    label: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginTop: 12,
+        marginBottom: 6,
+        fontFamily: 'Inter_500Medium',
+    },
+    input: {
+        marginBottom: 16,
+        backgroundColor: '#f8f8f8',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        borderRadius: 8,
+    },
+    select: {
+        marginBottom: 16,
+        backgroundColor: '#f8f8f8',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        borderRadius: 8,
+    },
+    submitButton: {
+        backgroundColor: '#ff69b4',
+        padding: 16,
+        borderRadius: 10,
+        alignItems: 'center',
+        marginVertical: 20,
+        elevation: 3,
+    },
+    submitButtonText: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: 'bold',
+        fontFamily: 'Inter_700Bold',
+    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20
+        padding: 20,
     },
     loadingText: {
-        marginTop: 10,
+        marginTop: 16,
         fontSize: 16,
-        fontFamily: 'Inter_500Medium'
-    },
-    container: {
-        flex: 1,
-    },
-    check: {
-        flexDirection: 'row',
-    },
-    containers: {
-        minHeight: 128,
-    },
-    logo: {
-        width: 40,
-        height: 40,
-        alignItems: 'center',
-        
-    },
-    label2: {
-        marginTop: 15,
-        marginBottom: 5,
-    },
-    labels: {
         fontFamily: 'Inter_500Medium',
-        marginBottom: 10,
     },
-    btnC: {
-        flexDirection: 'row',
-        marginHorizontal: 20,
-        justifyContent: 'center',
+    modalContainer: {
         alignItems: 'center',
-        height: 35,
+        padding: 20,
     },
-    btn: {
-        backgroundColor: '#cad47c',
-        width: '60%',
-        height: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 5,
-        marginTop: 10,
-    },
-    btnlabel: {
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#ff69b4',
+        marginBottom: 12,
         fontFamily: 'Inter_700Bold',
+    },
+    modalText: {
+        fontSize: 16,
+        textAlign: 'center',
+        marginBottom: 24,
+        fontFamily: 'Inter_500Medium',
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+    },
+    modalButton: {
+        padding: 12,
+        borderRadius: 8,
+        width: '48%',
+        alignItems: 'center',
+    },
+    cancelButton: {
+        backgroundColor: '#e0e0e0',
+    },
+    confirmButton: {
+        backgroundColor: '#ff69b4',
+    },
+    buttonText: {
         color: 'white',
-        fontSize: 19,
-    },
-    background: {
-        width: '100%',
-        height: '100%',
-        flex: 1,
-    },
-    gradientOverlay: {
-        flex: 1,
-        width: '100%',
-        height: '100%',
-    },
-    formContainer: {
-        backgroundColor: '#fff',
-        margin: 15,
-        marginTop: 10,
-        height: 170,
-        borderRadius: 5,
-        shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-        shadowOffset: { width: 0, height: 2 },
-        alignItems: 'center',
-        elevation: 5,
-    },
-    formContainer2: {
-        backgroundColor: '#fff',
-        margin: 15,
-        marginTop: -10,
-        height: 600, // Increased height for checkbox
-        borderRadius: 5,
-        shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-        shadowOffset: { width: 0, height: 2 },
-        alignItems: 'center',
-        elevation: 5,
-    },
-    formHeader: {
-        fontSize: 30,
-        marginTop: 10,
-        width: '100%',
-        color: '#ff69b4',
-        textAlign: 'center',
-        fontFamily: 'Inter_700Bold'
-    },
-    formsubHeader: {
-        fontSize: 27,
-        marginTop: 10,
-        width: '100%',
-        color: '#ff69b4',
-        textAlign: 'left',
-        marginLeft: 35,
+        fontWeight: 'bold',
         fontFamily: 'Inter_700Bold',
-    },
-    labelcontainer: {
-        width: '100%',
-        alignItems: 'flex-start',
-        flexDirection: 'row',
-        justifyContent: 'flex-start',
-    },
-    label: {
-        marginTop: 5,
-        fontSize: 15,
-        fontWeight: '600',
-        alignItems: 'flex-start',
-        fontFamily: 'Inter_500Medium',
-    },
-    mlnamelabel: {
-        flexDirection: 'row',
-    },
-    info: {
-        marginLeft: -145,
-    },
-    info2: {
-        width: '90%',
-    },
-    mlabel: {
-        marginTop: 5,
-        fontSize: 15,
-        fontWeight: '600',
-        alignItems: 'flex-start',
-        fontFamily: 'Inter_500Medium',
-    },
-    llabel: {
-        marginTop: 5,
-        fontSize: 15,
-        fontWeight: '600',
-        alignItems: 'flex-start',
-        fontFamily: 'Inter_500Medium',
-        marginLeft: 28,
-    },
-    bdaylabel:{
-        marginTop: 5,
-        fontSize: 15,
-        fontWeight: '600',
-        alignItems: 'flex-start',
-        fontFamily: 'Inter_500Medium',
-        marginLeft: 103,
-    },
-    input: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '100%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 2,
-    },
-    mlname: {
-        width: '106%',
-        flexDirection: 'row',
-    },
-    minput: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '25%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 2,
-    },
-    linput: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '60%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        elevation: 2,
-        paddingLeft: 5,
-    },
-    binput: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '45%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 2,
-    },
-    dateInput: {
-        backgroundColor: '#f5f5f5',
-        padding: 15,
-        marginBottom: 15,
-        borderRadius: 5,
-        fontSize: 16,
-        borderColor: '#ddd',
-        borderWidth: 1,
-        textAlign: 'center',
-    },
-    IDButton: {
-        backgroundColor: '#cad47c',
-        paddingVertical: 15,
-        borderRadius: 5,
-        marginTop: 20,
-    },
-    id: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '90%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 2,
-    },
-    submitButton2: {
-        backgroundColor: '#ff69b4',
-        paddingVertical: 10,
-        borderRadius: 5,
-        marginTop: 15,
-        width: '60%',
-        
-    },
-    submitButton: {
-        backgroundColor: '#ff69b4',
-        paddingVertical: 10,
-        borderRadius: 5,
-        marginTop: 15,
-    },
-    submitButtonText: {
-        textAlign: 'center',
-        color: '#fff',
-        fontFamily: 'Inter_700Bold',
-        fontSize: 16,
-    },
-    label2: {
-        marginTop: 8,
-        marginBottom: 3,
-        fontSize: 15,
-        fontFamily: 'Inter',
-    },
-    successtext:{
-        fontSize: 25,
-        color: '#cad47c',
-        fontFamily: 'Inter_700Bold',
-    },
-    mContainer: {
-        width: '95%',
-        alignContent: 'center',
-        alignItems: 'center',
-        marginLeft: 10,
-    },
-    modalcontainer: {
-        alignItems: 'center',
-        alignContent: 'center'
-    },
-    error: {
-        color: 'red',
-        fontSize: 10,
-        fontFamily: 'Inter',
-        marginBottom: 5,
-    },
-    checkboxContainer: {
-        flexDirection: 'row',
-        marginTop: 10,
-        marginBottom: 10,
-    },
-    checkbox: {
-        marginRight: 10,
-    },
-    checkboxText: {
-        fontFamily: 'Inter_500Medium',
-        fontSize: 15,
     },
 });
- 
+
 export default AdoptionForm;

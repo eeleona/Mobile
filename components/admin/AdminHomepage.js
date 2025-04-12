@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, TextInput, Dimensions, ImageBackground } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, TextInput, Dimensions, ImageBackground, FlatList, Modal } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
-import {  useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
+import { useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
 import Carousel from "react-native-reanimated-carousel";
 import Animated, { Extrapolate, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 const { width } = Dimensions.get("window");
 
 const AdminHomepage = ({ navigation }) => {
+  // Navigation handlers
   const handlePet = () => { navigation.navigate('Manage Pet'); };
   const handleUser = () => { navigation.navigate('Manage User'); };
   const handleStaff = () => { navigation.navigate('Manage Staff'); };
@@ -18,8 +19,53 @@ const AdminHomepage = ({ navigation }) => {
   const handleFeedback = () => { navigation.navigate('Feedback'); };
   const handleAdoptions = () => { navigation.navigate('Manage Adoptions'); };
   const handleAdminlogs = () => { navigation.navigate('Admin Logs'); };
+  const handlePendingUsers = () => { navigation.navigate('Pending Users'); };
+  const handleVerifiedUsers = () => { navigation.navigate('Verified Users'); };
+  const handleActiveAdoptions = () => { navigation.navigate('Active Adoptions'); };
+  const handlePendingAdoptions = () => { navigation.navigate('Pending Adoptions'); };
+
+  // Search functionality
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
   const carouselRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  // Searchable items
+  const searchItems = [
+    { name: 'Adoptions', action: handleAdoptions },
+    { name: 'Active Adoptions', action: handleActiveAdoptions },
+    { name: 'Pending Adoptions', action: handlePendingAdoptions },
+    { name: 'Events', action: handleEvents },
+    { name: 'Feedback', action: handleFeedback },
+    { name: 'Nearby Services', action: handleNearby },
+    { name: 'Pets', action: handlePet },
+    { name: 'Users', action: handleUser },
+    { name: 'Pending Users', action: handlePendingUsers },
+    { name: 'Verified Users', action: handleVerifiedUsers },
+    { name: 'Staff', action: handleStaff },
+    { name: 'Admin', action: () => {} }, // Add appropriate navigation if needed
+    { name: 'Admin Logs', action: handleAdminlogs },
+  ];
+
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    if (query.length > 0) {
+      const results = searchItems.filter(item =>
+        item.name.toLowerCase().includes(query.toLowerCase())
+      );
+      setSearchResults(results);
+      setShowSearchResults(true);
+    } else {
+      setShowSearchResults(false);
+    }
+  };
+
+  const handleSearchItemPress = (action) => {
+    action();
+    setSearchQuery('');
+    setShowSearchResults(false);
+  };
 
   const slides = [
     { count: 9, label: 'Pets', image: require('../../assets/Images/card1.png') },
@@ -27,7 +73,7 @@ const AdminHomepage = ({ navigation }) => {
     { count: 1, label: 'Admin', image: require('../../assets/Images/card3.png') },
     { count: 2, label: 'Active Adoptions', image: require('../../assets/Images/card4.png') },
     { count: 3, label: 'Barangays', image: require('../../assets/Images/card5.png') },
-];
+  ];
 
   let [fontsLoaded] = useFonts({
     Inter_700Bold,
@@ -42,98 +88,113 @@ const AdminHomepage = ({ navigation }) => {
     <PaperProvider>
       <View style={styles.container}>
         <ImageBackground
-          source={require('../../assets/Images/pasayshelter.jpg')} // Replace with your image URL
+          source={require('../../assets/Images/pasayshelter.jpg')}
           style={styles.mainSection}
         >
-        {/* Gradient Overlay */}
-        <LinearGradient
-          colors={['rgb(216, 17, 133)', 'rgb(224, 118, 184)', 'rgba(248, 190, 222, 0.36)']}
-          style={styles.gradient}
-        >
-        <View style={styles.searchContainer}>
-                <Image 
-                  source={require('../../assets/Images/nobglogo.png')} 
-                  style={styles.logo} 
-                  accessibilityLabel="App logo"
+          <LinearGradient
+            colors={['rgb(216, 17, 133)', 'rgb(224, 118, 184)', 'rgba(248, 190, 222, 0.36)']}
+            style={styles.gradient}
+          >
+            <View style={styles.searchContainer}>
+              <Image 
+                source={require('../../assets/Images/nobglogo.png')} 
+                style={styles.logo} 
+                accessibilityLabel="App logo"
+              />
+              <View style={styles.searchBox}>
+                <MaterialIcons 
+                  name="search" 
+                  size={20} 
+                  color="#ff69b4" 
+                  style={styles.searchIcon} 
+                  accessibilityRole="imagebutton"
                 />
-                <View style={styles.searchBox}>
-                  <MaterialIcons 
-                    name="search" 
-                    size={20} 
-                    color="#ff69b4" 
-                    style={styles.searchIcon} 
-                    accessibilityRole="imagebutton"
-                  />
-                  <TextInput 
-                    placeholder="Search..." 
-                    placeholderTextColor="#ff69b4" 
-                    style={styles.input}
-                    accessibilityLabel="Search input"
-                  />
-                </View>
-              </View> 
-                
-        <View style={styles.welcomecontainer}>
-          <Image style={styles.pawicon} source={require('../../assets/Images/pawicon.png')}></Image>
-          <Text style={styles.welcome}>Kumusta, Ka-Paw?</Text>
-        </View>
-        {/* carousel card */}
-        
-        <View style={styles.carouselContainer}>
-        <Carousel
-          ref={carouselRef}
-          loop
-          width={width}
-          height={230}
-          data={slides}
-          autoPlay
-          autoPlayInterval={4000}
-          scrollAnimationDuration={900}
-          pagingEnabled
-          onSnapToItem={(index) => setActiveIndex(index)}
-          renderItem={({ item, index, animationValue }) => {
-            const animatedStyle = useAnimatedStyle(() => {
-              const scale = interpolate(
-                animationValue.value,
-                [-1, 0, 1],
-                [0.1, 1, 0.1],
-                Extrapolate.CLAMP
-              );
-              return { transform: [{ scale }] };
-            });
-
-            return (
-              <Animated.View style={[styles.card, animatedStyle]}>
-              
-              <View style={styles.cardTextContainer}>
-                <View style={styles.cardRow}>
-                  <Text style={styles.cardCount}>{item.count}</Text>
-                  <Text style={styles.cardLabel}>{item.label}</Text>
-                </View>
-                <Text style={styles.cardDescription}>
-                  Total number of {item.label.toLowerCase()} in E-Pet Adopt.
-                </Text>
-                
+                <TextInput 
+                  placeholder="Search..." 
+                  placeholderTextColor="#ff69b4" 
+                  style={styles.input}
+                  accessibilityLabel="Search input"
+                  value={searchQuery}
+                  onChangeText={handleSearch}
+                  onFocus={() => searchQuery.length > 0 && setShowSearchResults(true)}
+                  onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
+                />
               </View>
-              <Image source={item.image} style={styles.cardImage} />
-            </Animated.View>
+            </View> 
+            
+            {/* Search Results Modal */}
+            {showSearchResults && (
+              <View style={styles.searchResultsContainer}>
+                <FlatList
+                  data={searchResults}
+                  keyExtractor={(item) => item.name}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.searchResultItem}
+                      onPress={() => handleSearchItemPress(item.action)}
+                    >
+                      <Text style={styles.searchResultText}>{item.name}</Text>
+                    </TouchableOpacity>
+                  )}
+                  style={styles.searchResultsList}
+                />
+              </View>
+            )}
 
-            );
-          }}
-        />
+            <View style={styles.welcomecontainer}>
+              <Image style={styles.pawicon} source={require('../../assets/Images/pawicon.png')}></Image>
+              <Text style={styles.welcome}>Kumusta, Ka-Paw?</Text>
+            </View>
+            
+            <View style={styles.carouselContainer}>
+              <Carousel
+                ref={carouselRef}
+                loop
+                width={width}
+                height={230}
+                data={slides}
+                autoPlay
+                autoPlayInterval={4000}
+                scrollAnimationDuration={900}
+                pagingEnabled
+                onSnapToItem={(index) => setActiveIndex(index)}
+                renderItem={({ item, index, animationValue }) => {
+                  const animatedStyle = useAnimatedStyle(() => {
+                    const scale = interpolate(
+                      animationValue.value,
+                      [-1, 0, 1],
+                      [0.1, 1, 0.1],
+                      Extrapolate.CLAMP
+                    );
+                    return { transform: [{ scale }] };
+                  });
 
+                  return (
+                    <Animated.View style={[styles.card, animatedStyle]}>
+                      <View style={styles.cardTextContainer}>
+                        <View style={styles.cardRow}>
+                          <Text style={styles.cardCount}>{item.count}</Text>
+                          <Text style={styles.cardLabel}>{item.label}</Text>
+                        </View>
+                        <Text style={styles.cardDescription}>
+                          Total number of {item.label.toLowerCase()} in E-Pet Adopt.
+                        </Text>
+                      </View>
+                      <Image source={item.image} style={styles.cardImage} />
+                    </Animated.View>
+                  );
+                }}
+              />
 
-          {/* Custom Pagination Dots */}
-          <View style={styles.paginationContainer}>
-            {slides.map((_, index) => (
-              <View key={index} style={[styles.paginationDot, activeIndex === index && styles.activeDot]} />
-            ))}
-          </View>
-        </View>
-        </LinearGradient>
+              <View style={styles.paginationContainer}>
+                {slides.map((_, index) => (
+                  <View key={index} style={[styles.paginationDot, activeIndex === index && styles.activeDot]} />
+                ))}
+              </View>
+            </View>
+          </LinearGradient>
         </ImageBackground>
 
-        
         <View style={styles.module1}>
           <Text style={styles.serviceTitle}>Services</Text>
           <View style={styles.service}>
@@ -156,8 +217,8 @@ const AdminHomepage = ({ navigation }) => {
               <Text style={styles.labels}>Feedback</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.button} onPress={handleNearby}>
-            <View style={styles.iconcontainer}>
-              <Image style={styles.icon} source={require('../../assets/Images/managenearby.png')}/>
+              <View style={styles.iconcontainer}>
+                <Image style={styles.icon} source={require('../../assets/Images/managenearby.png')}/>
               </View>
               <Text style={styles.labels}>Nearby</Text>
             </TouchableOpacity>
@@ -181,19 +242,18 @@ const AdminHomepage = ({ navigation }) => {
             </TouchableOpacity>
             <TouchableOpacity style={styles.button} onPress={handleStaff}>
               <View style={styles.iconcontainer}>
-              <Image style={styles.icon} source={require('../../assets/Images/managestaff.png')}/>
+                <Image style={styles.icon} source={require('../../assets/Images/managestaff.png')}/>
               </View>
               <Text style={styles.labels}>Staff</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.button} onPress={handleAdminlogs}>
-            <View style={styles.iconcontainer}>
-              <Image style={styles.icon} source={require('../../assets/Images/managelogs.png')}/>
+              <View style={styles.iconcontainer}>
+                <Image style={styles.icon} source={require('../../assets/Images/managelogs.png')}/>
               </View>
               <Text style={styles.labels}>Admin Logs</Text>
             </TouchableOpacity>
           </View>
         </View>
-        
       </View>
     </PaperProvider>
   );
@@ -218,6 +278,54 @@ const styles = StyleSheet.create({
     elevation: 3,
     zIndex: 10,
     marginVertical: 5,
+  },
+  logo: {
+    width: 60,
+    height: 60,
+    resizeMode: 'contain',
+    marginRight: 10,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ff69b4',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    backgroundColor: 'white',
+  },
+  searchIcon: {
+    marginRight: 5,
+  },
+  input: {
+    flex: 1,
+    height: 40,
+    fontSize: 14,
+    color: '#ff69b4',
+  },
+  searchResultsContainer: {
+    position: 'absolute',
+    top: 110,
+    left: 10,
+    right: 10,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    elevation: 5,
+    zIndex: 20,
+    maxHeight: 300,
+  },
+  searchResultsList: {
+    padding: 10,
+  },
+  searchResultItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  searchResultText: {
+    color: '#333',
+    fontSize: 16,
   },
   logo: {
     width: 60,

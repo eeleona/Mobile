@@ -5,7 +5,6 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import config from '../../server/config/config';
 
-// Placeholder images
 const AdminImg = require('../../assets/Images/nobglogo.png');
 const UserPh = require('../../assets/Images/user.png');
 
@@ -16,8 +15,6 @@ const Messages = ({ navigation }) => {
   const [showSearchBox, setShowSearchBox] = useState(false);
   const adminId = '670a04a34f63c22acf3d8c9a';
   const [senderId, setSenderId] = useState(null);
-
-  // Initialize socket
   const socket = useRef(null);
 
   useEffect(() => {
@@ -133,12 +130,11 @@ const Messages = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Navigation Bar */}
-      <View style={styles.navBar}>
-        <Text style={styles.navTitle}>Messages</Text>
+      <View style={styles.header}>
+        <Image source={AdminImg} style={styles.logo} />
+        <Text style={styles.headerTitle}>Messages</Text>
       </View>
 
-      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -149,7 +145,6 @@ const Messages = ({ navigation }) => {
         />
       </View>
 
-      {/* User List */}
       <FlatList
         data={filteredUsers}
         renderItem={renderUserItem}
@@ -166,18 +161,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAF9F6',
   },
-  navBar: {
-    height: 60,
-    backgroundColor: '#ff69b4',
-    justifyContent: 'center',
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    height: 100,
+    backgroundColor: '#ff69b4',
+    marginTop: 35,
+    paddingHorizontal: 15,
+    height: 80,
   },
-  navTitle: {
+  logo: {
+    width: 50,
+    height: 50,
+    marginRight: 15,
+  },
+  headerTitle: {
     color: 'white',
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginTop: 40,
+    textAlign: 'left',
+    flex: 1,
   },
   searchContainer: {
     padding: 15,

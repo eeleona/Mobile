@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Checkbox, Modal, Portal, Button, PaperProvider, RadioButton } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import AppBar from '../design/AppBar';
 import config from '../../server/config/config';
-
 
 const Signup = () => {
     const navigation = useNavigation();
@@ -29,10 +27,11 @@ const Signup = () => {
         validId: null
     });
     const [errors, setErrors] = useState({});
+    const [imageError, setImageError] = useState(null);
     const [showPrivacyModal, setShowPrivacyModal] = useState(false);
     const [privacyAccepted, setPrivacyAccepted] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [datePickerVisible, setDatePickerVisible] = useState(false);
 
     // Validate form
     const validate = () => {
@@ -53,8 +52,6 @@ const Signup = () => {
             newErrors.address = "Address is required";
         if (!formData.contactNumber || !/^\+?[1-9]\d{1,14}$/.test(formData.contactNumber)) 
             newErrors.contactNumber = "Invalid contact number";
-        if (!formData.birthDate) 
-            newErrors.birthDate = "Birthdate is required";
         if (!formData.gender) 
             newErrors.gender = "Gender is required";
         if (!formData.validId) 
@@ -69,33 +66,15 @@ const Signup = () => {
         setShowPrivacyModal(true);
     };
 
-    // Compress and resize image
-    const compressImage = async (uri) => {
-        try {
-            const compressedImage = await ImageManipulator.manipulateAsync(
-                uri,
-                [{ resize: { width: 800 } }], // Resize to max width of 800px
-                { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG } // 70% quality
-            );
-            return compressedImage.uri;
-        } catch (error) {
-            console.error('Error compressing image:', error);
-            return uri; // Fallback to original if compression fails
-        }
-    };
-
     // Image picker with compression
-
     const pickImage = async (type) => {
         try {
-            // 1. Request permissions first
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
                 Alert.alert('Permission required', 'Please allow access to your photos to upload images');
                 return;
             }
 
-            // 2. Launch image picker
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaType.Images,
                 allowsEditing: true,
@@ -103,16 +82,13 @@ const Signup = () => {
                 quality: 0.7,
             });
 
-            // 3. Handle the result
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                // 4. Compress the image
                 const compressedImage = await ImageManipulator.manipulateAsync(
                     result.assets[0].uri,
                     [{ resize: { width: 800 } }],
                     { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
                 );
 
-                // 5. Update state
                 if (type === 'profile') {
                     setFormData(prev => ({ ...prev, profileImage: compressedImage.uri }));
                 } else {
@@ -126,39 +102,28 @@ const Signup = () => {
         }
     };
 
-    // Upload images to API
-    const uploadImage = async (uri, type) => {
-        const formData = new FormData();
-        formData.append('file', {
-            uri,
-            name: `${type}_${Date.now()}.jpg`,
-            type: 'image/jpeg'
-        });
-
-        try {
-            const response = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-            return response.data.url;
-        } catch (error) {
-            console.error('Image upload failed:', error);
-            throw error;
-        }
+    // Format date to YYYY-MM-DD
+    const formatDate = (date) => {
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
 
     // Final submission with privacy policy check
     const handleFinalSubmit = async () => {
-        if (!privacyAccepted) return;
+        if (!privacyAccepted) {
+            Alert.alert('Error', 'You must accept the privacy policy');
+            return;
+        }
+        
         setLoading(true);
 
         try {
-            // Prepare FormData
             const formDataToSend = new FormData();
             
-            // Append all fields to FormData
-            formDataToSend.append('pending_id', '');
+            // Append all text fields
             formDataToSend.append('p_username', formData.username);
             formDataToSend.append('p_emailadd', formData.email);
             formDataToSend.append('p_fname', formData.firstName);
@@ -169,7 +134,7 @@ const Signup = () => {
             formDataToSend.append('p_add', formData.address);
             formDataToSend.append('p_contactnumber', formData.contactNumber);
             formDataToSend.append('p_gender', formData.gender);
-            formDataToSend.append('p_birthdate', formData.birthDate.toLocaleDateString("en-GB"));
+            formDataToSend.append('p_birthdate', formatDate(formData.birthDate));
             
             // Append profile image if exists
             if (formData.profileImage) {
@@ -189,7 +154,7 @@ const Signup = () => {
                 });
             }
 
-            // Submit all data at once
+            // Submit data
             const response = await axios.post(`${config.address}/api/user/new`, formDataToSend, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
@@ -211,19 +176,27 @@ const Signup = () => {
                 [{ text: "OK", onPress: () => navigation.navigate('Login') }]
             );
         } catch (error) {
-            Alert.alert(
-                "Error",
-                error.response?.data?.message || "Registration failed. Please try again."
-            );
+            console.error('Registration error:', error);
+            const errorMessage = error.response?.data?.message || 
+                               error.message || 
+                               "Registration failed. Please try again.";
+            Alert.alert("Error", errorMessage);
         } finally {
             setLoading(false);
             setShowPrivacyModal(false);
         }
     };
 
-    // Date picker handler
-    const onChangeDate = (event, selectedDate) => {
-        setShowDatePicker(false);
+    const showDatepicker = () => {
+        setDatePickerVisible(true);
+    };
+
+    const hideDatepicker = () => {
+        setDatePickerVisible(false);
+    };
+
+    const handleDateConfirm = (event, selectedDate) => {
+        hideDatepicker();
         if (selectedDate) {
             setFormData({...formData, birthDate: selectedDate});
         }
@@ -231,16 +204,16 @@ const Signup = () => {
 
     return (
         <PaperProvider>
-        <AppBar />
-        <ScrollView style={styles.container}>
-            <LinearGradient
-                colors={['rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.7)']}
-                style={styles.gradientOverlay}
-            >
-                <Text style={styles.header}>Account Information</Text>
-                
-                {/* Profile Image */}
-                <TouchableOpacity onPress={() => pickImage('profile')}>
+            <AppBar />
+            <ScrollView style={styles.container}>
+                <LinearGradient
+                    colors={['rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.7)']}
+                    style={styles.gradientOverlay}
+                >
+                    <Text style={styles.header}>Account Information</Text>
+                    
+                    {/* Profile Image */}
+                    <TouchableOpacity onPress={() => pickImage('profile')}>
                         <View style={styles.profileImageContainer}>
                             {formData.profileImage ? (
                                 <Image source={{ uri: formData.profileImage }} style={styles.profileImage} />
@@ -253,184 +226,182 @@ const Signup = () => {
                     </TouchableOpacity>
                     {imageError && <Text style={styles.error}>{imageError}</Text>}
 
-                {/* Username */}
-                <Text style={styles.label}>Username</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Enter username"
-                    value={formData.username}
-                    onChangeText={(text) => setFormData({...formData, username: text})}
-                />
-                {errors.username && <Text style={styles.error}>{errors.username}</Text>}
-
-                {/* Email */}
-                <Text style={styles.label}>Email Address</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Enter email"
-                    keyboardType="email-address"
-                    value={formData.email}
-                    onChangeText={(text) => setFormData({...formData, email: text})}
-                />
-                {errors.email && <Text style={styles.error}>{errors.email}</Text>}
-
-                {/* Password Fields */}
-                <View style={styles.row}>
-                    <View style={styles.passwordInput}>
-                        <Text style={styles.label}>Password</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Password"
-                            secureTextEntry
-                            value={formData.password}
-                            onChangeText={(text) => setFormData({...formData, password: text})}
-                        />
-                        {errors.password && <Text style={styles.error}>{errors.password}</Text>}
-                    </View>
-                    <View style={styles.passwordInput}>
-                        <Text style={styles.label}>Confirm Password</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Confirm password"
-                            secureTextEntry
-                            value={formData.confirmPassword}
-                            onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
-                        />
-                        {errors.confirmPassword && <Text style={styles.error}>{errors.confirmPassword}</Text>}
-                    </View>
-                </View>
-
-                <Text style={styles.header2}>Personal Information</Text>
-                {/* Name Fields - Updated with Middle Initial first */}
-                <View style={styles.row}>
-                    <View style={styles.firstNameInput}>
-                        <Text style={styles.label}>First Name</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="First name"
-                            value={formData.firstName}
-                            onChangeText={(text) => setFormData({...formData, firstName: text})}
-                        />
-                        {errors.firstName && <Text style={styles.error}>{errors.firstName}</Text>}
-                    </View>
-                    <View style={styles.middleNameInput}>
-                        <Text style={styles.label}>M.I.</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="M.I."
-                            value={formData.middleName}
-                            onChangeText={(text) => setFormData({...formData, middleName: text})}
-                            maxLength={1}
-                        />
-                    </View>
-                </View>
-                <View style={styles.lastNameInput}>
-                    <Text style={styles.label}>Last Name</Text>
+                    {/* Username */}
+                    <Text style={styles.label}>Username</Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="Last name"
-                        value={formData.lastName}
-                        onChangeText={(text) => setFormData({...formData, lastName: text})}
+                        placeholder="Enter username"
+                        value={formData.username}
+                        onChangeText={(text) => setFormData({...formData, username: text})}
                     />
-                    {errors.lastName && <Text style={styles.error}>{errors.lastName}</Text>}
-                </View>
+                    {errors.username && <Text style={styles.error}>{errors.username}</Text>}
 
-                {/* Address */}
-                <Text style={styles.label}>Address</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Complete address"
-                    value={formData.address}
-                    onChangeText={(text) => setFormData({...formData, address: text})}
-                />
-                {errors.address && <Text style={styles.error}>{errors.address}</Text>}
+                    {/* Email */}
+                    <Text style={styles.label}>Email Address</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Enter email"
+                        keyboardType="email-address"
+                        value={formData.email}
+                        onChangeText={(text) => setFormData({...formData, email: text})}
+                    />
+                    {errors.email && <Text style={styles.error}>{errors.email}</Text>}
 
-                {/* Contact and Birthdate */}
-                <View style={styles.row}>
-                    <View style={styles.halfInput}>
-                        <Text style={styles.label}>Contact Number</Text>
+                    {/* Password Fields */}
+                    <View style={styles.row}>
+                        <View style={styles.passwordInput}>
+                            <Text style={styles.label}>Password</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Password"
+                                secureTextEntry
+                                value={formData.password}
+                                onChangeText={(text) => setFormData({...formData, password: text})}
+                            />
+                            {errors.password && <Text style={styles.error}>{errors.password}</Text>}
+                        </View>
+                        <View style={styles.passwordInput}>
+                            <Text style={styles.label}>Confirm Password</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Confirm password"
+                                secureTextEntry
+                                value={formData.confirmPassword}
+                                onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
+                            />
+                            {errors.confirmPassword && <Text style={styles.error}>{errors.confirmPassword}</Text>}
+                        </View>
+                    </View>
+
+                    <Text style={styles.header2}>Personal Information</Text>
+                    
+                    {/* Name Fields */}
+                    <View style={styles.row}>
+                        <View style={styles.firstNameInput}>
+                            <Text style={styles.label}>First Name</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="First name"
+                                value={formData.firstName}
+                                onChangeText={(text) => setFormData({...formData, firstName: text})}
+                            />
+                            {errors.firstName && <Text style={styles.error}>{errors.firstName}</Text>}
+                        </View>
+                        <View style={styles.middleNameInput}>
+                            <Text style={styles.label}>M.I.</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="M.I."
+                                value={formData.middleName}
+                                onChangeText={(text) => setFormData({...formData, middleName: text})}
+                                maxLength={1}
+                            />
+                        </View>
+                    </View>
+                    <View style={styles.lastNameInput}>
+                        <Text style={styles.label}>Last Name</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="+63"
-                            keyboardType="phone-pad"
-                            value={formData.contactNumber}
-                            onChangeText={(text) => setFormData({...formData, contactNumber: text})}
+                            placeholder="Last name"
+                            value={formData.lastName}
+                            onChangeText={(text) => setFormData({...formData, lastName: text})}
                         />
-                        {errors.contactNumber && <Text style={styles.error}>{errors.contactNumber}</Text>}
+                        {errors.lastName && <Text style={styles.error}>{errors.lastName}</Text>}
                     </View>
-                    <View style={styles.halfInput}>
-                        <Text style={styles.label}>Birthdate</Text>
-                        <TouchableOpacity 
-                            style={styles.input} 
-                            onPress={() => setShowDatePicker(true)}
-                        >
-                            <Text>{formData.birthDate.toLocaleDateString()}</Text>
-                        </TouchableOpacity>
-                        {showDatePicker && (
-                            <DateTimePicker
-                                value={formData.birthDate}
-                                mode="date"
-                                display="default"
-                                onChange={onChangeDate}
+
+                    {/* Address */}
+                    <Text style={styles.label}>Address</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Complete address"
+                        value={formData.address}
+                        onChangeText={(text) => setFormData({...formData, address: text})}
+                    />
+                    {errors.address && <Text style={styles.error}>{errors.address}</Text>}
+
+                    {/* Contact and Birthdate */}
+                    <View style={styles.row}>
+                        <View style={styles.halfInput}>
+                            <Text style={styles.label}>Contact Number</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="+63"
+                                keyboardType="phone-pad"
+                                value={formData.contactNumber}
+                                onChangeText={(text) => setFormData({...formData, contactNumber: text})}
                             />
+                            {errors.contactNumber && <Text style={styles.error}>{errors.contactNumber}</Text>}
+                        </View>
+                        <View style={styles.halfInput}>
+                            <Text style={styles.label}>Birthdate</Text>
+                            <TouchableOpacity 
+                                style={styles.input} 
+                                onPress={showDatepicker}
+                            >
+                                <Text>{formData.birthDate.toLocaleDateString()}</Text>
+                            </TouchableOpacity>
+                            {errors.birthDate && <Text style={styles.error}>{errors.birthDate}</Text>}
+                        </View>
+                    </View>
+
+                    {/* Gender */}
+                    <Text style={styles.label}>Gender</Text>
+                    <View style={styles.radioGroup}>
+                        <View style={styles.radioButton}>
+                            <RadioButton
+                                value="Male"
+                                status={formData.gender === 'Male' ? 'checked' : 'unchecked'}
+                                onPress={() => setFormData({...formData, gender: 'Male'})}
+                            />
+                            <Text style={styles.radioLabel}>Male</Text>
+                        </View>
+                        <View style={styles.radioButton}>
+                            <RadioButton
+                                value="Female"
+                                status={formData.gender === 'Female' ? 'checked' : 'unchecked'}
+                                onPress={() => setFormData({...formData, gender: 'Female'})}
+                            />
+                            <Text style={styles.radioLabel}>Female</Text>
+                        </View>
+                    </View>
+                    {errors.gender && <Text style={styles.error}>{errors.gender}</Text>}
+
+                    {/* Valid ID Upload */}
+                    <Text style={styles.label}>Valid ID</Text>
+                    <TouchableOpacity 
+                        style={styles.uploadButton}
+                        onPress={() => pickImage('id')}
+                    >
+                        <Text style={styles.uploadButtonText}>
+                            {formData.validId ? 'Change Valid ID' : 'Upload Valid ID'}
+                        </Text>
+                    </TouchableOpacity>
+                    {formData.validId && (
+                        <View style={styles.validIdPreview}>
+                            <Image 
+                                source={{ uri: formData.validId }} 
+                                style={styles.validIdImage} 
+                                resizeMode="contain"
+                            />
+                        </View>
+                    )}
+                    {errors.validId && <Text style={styles.error}>{errors.validId}</Text>}
+
+                    {/* Submit Button */}
+                    <TouchableOpacity 
+                        style={styles.submitButton}
+                        onPress={handleSubmit}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text style={styles.submitButtonText}>Sign Up</Text>
                         )}
-                        {errors.birthDate && <Text style={styles.error}>{errors.birthDate}</Text>}
-                    </View>
-                </View>
+                    </TouchableOpacity>
 
-                {/* Gender - Updated with Radio Buttons */}
-                <Text style={styles.label}>Gender</Text>
-                <View style={styles.radioGroup}>
-                    <View style={styles.radioButton}>
-                        <RadioButton
-                            value="Male"
-                            status={formData.gender === 'Male' ? 'checked' : 'unchecked'}
-                            onPress={() => setFormData({...formData, gender: 'Male'})}
-                        />
-                        <Text style={styles.radioLabel}>Male</Text>
-                    </View>
-                    <View style={styles.radioButton}>
-                        <RadioButton
-                            value="Female"
-                            status={formData.gender === 'Female' ? 'checked' : 'unchecked'}
-                            onPress={() => setFormData({...formData, gender: 'Female'})}
-                        />
-                        <Text style={styles.radioLabel}>Female</Text>
-                    </View>
-                </View>
-                {errors.gender && <Text style={styles.error}>{errors.gender}</Text>}
-
-                {/* Valid ID Upload */}
-                <Text style={styles.label}>Valid ID</Text>
-                <TouchableOpacity 
-                    style={styles.uploadButton}
-                    onPress={() => pickImage('id')}
-                >
-                    <Text style={styles.uploadButtonText}>
-                        {formData.validId ? 'Change Valid ID' : 'Upload Valid ID'}
-                    </Text>
-                </TouchableOpacity>
-                {formData.validId && (
-                    <View style={styles.validIdPreview}>
-                        <Image 
-                            source={{ uri: formData.validId }} 
-                            style={styles.validIdImage} 
-                            resizeMode="contain"
-                        />
-                    </View>
-                )}
-                {errors.validId && <Text style={styles.error}>{errors.validId}</Text>}
-
-                {/* Submit Button */}
-                <TouchableOpacity 
-                    style={styles.submitButton}
-                    onPress={handleSubmit}
-                >
-                    <Text style={styles.submitButtonText}>Sign Up</Text>
-                </TouchableOpacity>
-
-                {/* Privacy Modal */}
-                <Portal>
+                    {/* Privacy Modal */}
+                    <Portal>
                         <Modal 
                             visible={showPrivacyModal} 
                             onDismiss={() => setShowPrivacyModal(false)}
@@ -480,8 +451,8 @@ const Signup = () => {
                             </ScrollView>
                         </Modal>
                     </Portal>
-            </LinearGradient>
-        </ScrollView>
+                </LinearGradient>
+            </ScrollView>
         </PaperProvider>
     );
 };
@@ -625,7 +596,7 @@ const styles = StyleSheet.create({
         borderRadius: 5,
     },
     modalContent: {
-        maxHeight: '100%',
+        maxHeight: '80%',
     },
     modalTitle: {
         fontSize: 20,

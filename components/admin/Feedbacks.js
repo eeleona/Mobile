@@ -294,7 +294,7 @@ const Feedbacks = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FAF9F6',
     
   },
   screenTitle: {

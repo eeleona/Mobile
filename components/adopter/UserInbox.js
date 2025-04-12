@@ -1,58 +1,69 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView } from 'react-native';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
 import { jwtDecode } from 'jwt-decode';
+import axios from 'axios';
+import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import RecepientLogo from '../../assets/Images/nobglogo.png';
 import config from '../../server/config/config';
 
-const UserPh = require('../../assets/Images/user.png');
-
-const UserInbox = ({ navigation }) => {
-  const [conversations, setConversations] = useState([]);
-  const [userId, setUserId] = useState(null);
+const AdminImg = require('../../assets/Images/nobglogo.png');
+const UserInbox = () => {
+  const navigation = useNavigation();
+  const [senderId, setSenderId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchConversations = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
+    const fetchUserData = async () => {
       try {
-        const decoded = jwtDecode(token);
-        setUserId(decoded.id);
+        const token = await AsyncStorage.getItem('token');
+        if (!token) {
+          setLoading(false);
+          return;
+        }
 
-        const res = await axios.get(`${config.address}/api/messages/inbox/${decoded.id}`);
-        setConversations(res.data); // Assume your backend returns an array of { receiverId, receiverName, receiverImage, lastMessage }
-      } catch (err) {
-        console.error('Error fetching inbox:', err);
+        const decodedToken = jwtDecode(token);
+        setSenderId(decodedToken.id);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchConversations();
+    fetchUserData();
   }, []);
 
-  const handleChatPress = (conversation) => {
-    navigation.navigate('ChatScreen', {
-      receiverId: conversation.receiverId,
-      receiverName: conversation.receiverName,
-      receiverImage: conversation.receiverImage,
+  const handleChatPress = () => {
+    navigation.navigate('Message Shelter', {
+      senderId: 'sampleSenderId', // Temporary hardcoded value for testing
+      receiverId: '670a04a34f63c22acf3d8c9a', // Admin's fixed ID
     });
   };
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Inbox</Text>
-      {conversations.map((conv, index) => (
-        <TouchableOpacity key={index} style={styles.chatPreview} onPress={() => handleChatPress(conv)}>
-          <Image
-            source={conv.receiverImage ? { uri: `${config.address}${conv.receiverImage}` } : UserPh}
-            style={styles.avatar}
-          />
-          <View style={styles.textContainer}>
-            <Text style={styles.name}>{conv.receiverName}</Text>
-            <Text style={styles.message} numberOfLines={1}>{conv.lastMessage}</Text>
-          </View>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
+    <View style={styles.container}>
+      <View style={styles.header}>
+              <Image source={AdminImg} style={styles.logo} />
+              <Text style={styles.headerTitle}>Messages</Text>
+            </View>
+      
+      <TouchableOpacity style={styles.chatItem} onPress={handleChatPress}>
+        <Image source={RecepientLogo} style={styles.chatImage} />
+        <View style={styles.chatContent}>
+          <Text style={styles.chatName}>Pasay City Animal Shelter</Text>
+          <Text style={styles.chatPreview}>Tap to view messages</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
   );
 };
 
@@ -60,37 +71,56 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingHorizontal: 10,
   },
   header: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginVertical: 15,
-    color: '#FF66C4',
-  },
-  chatPreview: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomColor: '#eee',
-    borderBottomWidth: 1,
+    backgroundColor: '#ff69b4',
+    marginTop: 35,
+    paddingHorizontal: 15,
+    height: 80,
   },
-  avatar: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-    marginRight: 10,
+  logo: {
+    width: 50,
+    height: 50,
+    marginRight: 15,
   },
-  textContainer: {
+  headerTitle: {
+    color: 'white',
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlign: 'left',
     flex: 1,
   },
-  name: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+ 
+  chatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+  },
+  chatImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+  },
+  chatContent: {
+    flex: 1,
+  },
+  chatName: {
     fontWeight: 'bold',
     fontSize: 16,
   },
-  message: {
-    fontSize: 14,
+  chatPreview: {
     color: '#666',
+    marginTop: 4,
   },
 });
 

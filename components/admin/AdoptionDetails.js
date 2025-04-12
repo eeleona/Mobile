@@ -11,6 +11,35 @@ const AdoptionDetails = ({ route }) => {
     let [fontsLoaded] = useFonts({ Inter_700Bold, Inter_500Medium });
     if (!fontsLoaded) return null;
 
+    const renderStatusBar = (status) => {
+        const stages = ['Submitted', 'Accepted/Rejected', 'Completed'];
+        const currentStageIndex = {
+            submitted: 0,
+            accepted: 1,
+            rejected: 1,
+            completed: 2,
+        }[status?.toLowerCase()] ?? 0;
+
+        return (
+            <View style={styles.statusBar}>
+                {stages.map((stage, index) => {
+                    const isActive = index <= currentStageIndex;
+                    return (
+                        <View key={index} style={styles.stageContainer}>
+                            <View style={[styles.circle, isActive && styles.activeCircle]} />
+                            <Text style={[styles.stageText, isActive && styles.activeStageText]}>
+                                {stage}
+                            </Text>
+                            {index < stages.length - 1 && (
+                                <View style={[styles.line, isActive && styles.activeLine]} />
+                            )}
+                        </View>
+                    );
+                })}
+            </View>
+        );
+    };
+
     return (
         <View style={styles.container}>
             <AppBar title="Adoption Details" onBackPress={() => navigation.goBack()} />
@@ -37,6 +66,7 @@ const AdoptionDetails = ({ route }) => {
                         <Image 
                             source={{ uri: `${config.address}${adoption.p_id.pet_img[0]}` }} 
                             style={styles.petImage} 
+                            resizeMode="cover"
                         />
                     ) : (
                         <View style={styles.imagePlaceholder}>
@@ -71,20 +101,20 @@ const AdoptionDetails = ({ route }) => {
                     <DetailRow label="Address:" value={adoption.v_id?.v_add} />
                     <DetailRow label="Birthdate:" value={adoption.v_id?.v_birthdate} />
                     <DetailRow label="Gender:" value={adoption.v_id?.v_gender} />
+                    <DetailRow label="Occupation:" value={adoption.occupation} />
                 </View>
 
                 {/* Household Details */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Household Information</Text>
                     <Divider style={styles.sectionDivider} />
-                    <DetailRow label="Occupation:" value={adoption.occupation} />
                     <DetailRow label="Years in current address:" value={adoption.years_resided} />
-                    <DetailRow label="Adults in household:" value={adoption.adutls_in_household} />
+                    <DetailRow label="Adults in household:" value={adoption.adults_in_household} />
                     <DetailRow label="Children in household:" value={adoption.children_in_household} />
                     <DetailRow label="Allergic to pets:" value={adoption.allergic_to_pets} />
                     <DetailRow label="Home type:" value={adoption.home_type} />
                     <View style={styles.householdDescription}>
-                        <Text style={styles.detailLabel}>Household Description:</Text>
+                        <Text style={styles.detailLabel}>Household Description: </Text>
                         <Text style={styles.descriptionText}>{adoption.household_description}</Text>
                     </View>
                 </View>
@@ -201,6 +231,41 @@ const styles = StyleSheet.create({
         color: '#333',
         marginTop: 4,
         fontFamily: 'Inter_500Medium',
+    },
+    statusBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 16,
+    },
+    stageContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    circle: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: '#ccc',
+        marginRight: 8,
+    },
+    activeCircle: {
+        backgroundColor: '#ff69b4',
+    },
+    stageText: {
+        fontSize: 12,
+        color: '#ccc',
+    },
+    activeStageText: {
+        color: '#ff69b4',
+    },
+    line: {
+        width: 20,
+        height: 2,
+        backgroundColor: '#ccc',
+    },
+    activeLine: {
+        backgroundColor: '#ff69b4',
     },
 });
 

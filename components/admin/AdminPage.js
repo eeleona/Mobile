@@ -144,19 +144,19 @@ const styles = StyleSheet.create({
   
   tabBar: {
     position: 'absolute',
-    bottom: 25,
+    bottom: 20,
     left: 10,
     right: 10,
     backgroundColor: 'white',
     elevation: 3,
     height: 60,
-    borderRadius: 20,
+    borderRadius: 8,
     justifyContent: 'center',
   },
   tabIndicator: {
     backgroundColor: '#ff69b4',
     height: '100%',
-    borderRadius: 20,
+    borderRadius: 8,
   },
   tabLabel: {
     fontSize: 12,
@@ -176,7 +176,10 @@ const styles = StyleSheet.create({
     padding: 20,
     width: '80%',
     alignItems: 'center',
+    zIndex: 1000, // <-- add this
+    elevation: 10, // <-- add this
   },
+  
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',

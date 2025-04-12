@@ -1,32 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground, ActivityIndicator, Image } from 'react-native';
-import { Appbar } from 'react-native-paper';
-import AppBar from '../design/AppBar';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl, ImageBackground } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import config from '../../server/config/config';
-import { useNavigation } from '@react-navigation/native';
-
+import AppBar from '../design/AppBar';
 
 const UserEvents = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
 
+  const fetchEvents = async () => {
+    try {
+      const response = await axios.get(`${config.address}/api/events/all`);
+      // Filter events with images as in original
+      const eventsWithImages = (response.data?.theEvent || []).filter(event => event.e_image);
+      setEvents(eventsWithImages);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchEvents();
+  };
 
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const response = await axios.get(`${config.address}/api/events/all`);
-        // Filter events with images
-        const eventsWithImages = (response.data?.theEvent || []).filter(event => event.e_image);
-        setEvents(eventsWithImages);
-      } catch (error) {
-        console.error('Error fetching events:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchEvents();
   }, []);
 
@@ -80,7 +84,17 @@ const UserEvents = () => {
     >
       <View style={styles.overlay}>
         <AppBar />
-        <ScrollView style={styles.container}>
+        <ScrollView 
+          style={styles.container}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#F9739A']}
+              tintColor="#F9739A"
+            />
+          }
+        >
           <Text style={styles.headerText}>UPCOMING EVENTS</Text>
           <Text style={styles.subHeaderText}>at Pasay Animal Shelter</Text>
           
@@ -91,11 +105,10 @@ const UserEvents = () => {
               <TouchableOpacity
                 key={event._id}
                 activeOpacity={0.9}
-                onPress={() => navigation.navigate('Event Details', { eventId: event._id })}
+                onPress={() => navigation.navigate('Event Details', { event })}
               >
                 <EventItem event={event} />
               </TouchableOpacity>
-
             ))
           ) : (
             <View style={styles.noEventsContainer}>
@@ -106,8 +119,6 @@ const UserEvents = () => {
               <Text style={styles.noEventsText}>No upcoming events</Text>
             </View>
           )}
-
-          
         </ScrollView>
       </View>
     </ImageBackground>
@@ -218,27 +229,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#888',
     fontFamily: 'Inter_500Medium',
-  },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginVertical: 25,
-    alignItems: 'center',
-  },
-  paginationButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-  },
-  pageLink: {
-    fontSize: 16,
-    color: '#F9739A',
-    fontFamily: 'Inter_700Bold',
-  },
-  pageNumber: {
-    fontSize: 16,
-    color: '#333',
-    fontFamily: 'Inter_500Medium',
-    marginHorizontal: 15,
   },
   loader: {
     marginVertical: 40,

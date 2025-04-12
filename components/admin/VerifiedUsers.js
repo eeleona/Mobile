@@ -1,26 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, Image, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import axios from 'axios';
-import { PaperProvider, Appbar } from 'react-native-paper';
+import { PaperProvider, ActivityIndicator } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import config from '../../server/config/config';
+import { MaterialIcons } from '@expo/vector-icons';
+import AppBar from '../design/AppBar';
 
 const VerifiedUsers = () => {
   const [allUsers, setAllUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
 
   const fetchUsers = async () => {
     try {
-      setRefreshing(true);
       const response = await axios.get(`${config.address}/api/verified/all`);
       setAllUsers(response.data.users);
     } catch (error) {
       console.error('Error fetching verified users:', error);
-      Alert.alert('Error', 'Failed to fetch users.');
     } finally {
+      setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchUsers();
   };
 
   useEffect(() => {
@@ -53,19 +60,45 @@ const VerifiedUsers = () => {
     );
   };
 
+  if (loading) {
+    return (
+      <PaperProvider>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator 
+            animating={true} 
+            size="large" 
+            color="#ff69b4"
+            style={styles.loadingIndicator}
+          />
+          <Text style={styles.loadingText}>Loading users...</Text>
+        </View>
+      </PaperProvider>
+    );
+  }
+
   return (
     <PaperProvider>
       <View style={styles.container}>
+        
         <FlatList
           data={allUsers}
           renderItem={renderItem}
           keyExtractor={(item) => item._id || Math.random().toString()}
           contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No verified users found.</Text>
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#ff69b4']}
+              tintColor="#ff69b4"
+            />
           }
-          refreshing={refreshing}
-          onRefresh={fetchUsers}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <MaterialIcons name="people-outline" size={50} color="#ccc" />
+              <Text style={styles.emptyText}>No verified users found</Text>
+            </View>
+          }
         />
       </View>
     </PaperProvider>
@@ -77,14 +110,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAF9F6',
   },
-  appbar: {
-    backgroundColor: '#ff69b4',
-    elevation: 0,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
-  appbarTitle: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
+  loadingIndicator: {
+    marginBottom: 16,
+  },
+  loadingText: {
+    color: '#ff69b4',
+    fontSize: 16,
+    fontWeight: '500',
   },
   userContainer: {
     flexDirection: 'row',
@@ -93,7 +131,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 12,
     marginVertical: 6,
-    marginHorizontal: 12,
+    marginHorizontal: 16,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -129,11 +167,17 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingTop: 10,
   },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
   emptyText: {
-    textAlign: 'center',
     fontSize: 16,
-    color: 'gray',
-    marginTop: 30,
+    color: '#999',
+    marginTop: 16,
+    textAlign: 'center',
   },
 });
 

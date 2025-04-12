@@ -14,10 +14,10 @@ const AdoptionProcess = () => {
           The adoption will be processed by the shelter.
           Please check your inbox/email regularly for an update.
         </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Message')} style={[styles.button, { backgroundColor: '#cad47c' }]}>
+        <TouchableOpacity onPress={() => navigation.navigate('User Inbox')} style={[styles.button, { backgroundColor: '#cad47c' }]}>
           <Text style={styles.buttonText}>Contact the shelter</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Adopt')} style={[styles.button, { backgroundColor: '#ff69b4' }]}>
+        <TouchableOpacity onPress={() => navigation.navigate('user Homepage')} style={[styles.button, { backgroundColor: '#ff69b4' }]}>
           <Text style={styles.buttonText}>Back to Home</Text>
         </TouchableOpacity>
       </View>

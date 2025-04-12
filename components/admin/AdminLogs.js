@@ -6,16 +6,19 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import axios from 'axios';
 import config from '../../server/config/config';
 import AppBar from '../design/AppBar';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const AdminLogs = () => {
   const [logs, setLogs] = useState([]);
   const [filteredLogs, setFilteredLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedUser, setSelectedUser] = useState('');
@@ -31,6 +34,7 @@ const AdminLogs = () => {
 
   const fetchLogs = async () => {
     try {
+      setRefreshing(true);
       const response = await axios.get(`${config.address}/api/logs/all`);
       const data = response.data;
       setLogs(data);
@@ -39,7 +43,13 @@ const AdminLogs = () => {
       console.error('Error fetching logs:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchLogs();
   };
 
   useEffect(() => {
@@ -50,7 +60,8 @@ const AdminLogs = () => {
     const filtered = logs.filter(log => {
       const logDate = new Date(log.timestamp).toISOString().split('T')[0];
       const matchDate = selectedDate === 'All' || !selectedDate ? true : logDate === selectedDate;
-      const matchUser = selectedUser === 'All' || !selectedUser ? true : log.userId === selectedUser;
+      const matchUser = selectedUser === 'All' || !selectedUser ? true : 
+        (log.adminId?.a_username || 'N/A') === selectedUser;
       const matchAction = selectedAction === 'All' || !selectedAction ? true : log.action === selectedAction;
       return matchDate && matchUser && matchAction;
     });
@@ -75,11 +86,11 @@ const AdminLogs = () => {
   const renderLogItem = ({ item }) => (
     <View style={styles.logItem}>
       <Text style={styles.logText}><Text style={styles.bold}>Action:</Text> {item.action} {item.entity}</Text>
-      <Text style={styles.logText}><Text style={styles.bold}>User:</Text> {item.userId || 'N/A'}</Text>
+      <Text style={styles.logText}><Text style={styles.bold}>User:</Text> {item.adminId?.a_username || 'N/A'}</Text>
       <Text style={styles.logText}><Text style={styles.bold}>Time:</Text> {new Date(item.timestamp).toLocaleString()}</Text>
-      {item.details && (
+      {item.description && (
         <Text style={styles.logText}>
-          <Text style={styles.bold}>Details:</Text> {JSON.stringify(item.description)}
+          <Text style={styles.bold}>Details:</Text> {item.description}
         </Text>
       )}
     </View>
@@ -87,15 +98,15 @@ const AdminLogs = () => {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#0B3D24" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#ff69b4" />
         <Text style={styles.loadingText}>Fetching Admin Logs...</Text>
       </View>
     );
   }
 
   const uniqueDates = ['All', ...new Set(logs.map(log => new Date(log.timestamp).toISOString().split('T')[0]))];
-  const uniqueUsers = ['All', ...new Set(logs.map(log => log.userId || 'N/A'))];
+  const uniqueUsers = ['All', ...new Set(logs.map(log => log.adminId?.a_username || 'N/A'))];
   const uniqueActions = ['All', ...new Set(logs.map(log => log.action))];
 
   return (
@@ -163,22 +174,47 @@ const AdminLogs = () => {
         renderItem={renderLogItem}
         keyExtractor={(item, index) => item._id || index.toString()}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={<Text style={styles.emptyText}>No logs found.</Text>}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#ff69b4']}
+            tintColor="#ff69b4"
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="history" size={50} color="#ccc" />
+            <Text style={styles.emptyText}>No logs found</Text>
+          </View>
+        }
       />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F4F4F4' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 10, fontSize: 16, color: '#333' },
-
+  container: { 
+    flex: 1, 
+    backgroundColor: '#FAF9F6' 
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: { 
+    marginTop: 10, 
+    fontSize: 16, 
+    color: '#ff69b4',
+    fontWeight: '500',
+  },
   filterRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingVertical: 10,
-    backgroundColor: '#fff',
+    backgroundColor: '#FAF9F6',
     zIndex: 1,
   },
   filterButton: {
@@ -209,8 +245,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 6,
   },
-
-  listContent: { padding: 10 },
+  listContent: { 
+    padding: 16,
+    paddingBottom: 32,
+  },
   logItem: {
     backgroundColor: '#fff',
     padding: 16,
@@ -227,11 +265,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#222',
   },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
   emptyText: {
-    textAlign: 'center',
-    marginTop: 40,
     fontSize: 16,
-    color: '#888',
+    color: '#999',
+    marginTop: 16,
+    textAlign: 'center',
   },
 });
 
