@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#FAF9F6',
   },
   loadingIndicator: {
     marginBottom: 16,
@@ -176,7 +176,6 @@ const styles = StyleSheet.create({
   pawIcon: {
     width: 80,
     height: 80,
-    opacity: 0.3,
     marginBottom: 15,
   },
   emptyText: {
