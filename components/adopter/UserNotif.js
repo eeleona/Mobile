@@ -8,7 +8,8 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
-  TouchableOpacity
+  TouchableOpacity,
+  SafeAreaView
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -152,7 +153,8 @@ const UserNotif = ({ navigation }) => {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <View style={{ backgroundColor: '#fff' }}>
       <View style={styles.header}>
         <Image source={AdminImg} style={styles.logo} />
         <Text style={styles.headerTitle}>Notifications</Text>
@@ -173,21 +175,22 @@ const UserNotif = ({ navigation }) => {
           />
         }
       />
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF9F6',
+    backgroundColor: '#ff69b4',
   },
   
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ff69b4',
-    marginTop: 35,
+    // marginTop: 35,
     paddingHorizontal: 15,
     height: 80,
   },

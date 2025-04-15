@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Checkbox, Modal, Portal, Button, PaperProvider, RadioButton } from 'react-native-paper';
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import AppBar from '../design/AppBar';
 import config from '../../server/config/config';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const Signup = () => {
     const navigation = useNavigation();
@@ -31,9 +33,8 @@ const Signup = () => {
     const [showPrivacyModal, setShowPrivacyModal] = useState(false);
     const [privacyAccepted, setPrivacyAccepted] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [datePickerVisible, setDatePickerVisible] = useState(false);
+    const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
 
-    // Validate form
     const validate = () => {
         const newErrors = {};
         if (!formData.username || formData.username.length < 3) 
@@ -68,26 +69,30 @@ const Signup = () => {
         setShowPrivacyModal(true);
     };
 
-    // Image picker with compression
+    // Enhanced Image Picker with better error handling
     const pickImage = async (type) => {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission required', 'Please allow access to your photos to upload images');
+                Alert.alert(
+                    'Permission Required',
+                    'We need access to your photos to upload images',
+                    [{ text: 'OK', onPress: () => console.log('Permission denied') }]
+                );
                 return;
             }
 
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaType.Images,
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.7,
+                aspect: type === 'profile' ? [1, 1] : [4, 3],
+                quality: 0.8,
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const compressedImage = await ImageManipulator.manipulateAsync(
                     result.assets[0].uri,
-                    [{ resize: { width: 800 } }],
+                    [{ resize: { width: type === 'profile' ? 500 : 800 } }],
                     { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
                 );
 
@@ -104,7 +109,20 @@ const Signup = () => {
         }
     };
 
-    // Final submission with privacy policy check
+    // Date Picker Functions
+    const showDatePicker = () => {
+        setDatePickerVisibility(true);
+    };
+
+    const hideDatePicker = () => {
+        setDatePickerVisibility(false);
+    };
+
+    const handleDateConfirm = (date) => {
+        setFormData({...formData, birthDate: date});
+        hideDatePicker();
+    };
+
     const handleFinalSubmit = async () => {
         if (!privacyAccepted) {
             Alert.alert('Error', 'You must accept the privacy policy');
@@ -198,21 +216,6 @@ const Signup = () => {
         }
     };
 
-    const showDatepicker = () => {
-        setDatePickerVisible(true);
-    };
-
-    const hideDatepicker = () => {
-        setDatePickerVisible(false);
-    };
-
-    const handleDateConfirm = (event, selectedDate) => {
-        hideDatepicker();
-        if (selectedDate) {
-            setFormData({...formData, birthDate: selectedDate});
-        }
-    };
-
     return (
         <PaperProvider>
             <AppBar />
@@ -223,63 +226,76 @@ const Signup = () => {
                 >
                     <Text style={styles.header}>Account Information</Text>
                     
-                    {/* Profile Image */}
-                    <TouchableOpacity onPress={() => pickImage('profile')}>
-                        <View style={styles.profileImageContainer}>
+                    {/* Enhanced Profile Image Picker */}
+                    <View style={styles.profileImageContainer}>
+                        <TouchableOpacity onPress={() => pickImage('profile')} style={styles.profileImageWrapper}>
                             {formData.profileImage ? (
                                 <Image source={{ uri: formData.profileImage }} style={styles.profileImage} />
                             ) : (
                                 <View style={styles.profileImagePlaceholder}>
-                                    <Text style={styles.placeholderText}>+</Text>
+                                    <MaterialIcons name="add-a-photo" size={32} color="#ff69b4" />
+                                    <Text style={styles.placeholderText}>Add Profile Photo</Text>
                                 </View>
                             )}
-                        </View>
-                    </TouchableOpacity>
+                        </TouchableOpacity>
+                    </View>
                     {imageError && <Text style={styles.error}>{imageError}</Text>}
 
                     {/* Username */}
                     <Text style={styles.label}>Username</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter username"
-                        value={formData.username}
-                        onChangeText={(text) => setFormData({...formData, username: text})}
-                    />
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter username"
+                            value={formData.username}
+                            onChangeText={(text) => setFormData({...formData, username: text})}
+                        />
+                        <MaterialIcons name="person" size={20} color="#888" style={styles.inputIcon} />
+                    </View>
                     {errors.username && <Text style={styles.error}>{errors.username}</Text>}
 
                     {/* Email */}
                     <Text style={styles.label}>Email Address</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter email"
-                        keyboardType="email-address"
-                        value={formData.email}
-                        onChangeText={(text) => setFormData({...formData, email: text})}
-                    />
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter email"
+                            keyboardType="email-address"
+                            value={formData.email}
+                            onChangeText={(text) => setFormData({...formData, email: text})}
+                        />
+                        <MaterialIcons name="email" size={20} color="#888" style={styles.inputIcon} />
+                    </View>
                     {errors.email && <Text style={styles.error}>{errors.email}</Text>}
 
                     {/* Password Fields */}
                     <View style={styles.row}>
-                        <View style={styles.passwordInput}>
+                        <View style={[styles.passwordInput, {marginRight: 10}]}>
                             <Text style={styles.label}>Password</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Password"
-                                secureTextEntry
-                                value={formData.password}
-                                onChangeText={(text) => setFormData({...formData, password: text})}
-                            />
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Password"
+                                    secureTextEntry
+                                    value={formData.password}
+                                    onChangeText={(text) => setFormData({...formData, password: text})}
+                                />
+                                <MaterialIcons name="lock" size={20} color="#888" style={styles.inputIcon} />
+                            </View>
                             {errors.password && <Text style={styles.error}>{errors.password}</Text>}
                         </View>
                         <View style={styles.passwordInput}>
                             <Text style={styles.label}>Confirm Password</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Confirm password"
-                                secureTextEntry
-                                value={formData.confirmPassword}
-                                onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
-                            />
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Confirm password"
+                                    secureTextEntry
+                                    value={formData.confirmPassword}
+                                    onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
+                                />
+                                <MaterialIcons name="lock" size={20} color="#888" style={styles.inputIcon} />
+                            </View>
                             {errors.confirmPassword && <Text style={styles.error}>{errors.confirmPassword}</Text>}
                         </View>
                     </View>
@@ -288,101 +304,136 @@ const Signup = () => {
                     
                     {/* Name Fields */}
                     <View style={styles.row}>
-                        <View style={styles.firstNameInput}>
+                        <View style={[styles.firstNameInput, {marginRight: 10}]}>
                             <Text style={styles.label}>First Name</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="First name"
-                                value={formData.firstName}
-                                onChangeText={(text) => setFormData({...formData, firstName: text})}
-                            />
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="First name"
+                                    value={formData.firstName}
+                                    onChangeText={(text) => setFormData({...formData, firstName: text})}
+                                />
+                                <MaterialIcons name="person" size={20} color="#888" style={styles.inputIcon} />
+                            </View>
                             {errors.firstName && <Text style={styles.error}>{errors.firstName}</Text>}
                         </View>
                         <View style={styles.middleNameInput}>
                             <Text style={styles.label}>M.I.</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="M.I."
-                                value={formData.middleName}
-                                onChangeText={(text) => setFormData({...formData, middleName: text})}
-                                maxLength={1}
-                            />
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="M.I."
+                                    value={formData.middleName}
+                                    onChangeText={(text) => setFormData({...formData, middleName: text})}
+                                    maxLength={1}
+                                />
+                            </View>
                         </View>
                     </View>
                     <View style={styles.lastNameInput}>
                         <Text style={styles.label}>Last Name</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Last name"
-                            value={formData.lastName}
-                            onChangeText={(text) => setFormData({...formData, lastName: text})}
-                        />
+                        <View style={styles.inputContainer}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Last name"
+                                value={formData.lastName}
+                                onChangeText={(text) => setFormData({...formData, lastName: text})}
+                            />
+                            <MaterialIcons name="person" size={20} color="#888" style={styles.inputIcon} />
+                        </View>
                         {errors.lastName && <Text style={styles.error}>{errors.lastName}</Text>}
                     </View>
 
                     {/* Address */}
                     <Text style={styles.label}>Address</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Complete address"
-                        value={formData.address}
-                        onChangeText={(text) => setFormData({...formData, address: text})}
-                    />
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Complete address"
+                            value={formData.address}
+                            onChangeText={(text) => setFormData({...formData, address: text})}
+                        />
+                        <MaterialIcons name="home" size={20} color="#888" style={styles.inputIcon} />
+                    </View>
                     {errors.address && <Text style={styles.error}>{errors.address}</Text>}
 
                     {/* Contact and Birthdate */}
                     <View style={styles.row}>
-                        <View style={styles.halfInput}>
+                        <View style={[styles.halfInput, {marginRight: 10}]}>
                             <Text style={styles.label}>Contact Number</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="+63"
-                                keyboardType="phone-pad"
-                                value={formData.contactNumber}
-                                onChangeText={(text) => setFormData({...formData, contactNumber: text})}
-                            />
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="+63"
+                                    keyboardType="phone-pad"
+                                    value={formData.contactNumber}
+                                    onChangeText={(text) => setFormData({...formData, contactNumber: text})}
+                                />
+                                <MaterialIcons name="phone" size={20} color="#888" style={styles.inputIcon} />
+                            </View>
                             {errors.contactNumber && <Text style={styles.error}>{errors.contactNumber}</Text>}
                         </View>
                         <View style={styles.halfInput}>
                             <Text style={styles.label}>Birthdate</Text>
                             <TouchableOpacity 
-                                style={styles.input} 
-                                onPress={showDatepicker}
+                                style={[styles.input, styles.dateInput]} 
+                                onPress={showDatePicker}
                             >
-                                <Text>{formData.birthDate.toLocaleDateString()}</Text>
+                                <Text style={styles.dateText}>{formData.birthDate.toLocaleDateString()}</Text>
+                                <MaterialIcons name="calendar-today" size={20} color="#888" style={styles.inputIcon} />
                             </TouchableOpacity>
                             {errors.birthDate && <Text style={styles.error}>{errors.birthDate}</Text>}
                         </View>
                     </View>
 
+                    {/* Enhanced Date Picker */}
+                    <DateTimePickerModal
+                        isVisible={isDatePickerVisible}
+                        mode="date"
+                        onConfirm={handleDateConfirm}
+                        onCancel={hideDatePicker}
+                        date={formData.birthDate}
+                        maximumDate={new Date()}
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        textColor="#ff69b4"
+                        themeVariant="light"
+                    />
+
                     {/* Gender */}
                     <Text style={styles.label}>Gender</Text>
                     <View style={styles.radioGroup}>
-                        <View style={styles.radioButton}>
+                        <TouchableOpacity 
+                            style={[styles.radioOption, formData.gender === 'Male' && styles.radioOptionSelected]}
+                            onPress={() => setFormData({...formData, gender: 'Male'})}
+                        >
                             <RadioButton
                                 value="Male"
                                 status={formData.gender === 'Male' ? 'checked' : 'unchecked'}
-                                onPress={() => setFormData({...formData, gender: 'Male'})}
+                                color="#ff69b4"
                             />
                             <Text style={styles.radioLabel}>Male</Text>
-                        </View>
-                        <View style={styles.radioButton}>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.radioOption, formData.gender === 'Female' && styles.radioOptionSelected]}
+                            onPress={() => setFormData({...formData, gender: 'Female'})}
+                        >
                             <RadioButton
                                 value="Female"
                                 status={formData.gender === 'Female' ? 'checked' : 'unchecked'}
-                                onPress={() => setFormData({...formData, gender: 'Female'})}
+                                color="#ff69b4"
                             />
                             <Text style={styles.radioLabel}>Female</Text>
-                        </View>
+                        </TouchableOpacity>
                     </View>
                     {errors.gender && <Text style={styles.error}>{errors.gender}</Text>}
 
-                    {/* Valid ID Upload */}
+                    {/* Enhanced Valid ID Upload */}
                     <Text style={styles.label}>Valid ID</Text>
                     <TouchableOpacity 
                         style={styles.uploadButton}
                         onPress={() => pickImage('id')}
                     >
+                        <MaterialIcons name="upload" size={20} color="white" style={styles.uploadIcon} />
                         <Text style={styles.uploadButtonText}>
                             {formData.validId ? 'Change Valid ID' : 'Upload Valid ID'}
                         </Text>
@@ -398,16 +449,19 @@ const Signup = () => {
                     )}
                     {errors.validId && <Text style={styles.error}>{errors.validId}</Text>}
 
-                    {/* Submit Button */}
+                    {/* Enhanced Submit Button */}
                     <TouchableOpacity 
-                        style={styles.submitButton}
+                        style={[styles.submitButton, loading && styles.submitButtonDisabled]}
                         onPress={handleSubmit}
                         disabled={loading}
                     >
                         {loading ? (
                             <ActivityIndicator color="white" />
                         ) : (
-                            <Text style={styles.submitButtonText}>Sign Up</Text>
+                            <View style={styles.buttonContent}>
+                                <MaterialIcons name="how-to-reg" size={24} color="white" />
+                                <Text style={styles.submitButtonText}>Sign Up</Text>
+                            </View>
                         )}
                     </TouchableOpacity>
 
@@ -447,6 +501,7 @@ const Signup = () => {
                                     <Checkbox
                                         status={privacyAccepted ? 'checked' : 'unchecked'}
                                         onPress={() => setPrivacyAccepted(!privacyAccepted)}
+                                        color="#ff69b4"
                                     />
                                     <Text style={styles.checkboxLabel}>I accept the Data Privacy Policy</Text>
                                 </View>
@@ -456,6 +511,7 @@ const Signup = () => {
                                     loading={loading}
                                     disabled={!privacyAccepted || loading}
                                     style={styles.modalButton}
+                                    labelStyle={styles.modalButtonLabel}
                                 >
                                     {loading ? 'Processing...' : 'Submit'}
                                 </Button>
@@ -498,82 +554,128 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         marginBottom: 20,
     },
+    profileImageWrapper: {
+        alignItems: 'center',
+    },
     profileImage: {
         width: 120,
         height: 120,
         borderRadius: 60,
+        borderWidth: 2,
+        borderColor: '#ff69b4',
     },
     profileImagePlaceholder: {
         width: 120,
         height: 120,
         borderRadius: 60,
-        backgroundColor: '#ddd',
+        backgroundColor: '#f8f8f8',
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#ff69b4',
+        borderStyle: 'dashed',
     },
     placeholderText: {
-        fontSize: 30,
-        color: '#666',
+        marginTop: 5,
+        color: '#ff69b4',
+        fontSize: 12,
     },
     label: {
         marginTop: 10,
         marginBottom: 5,
         fontWeight: '600',
+        color: '#555',
+    },
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        position: 'relative',
     },
     input: {
+        flex: 1,
         borderWidth: 1,
         borderColor: '#ddd',
-        borderRadius: 5,
-        padding: 10,
+        borderRadius: 10,
+        padding: 12,
+        paddingLeft: 40,
         marginBottom: 5,
         backgroundColor: '#fff',
+        fontSize: 16,
+    },
+    inputIcon: {
+        position: 'absolute',
+        left: 12,
+        zIndex: 1,
+    },
+    dateInput: {
+        justifyContent: 'center',
+    },
+    dateText: {
+        paddingLeft: 28,
     },
     error: {
         color: 'red',
         fontSize: 12,
         marginBottom: 10,
+        marginLeft: 5,
     },
     row: {
         flexDirection: 'row',
         justifyContent: 'space-between',
     },
     firstNameInput: {
-        width: '68%',
+        flex: 0.68,
     },
     middleNameInput: {
-        width: '25%',
+        flex: 0.25,
     },
     lastNameInput: {
         width: '100%',
     },
     passwordInput: {
-        width: '48%',
+        flex: 0.48,
     },
     halfInput: {
-        width: '48%',
+        flex: 0.48,
     },
     radioGroup: {
         flexDirection: 'row',
         marginBottom: 15,
+        justifyContent: 'space-between',
     },
-    radioButton: {
+    radioOption: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginRight: 20,
+        padding: 10,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        flex: 0.48,
+    },
+    radioOptionSelected: {
+        borderColor: '#ff69b4',
+        backgroundColor: 'rgba(255, 105, 180, 0.1)',
     },
     radioLabel: {
         marginLeft: 8,
+        color: '#555',
     },
     uploadButton: {
-        backgroundColor: '#cad47c',
+        backgroundColor: '#ff69b4',
         padding: 15,
-        borderRadius: 5,
+        borderRadius: 10,
         alignItems: 'center',
         marginBottom: 15,
+        flexDirection: 'row',
+        justifyContent: 'center',
+    },
+    uploadIcon: {
+        marginRight: 10,
     },
     uploadButtonText: {
         color: '#fff',
         fontWeight: 'bold',
+        fontSize: 16,
     },
     validIdPreview: {
         marginTop: 10,
@@ -583,46 +685,59 @@ const styles = StyleSheet.create({
     validIdImage: {
         width: '100%',
         height: 200,
-        borderRadius: 5,
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: '#ddd',
     },
     submitButton: {
         backgroundColor: '#ff69b4',
         padding: 15,
-        borderRadius: 5,
+        borderRadius: 10,
         alignItems: 'center',
-        marginTop: 10,
+        marginTop: 20,
         marginBottom: 30,
+        elevation: 3,
+    },
+    submitButtonDisabled: {
+        backgroundColor: '#ccc',
     },
     submitButtonText: {
         color: '#fff',
         fontWeight: 'bold',
         fontSize: 16,
+        marginLeft: 10,
+    },
+    buttonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     modalContainer: {
         backgroundColor: 'white',
         padding: 20,
         margin: 20,
-        borderRadius: 5,
+        borderRadius: 10,
     },
     modalContent: {
         maxHeight: '80%',
     },
     modalTitle: {
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: 'bold',
         marginBottom: 15,
         textAlign: 'center',
+        color: '#ff69b4',
     },
     modalSubtitle: {
         fontSize: 16,
         fontWeight: 'bold',
         marginTop: 10,
         marginBottom: 5,
+        color: '#555',
     },
     modalText: {
         marginBottom: 10,
+        color: '#555',
+        lineHeight: 22,
     },
     checkboxContainer: {
         flexDirection: 'row',
@@ -632,10 +747,18 @@ const styles = StyleSheet.create({
     },
     checkboxLabel: {
         marginLeft: 10,
+        color: '#555',
     },
     modalButton: {
         marginTop: 10,
         backgroundColor: '#ff69b4',
+        borderRadius: 10,
+        paddingVertical: 5,
+    },
+    modalButtonLabel: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });
 
