@@ -4,7 +4,7 @@ import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import UserNavbar from '../design/UserNavbar';
 
 
-const AdoptionProcess = () => {
+const AdoptionProcess = ({ route, navigation }) => {
   return (
     <View style={styles.container}>
       
@@ -19,6 +19,9 @@ const AdoptionProcess = () => {
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.navigate('MyAdoptions')} style={[styles.button, { backgroundColor: '#ff69b4' }]}>
           <Text style={styles.buttonText}>Track Adoption</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('User Page')} style={[styles.button, { backgroundColor: '#ff69b4' }]}>
+          <Text style={styles.buttonText}>Back to Homepage</Text>
         </TouchableOpacity>
       </View>
       

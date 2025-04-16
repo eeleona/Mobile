@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   
   tabBar: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 35,
     left: 10,
     right: 10,
     backgroundColor: 'white',
@@ -152,6 +152,11 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 8,
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   tabIndicator: {
     backgroundColor: '#ff69b4',

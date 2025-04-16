@@ -188,6 +188,11 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 20,
     justifyContent: 'center',
+    shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
   },
   tabIndicator: {
     backgroundColor: '#ff69b4',

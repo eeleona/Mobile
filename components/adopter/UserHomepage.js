@@ -52,10 +52,7 @@ const UserHomepage = ({ navigation }) => {
     try {
       const response = await axios.get(`${config.address}/api/events/all`);
       
-      // Check if response.data.theEvent exists and is an array
       const eventsArray = response.data?.theEvent || [];
-      
-      // Filter out events without images and shuffle
       const eventsWithImages = eventsArray.filter(event => event.e_image);
       const shuffled = [...eventsWithImages].sort(() => 0.5 - Math.random());
       setEvents(shuffled.slice(0, 3));
@@ -70,11 +67,7 @@ const UserHomepage = ({ navigation }) => {
   const fetchRandomServices = async () => {
     try {
       const response = await axios.get(`${config.address}/api/service/all`);
-      
-      // Change from response.data?.theService to just response.data
       const servicesArray = Array.isArray(response.data) ? response.data : [];
-      
-      // Change from service.service_image to item.ns_image
       const servicesWithImages = servicesArray.filter(service => service.ns_image);
       const shuffled = [...servicesWithImages].sort(() => 0.5 - Math.random());
       
@@ -98,12 +91,18 @@ const UserHomepage = ({ navigation }) => {
 
   const renderPetItem = ({ item }) => (
     <TouchableOpacity 
-      style={styles.eventCard}  // Match card style
-      onPress={() => navigation.navigate('Pet Details', { petId: item._id })}
+      style={[styles.eventCard, {
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      }]}
+      onPress={() => navigation.navigate('Adopt The Pet', { petId: item._id })}
     >
       <Image 
         source={{ uri: `${config.address}${item.pet_img[0]}` }} 
-        style={styles.eventImage} // Match image style
+        style={styles.eventImage}
       />
       <View style={styles.eventInfo}>
         <Text style={styles.eventTitle}>{item.p_name}</Text>
@@ -115,7 +114,13 @@ const UserHomepage = ({ navigation }) => {
 
   const renderEventItem = ({ item }) => (
     <TouchableOpacity 
-      style={styles.eventCard}
+      style={[styles.eventCard, {
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      }]}
       onPress={() => navigation.navigate('Event Details', { eventId: item._id })}
     >
       <Image 
@@ -132,8 +137,14 @@ const UserHomepage = ({ navigation }) => {
 
   const renderServiceItem = ({ item }) => (
     <TouchableOpacity 
-      style={styles.eventCard}
-      onPress={() => navigation.navigate('User Nearby', { serviceId: item._id })}
+      style={[styles.eventCard, {
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      }]}
+      onPress={() => navigation.navigate('User Nearby Services', { serviceId: item._id })}
     >
       <Image 
         source={{ uri: `${config.address}${item.ns_image}` }} 
@@ -150,7 +161,6 @@ const UserHomepage = ({ navigation }) => {
   return (
     <ScrollView style={styles.container}>
       {/* HEADER SECTION */}
-      
       <LinearGradient
         colors={['#FF66C4', '#FF8E53']}
         start={{ x: 0, y: 0 }}
@@ -158,31 +168,32 @@ const UserHomepage = ({ navigation }) => {
         style={styles.header}
       >
         {/* Search Bar */}
-              <View style={styles.searchContainer}>
-                <Image 
-                  source={require('../../assets/Images/nobglogo.png')} 
-                  style={styles.logo} 
-                  accessibilityLabel="App logo"
-                />
-                <View style={styles.searchBox}>
-                  <MaterialIcons 
-                    name="search" 
-                    size={20} 
-                    color="#ff69b4" 
-                    style={styles.searchIcon} 
-                    accessibilityRole="imagebutton"
-                  />
-                  <TextInput 
-                    placeholder="Search..." 
-                    placeholderTextColor="#ff69b4" 
-                    style={styles.input}
-                    accessibilityLabel="Search input"
-                  />
-                </View>
-              </View>
+        <View style={styles.searchContainer}>
+          <Image 
+            source={require('../../assets/Images/nobglogo.png')} 
+            style={styles.logo} 
+            accessibilityLabel="App logo"
+          />
+          <View style={styles.searchBox}>
+            <MaterialIcons 
+              name="search" 
+              size={20} 
+              color="#ff69b4" 
+              style={styles.searchIcon} 
+              accessibilityRole="imagebutton"
+            />
+            <TextInput 
+              placeholder="Search..." 
+              placeholderTextColor="#ff69b4" 
+              style={styles.input}
+              accessibilityLabel="Search input"
+            />
+          </View>
+        </View>
         <Text style={styles.headerTitle}>Find your perfect companion with E-Pet Adopt</Text>
         <Text style={styles.headerSubtitle}>Adopt, Connect, and Discover</Text>
       </LinearGradient>
+
       {/* MAIN BUTTONS SECTION */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
@@ -221,7 +232,7 @@ const UserHomepage = ({ navigation }) => {
 
       {/* ADOPT A PET CAROUSEL */}
       <View style={styles.section}>
-      <View style={styles.sectionHeader}>
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Pets to Adopt</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Adopt A Pet')}>
             <Text style={styles.seeAll}>See All</Text>
@@ -242,10 +253,10 @@ const UserHomepage = ({ navigation }) => {
           <Text style={styles.loadingText}>No pets available</Text>
         )}
       </View>
+
       <View style={[styles.section, styles.whyAdoptSection]}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: '#fff' }]}>Why Adopt?</Text>
-          
         </View>
         <Image 
           source={require('../../assets/Images/catdog.jpg')} 
@@ -255,6 +266,7 @@ const UserHomepage = ({ navigation }) => {
           By adopting, you're opening your heart and home to a wonderful pet who's ready to shower you with love. Each adoption creates space for more animals to be rescued, giving you the chance to make a meaningful difference.
         </Text>
       </View>
+
       <TouchableOpacity 
         style={styles.aboutContainer}
         onPress={() => navigation.navigate('About Us')}
@@ -270,11 +282,9 @@ const UserHomepage = ({ navigation }) => {
         </View>
       </TouchableOpacity>
 
-
-
       {/* EVENTS CAROUSEL */}
       <View style={styles.section}>
-      <View style={styles.sectionHeader}>
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Upcoming Events</Text>
           <TouchableOpacity onPress={() => navigation.navigate('User Events')}>
             <Text style={styles.seeAll}>See All</Text>
@@ -299,7 +309,7 @@ const UserHomepage = ({ navigation }) => {
 
       {/* SERVICES CAROUSEL */}
       <View style={styles.sectionNearby}>
-      <View style={styles.sectionHeader}>
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Nearby Services</Text>
           <TouchableOpacity onPress={() => navigation.navigate('User Nearby')}>
             <Text style={styles.seeAll}>See All</Text>
@@ -320,13 +330,9 @@ const UserHomepage = ({ navigation }) => {
           <Text style={styles.loadingText}>No services available</Text>
         )}
       </View>
-
-      {/* WHY ADOPT SECTION */}
     </ScrollView>
   );
 };
-
-// ... (keep your existing styles unchanged)
 
 const styles = StyleSheet.create({
   container: {
@@ -406,13 +412,22 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     backgroundColor: 'white',
-    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   aboutContainer: {
     flexDirection: 'row',
@@ -424,7 +439,11 @@ const styles = StyleSheet.create({
     padding: 14,
     marginHorizontal: 20,
     marginBottom: 30,
-    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   aboutLogo: {
     width: 60,
@@ -446,7 +465,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#444',
   },
-  
   seeAll: {
     fontFamily: 'Inter_500Medium',
     color: '#FF66C4',
@@ -468,7 +486,6 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     paddingHorizontal: 20,
   },
-
   sectionNearby: {
     marginBottom: 110,
     paddingHorizontal: 20,
@@ -488,6 +505,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     marginRight: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
     elevation: 2,
   },
   petImage: {
@@ -507,17 +528,22 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   whyAdoptSection: {
-    backgroundColor: '#ff69b4', // Changed to pink background
+    backgroundColor: '#ff69b4',
     paddingVertical: 25,
     paddingHorizontal: 20,
     marginHorizontal: 15,
     borderRadius: 15,
     marginBottom: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   whyAdoptText: {
     fontFamily: 'Inter_500Medium',
     fontSize: 16,
-    color: '#fff', // Changed text color to white for better contrast
+    color: '#fff',
     lineHeight: 24,
     textAlign: 'center',
     marginTop: 10,
@@ -534,7 +560,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     overflow: 'hidden',
     marginRight: 15,
-    elevation: 2,
   },
   eventImage: {
     width: '100%',
@@ -562,7 +587,6 @@ const styles = StyleSheet.create({
     marginRight: 15,
     flexDirection: 'row',
     alignItems: 'center',
-    elevation: 2,
   },
   serviceImage: {
     width: 50,

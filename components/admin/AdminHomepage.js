@@ -143,7 +143,7 @@ const AdminHomepage = ({ navigation }) => {
 
             <View style={styles.welcomecontainer}>
               <Image style={styles.pawicon} source={require('../../assets/Images/pawicon.png')}></Image>
-              <Text style={styles.welcome}>Kumusta, Ka-Paw?</Text>
+              <Text style={styles.welcome}>Dashboard</Text>
             </View>
             
             <View style={styles.carouselContainer}>
@@ -507,7 +507,12 @@ const styles = StyleSheet.create({
     height: 80,
     backgroundColor: 'white',
     elevation: 2,
-    borderRadius: 8
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   iconcontainer: {
     alignItems: 'center', // Center horizontally

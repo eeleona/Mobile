@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, FlatList, Alert } from 'react-native';
+import {
+  View, Text, TextInput, TouchableOpacity, Image, StyleSheet,
+  FlatList, Alert, KeyboardAvoidingView, Platform
+} from 'react-native';
 import io from 'socket.io-client/dist/socket.io';
 import axios from 'axios';
 import config from '../../server/config/config';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const OneMessage = ({ navigation, route }) => {
   const { userId, userName, userImage } = route.params;
@@ -11,34 +15,26 @@ const OneMessage = ({ navigation, route }) => {
   const messagesEndRef = useRef(null);
   const adminId = '670a04a34f63c22acf3d8c9a';
 
-  // Initialize socket
   const socket = useRef(null);
 
   useEffect(() => {
-    // Connect to the socket server
     socket.current = io(`${config.address}`, {
       transports: ['websocket'],
       forceNew: true,
       jsonp: false,
     });
 
-    // Join the admin room
-    if (adminId) {
-      socket.current.emit('joinRoom', adminId);
-    }
+    if (adminId) socket.current.emit('joinRoom', adminId);
 
-    // Fetch initial messages
     fetchMessages();
 
-    // Listen for incoming messages
     socket.current.on('receiveMessage', (newMessage) => {
       if (newMessage.senderId === userId || newMessage.receiverId === userId) {
-        setMessages((prev) => [...prev, newMessage]);
+        setMessages(prev => [...prev, newMessage]);
         scrollToBottom();
       }
     });
 
-    // Cleanup on component unmount
     return () => {
       if (socket.current) {
         socket.current.off('receiveMessage');
@@ -49,120 +45,11 @@ const OneMessage = ({ navigation, route }) => {
 
   const fetchMessages = async () => {
     try {
-      const response = await axios.get(
-        `${config.address}/api/messages/${adminId}/${userId}`
-      );
+      const response = await axios.get(`${config.address}/api/messages/${adminId}/${userId}`);
       setMessages(response.data);
       scrollToBottom();
-    } catch (error) {
-      console.error('Failed to fetch messages:', error);
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!message.trim()) return;
-
-    const newMessage = {
-      senderId: adminId,
-      receiverId: userId,
-      message: message.trim(),
-    };
-
-    // Create a temporary message for the UI
-    const tempMessage = {
-      ...newMessage,
-      _id: 'temp-' + Date.now(),
-      createdAt: new Date().toISOString(),
-      pending: true,
-    };
-
-    // Optimistically update UI
-    setMessages((prev) => [...prev, tempMessage]);
-    setMessage('');
-    scrollToBottom();
-
-    try {
-      // Send the message to the backend
-      const response = await axios.post(
-        `${config.address}/api/messages/send`,
-        newMessage,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.data && response.data.newMessage) {
-        // Replace the temporary message with the server response
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === tempMessage._id ? response.data.newMessage : msg
-          )
-        );
-
-        // Emit the message through socket.io
-        socket.current.emit('sendMessage', response.data.newMessage);
-      } else {
-        throw new Error('Invalid response from server');
-      }
-    } catch (error) {
-      console.error('Failed to send message:', error);
-
-      // Mark the message as error in UI
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg._id === tempMessage._id ? { ...msg, error: true } : msg
-        )
-      );
-
-      // Show error alert to user
-      Alert.alert(
-        'Message Failed',
-        'Could not send message. Please try again.',
-        [
-          {
-            text: 'Retry',
-            onPress: () => handleRetryMessage(tempMessage),
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-        ]
-      );
-    }
-  };
-
-  const handleRetryMessage = async (tempMessage) => {
-    try {
-      const newMessage = {
-        senderId: tempMessage.senderId,
-        receiverId: tempMessage.receiverId,
-        message: tempMessage.message,
-      };
-
-      const response = await axios.post(
-        `${config.address}/api/messages/send`,
-        newMessage,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.data && response.data.newMessage) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === tempMessage._id ? response.data.newMessage : msg
-          )
-        );
-
-        socket.current.emit('sendMessage', response.data.newMessage);
-      }
-    } catch (error) {
-      console.error('Retry failed:', error);
+    } catch (err) {
+      console.error('Fetch error:', err);
     }
   };
 
@@ -175,75 +62,83 @@ const OneMessage = ({ navigation, route }) => {
   const formatMessageTime = (timestamp) => {
     if (!timestamp) return '';
     return new Date(timestamp).toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true,
     });
+  };
+
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
+    const newMessage = {
+      senderId: adminId,
+      receiverId: userId,
+      message: message.trim(),
+    };
+    const tempMessage = {
+      ...newMessage,
+      _id: 'temp-' + Date.now(),
+      createdAt: new Date().toISOString(),
+      pending: true,
+    };
+    setMessages(prev => [...prev, tempMessage]);
+    setMessage('');
+    scrollToBottom();
+
+    try {
+      const response = await axios.post(`${config.address}/api/messages/send`, newMessage);
+      const sent = response.data?.newMessage;
+      if (sent) {
+        setMessages(prev =>
+          prev.map(msg => (msg._id === tempMessage._id ? sent : msg))
+        );
+        socket.current.emit('sendMessage', sent);
+      }
+    } catch (err) {
+      console.error('Send failed:', err);
+      setMessages(prev =>
+        prev.map(msg =>
+          msg._id === tempMessage._id ? { ...msg, error: true } : msg
+        )
+      );
+      Alert.alert('Failed to send', 'Try again.', [
+        { text: 'Retry', onPress: () => handleSendMessage() },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
   };
 
   const renderMessage = ({ item }) => {
     const isAdmin = item.senderId === adminId;
-    const placeholderImage = require('../../assets/Images/user.png');
-    const isPending = item.pending;
-    const hasError = item.error;
+    const bubbleStyle = isAdmin ? styles.adminBubble : styles.userBubble;
+    const textStyle = isAdmin ? styles.adminText : styles.userText;
+    const timeStyle = isAdmin ? styles.adminTime : styles.userTime;
+    const avatar = isAdmin
+      ? require('../../assets/Images/nobglogo.png')
+      : userImage
+      ? { uri: userImage }
+      : require('../../assets/Images/user.png');
 
     return (
-      <View
-        style={[
-          styles.messageContainer,
-          isAdmin ? styles.adminMessage : styles.userMessage,
-        ]}
-      >
-        {!isAdmin && (
-          <Image
-            source={userImage ? { uri: userImage } : placeholderImage}
-            style={styles.messageImage}
-          />
-        )}
-
-        <View
-          style={[
-            styles.messageBubble,
-            isAdmin ? styles.adminBubble : styles.userBubble,
-            isPending && styles.pendingBubble,
-            hasError && styles.errorBubble,
-          ]}
-        >
-          <Text style={isAdmin ? styles.adminText : styles.userText}>
-            {item.message}
-          </Text>
-          <Text
-            style={[
-              styles.messageTime,
-              isAdmin ? {} : { color: '#999' },
-            ]}
-          >
-            {isPending
-              ? 'Sending...'
-              : hasError
-              ? 'Error - Tap to retry'
-              : formatMessageTime(item.createdAt)}
+      <View style={[styles.messageRow, isAdmin ? styles.alignRight : styles.alignLeft]}>
+        {!isAdmin && <Image source={avatar} style={styles.avatar} />}
+        <View style={[styles.bubble, bubbleStyle]}>
+          <Text style={textStyle}>{item.message}</Text>
+          <Text style={timeStyle}>
+            {item.pending ? 'Sending...' : formatMessageTime(item.createdAt)}
           </Text>
         </View>
-
-        {isAdmin && (
-          <Image
-            source={require('../../assets/Images/nobglogo.png')}
-            style={styles.messageImage}
-          />
-        )}
+        {isAdmin && <Image source={avatar} style={styles.avatar} />}
       </View>
     );
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={styles.container}
+    >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>←</Text>
+          <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
         </TouchableOpacity>
         <Image
           source={userImage ? { uri: userImage } : require('../../assets/Images/user.png')}
@@ -252,7 +147,6 @@ const OneMessage = ({ navigation, route }) => {
         <Text style={styles.headerName}>{userName}</Text>
       </View>
 
-      {/* Messages */}
       <FlatList
         ref={messagesEndRef}
         data={messages}
@@ -263,137 +157,87 @@ const OneMessage = ({ navigation, route }) => {
         onLayout={scrollToBottom}
       />
 
-      {/* Input */}
-      <View style={styles.inputContainer}>
+      <View style={styles.inputWrapper}>
         <TextInput
-          style={styles.messageInput}
-          placeholder="Type your message"
+          style={styles.input}
+          placeholder="Type a message"
           value={message}
           onChangeText={setMessage}
           onSubmitEditing={handleSendMessage}
         />
-        <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
-          <Text style={styles.sendButtonText}>Send</Text>
+        <TouchableOpacity style={styles.sendBtn} onPress={handleSendMessage}>
+          <MaterialIcons name="send" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, backgroundColor: '#FAF9F6' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FF66C4',
     padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    marginTop: 40,
+    paddingTop: 50,
   },
-  backButton: {
-    fontSize: 24,
-    marginRight: 15,
-  },
-  headerImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 15,
-  },
-  headerName: {
-    fontWeight: 'bold',
-    fontSize: 18,
-  },
-  messagesContainer: {
-    padding: 15,
-    paddingBottom: 80,
-  },
-  messageContainer: {
+  headerImage: { width: 36, height: 36, borderRadius: 18, marginHorizontal: 10 },
+  headerName: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  messagesContainer: { paddingVertical: 10, paddingHorizontal: 12 },
+  messageRow: {
     flexDirection: 'row',
+    marginVertical: 6,
     alignItems: 'flex-end',
-    marginBottom: 15,
   },
-  adminMessage: {
-    justifyContent: 'flex-end',
-  },
-  userMessage: {
-    justifyContent: 'flex-start',
-  },
-  messageImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginHorizontal: 5,
-  },
-  messageBubble: {
-    maxWidth: '70%',
-    padding: 12,
+  alignRight: { justifyContent: 'flex-end' },
+  alignLeft: { justifyContent: 'flex-start' },
+  avatar: { width: 32, height: 32, borderRadius: 16, marginHorizontal: 8 },
+  bubble: {
+    maxWidth: '75%',
+    padding: 10,
     borderRadius: 15,
-    marginBottom: 5,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 4,
   },
   adminBubble: {
     backgroundColor: '#FF66C4',
     borderTopRightRadius: 0,
   },
   userBubble: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#fff',
     borderTopLeftRadius: 0,
-  },
-  pendingBubble: {
-    opacity: 0.7,
-  },
-  errorBubble: {
-    backgroundColor: '#ffdddd',
     borderWidth: 1,
-    borderColor: '#ff6666',
+    borderColor: '#eee',
   },
-  adminText: {
-    color: 'white',
-  },
-  userText: {
-    color: '#333',
-  },
-  messageTime: {
-    fontSize: 10,
-    color: 'white',
-    marginTop: 4,
-    alignSelf: 'flex-end',
-  },
-  inputContainer: {
-    height: '10%',
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+  adminText: { color: 'white', fontSize: 14 },
+  userText: { color: '#333', fontSize: 14 },
+  adminTime: { color: '#ffe5f1', fontSize: 10, textAlign: 'right', marginTop: 4 },
+  userTime: { color: '#aaa', fontSize: 10, textAlign: 'right', marginTop: 4 },
+  inputWrapper: {
     flexDirection: 'row',
-    padding: 15,
-    marginBottom: 20,
+    alignItems: 'center',
+    padding: 12,
     backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderColor: '#eee',
   },
-  messageInput: {
+  input: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    height: 45,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    fontSize: 15,
     marginRight: 10,
   },
-  sendButton: {
+  sendBtn: {
     backgroundColor: '#FF66C4',
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-  },
-  sendButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    padding: 12,
+    borderRadius: 25,
   },
 });
 

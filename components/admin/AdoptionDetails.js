@@ -14,27 +14,18 @@ const AdoptionDetails = ({ route, navigation }) => {
 
     // Status Stepper Component
     const StatusStepper = ({ status }) => {
-        const getSteps = () => {
-            switch (status?.toLowerCase()) {
-                case 'pending': return ['Submitted', 'Under Review'];
-                case 'accepted': return ['Submitted', 'Approved', 'Scheduled'];
-                case 'completed': return ['Submitted', 'Approved', 'Completed'];
-                case 'rejected': return ['Submitted', 'Rejected'];
-                default: return ['Submitted', 'In Progress'];
-            }
-        };
-
+        const steps = ['Submitted', 'Accepted', 'Scheduled', 'Completed'];
+        
         const getActiveStep = () => {
             switch (status?.toLowerCase()) {
                 case 'pending': return 1;
                 case 'accepted': return 2;
-                case 'completed': return 3;
-                case 'rejected': return 1;
+                case 'scheduled': return 3;
+                case 'completed': return 4;
                 default: return 1;
             }
         };
 
-        const steps = getSteps();
         const activeStep = getActiveStep();
 
         return (
@@ -45,7 +36,7 @@ const AdoptionDetails = ({ route, navigation }) => {
                             <View style={[
                                 styles.stepCircle,
                                 index < activeStep && styles.completedStep,
-                                index === activeStep && styles.activeStep
+                                index === activeStep - 1 && styles.activeStep
                             ]}>
                                 {index < activeStep ? (
                                     <Icon name="check" size={16} color="#FFF" />
@@ -56,7 +47,7 @@ const AdoptionDetails = ({ route, navigation }) => {
                             <Text style={[
                                 styles.stepLabel,
                                 index < activeStep && styles.completedLabel,
-                                index === activeStep && styles.activeLabel
+                                index === activeStep - 1 && styles.activeLabel
                             ]}>
                                 {step}
                             </Text>
@@ -73,6 +64,25 @@ const AdoptionDetails = ({ route, navigation }) => {
         );
     };
 
+    // Enhanced DetailRow with icons
+    const DetailRow = ({ label, value, iconName }) => (
+        <View>
+            <View style={styles.detailRow}>
+                <View style={styles.labelContainer}>
+                    <Icon 
+                        name={iconName} 
+                        size={18} 
+                        color="#ff69b4" 
+                        style={styles.icon} 
+                    />
+                    <Text style={styles.detailLabel}>{label}</Text>
+                </View>
+                <Text style={styles.detailValue}>{value || 'N/A'}</Text>
+            </View>
+            <Divider style={styles.rowDivider} />
+        </View>
+    );
+
     return (
         <View style={styles.container}>
             <AppBar title="Adoption Details" onBackPress={() => navigation.goBack()} />
@@ -82,8 +92,16 @@ const AdoptionDetails = ({ route, navigation }) => {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Adoption Application</Text>
                     <Divider style={styles.sectionDivider} />
-                    <DetailRow label="Submitted At:" value={new Date(adoption.a_submitted_at).toLocaleDateString()} />
-                    <DetailRow label="Status:" value={adoption.status} />
+                    <DetailRow 
+                        label="Submitted At:" 
+                        value={new Date(adoption.a_submitted_at).toLocaleDateString()} 
+                        iconName="event" 
+                    />
+                    <DetailRow 
+                        label="Status:" 
+                        value={adoption.status} 
+                        iconName="info" 
+                    />
                     <StatusStepper status={adoption.status} />
                 </View>
 
@@ -102,11 +120,15 @@ const AdoptionDetails = ({ route, navigation }) => {
                             <Text style={styles.placeholderText}>No image available</Text>
                         </View>
                     )}
-                    <DetailRow label="Name:" value={adoption.p_id?.p_name} />
-                    <DetailRow label="Type:" value={adoption.p_id?.p_type} />
-                    <DetailRow label="Breed:" value={adoption.p_id?.p_breed} />
-                    <DetailRow label="Gender:" value={adoption.p_id?.p_gender} />
-                    <DetailRow label="Age:" value={adoption.p_id?.p_age ? `${adoption.p_id.p_age} years` : null} />
+                    <DetailRow label="Name:" value={adoption.p_id?.p_name} iconName="pets" />
+                    <DetailRow label="Type:" value={adoption.p_id?.p_type} iconName="category" />
+                    <DetailRow label="Breed:" value={adoption.p_id?.p_breed} iconName="straighten" />
+                    <DetailRow label="Gender:" value={adoption.p_id?.p_gender} iconName="wc" />
+                    <DetailRow 
+                        label="Age:" 
+                        value={adoption.p_id?.p_age ? `${adoption.p_id.p_age} years` : null} 
+                        iconName="cake" 
+                    />
                 </View>
 
                 {/* Adopter Details */}
@@ -123,44 +145,88 @@ const AdoptionDetails = ({ route, navigation }) => {
                             <Text style={styles.placeholderText}>No image available</Text>
                         </View>
                     )}
-                    <DetailRow label="Name:" value={`${adoption.v_id?.v_fname} ${adoption.v_id?.v_lname}`} />
-                    <DetailRow label="Username:" value={adoption.v_id?.v_username} />
-                    <DetailRow label="Email:" value={adoption.v_id?.v_emailadd} />
-                    <DetailRow label="Contact:" value={adoption.v_id?.v_contactnumber} />
-                    <DetailRow label="Address:" value={adoption.v_id?.v_add} />
-                    <DetailRow label="Birthdate:" value={adoption.v_id?.v_birthdate} />
-                    <DetailRow label="Gender:" value={adoption.v_id?.v_gender} />
-                    <DetailRow label="Occupation:" value={adoption.occupation} />
+                    <DetailRow 
+                        label="Name:" 
+                        value={`${adoption.v_id?.v_fname} ${adoption.v_id?.v_lname}`} 
+                        iconName="person" 
+                    />
+                    <DetailRow 
+                        label="Username:" 
+                        value={adoption.v_id?.v_username} 
+                        iconName="alternate-email" 
+                    />
+                    <DetailRow 
+                        label="Email:" 
+                        value={adoption.v_id?.v_emailadd} 
+                        iconName="email" 
+                    />
+                    <DetailRow 
+                        label="Contact:" 
+                        value={adoption.v_id?.v_contactnumber} 
+                        iconName="phone" 
+                    />
+                    <DetailRow 
+                        label="Address:" 
+                        value={adoption.v_id?.v_add} 
+                        iconName="home" 
+                    />
+                    <DetailRow 
+                        label="Birthdate:" 
+                        value={adoption.v_id?.v_birthdate} 
+                        iconName="cake" 
+                    />
+                    <DetailRow 
+                        label="Gender:" 
+                        value={adoption.v_id?.v_gender} 
+                        iconName="wc" 
+                    />
+                    <DetailRow 
+                        label="Occupation:" 
+                        value={adoption.occupation} 
+                        iconName="work" 
+                    />
                 </View>
 
                 {/* Household Details */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Household Information</Text>
                     <Divider style={styles.sectionDivider} />
-                    <DetailRow label="Years in current address:" value={adoption.years_resided} />
-                    <DetailRow label="Adults in household:" value={adoption.adults_in_household} />
-                    <DetailRow label="Children in household:" value={adoption.children_in_household} />
-                    <DetailRow label="Allergic to pets:" value={adoption.allergic_to_pets} />
-                    <DetailRow label="Home type:" value={adoption.home_type} />
-                    <View style={styles.householdDescription}>
-                        <Text style={styles.detailLabel}>Household Description: </Text>
-                        <Text style={styles.descriptionText}>{adoption.household_description}</Text>
-                    </View>
+                    <DetailRow 
+                        label="Years in current address:" 
+                        value={adoption.years_resided} 
+                        iconName="calendar-today" 
+                    />
+                    <DetailRow 
+                        label="Adults in household:" 
+                        value={adoption.adults_in_household} 
+                        iconName="people" 
+                    />
+                    <DetailRow 
+                        label="Children in household:" 
+                        value={adoption.children_in_household} 
+                        iconName="child-care" 
+                    />
+                    <DetailRow 
+                        label="Allergic to pets:" 
+                        value={adoption.allergic_to_pets} 
+                        iconName="warning" 
+                    />
+                    <DetailRow 
+                        label="Home type:" 
+                        value={adoption.home_type} 
+                        iconName="apartment" 
+                    />
+                    <DetailRow 
+                        label="Household Description:" 
+                        value={adoption.household_description} 
+                        iconName="description" 
+                    />
+                    
                 </View>
             </ScrollView>
         </View>
     );
 };
-
-const DetailRow = ({ label, value }) => (
-    <View>
-        <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>{label}</Text>
-            <Text style={styles.detailValue}>{value || 'N/A'}</Text>
-        </View>
-        <Divider style={styles.rowDivider} />
-    </View>
-);
 
 const styles = StyleSheet.create({
     container: {
@@ -231,13 +297,21 @@ const styles = StyleSheet.create({
     detailRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
         paddingVertical: 8,
+    },
+    labelContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    icon: {
+        marginRight: 8,
     },
     detailLabel: {
         fontSize: 14,
         color: '#666',
-        fontWeight: '500',
-        fontFamily: 'Inter_500Medium',
+        fontWeight: '700',
+        fontFamily: 'Inter_700Bold',
     },
     detailValue: {
         fontSize: 14,
@@ -280,7 +354,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#4CAF50',
     },
     activeStep: {
-        backgroundColor: '#FF66C4',
+        backgroundColor: '#ff69b4',
     },
     stepNumber: {
         color: '#757575',
@@ -298,7 +372,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     activeLabel: {
-        color: '#FF66C4',
+        color: '#ff69b4',
         fontWeight: 'bold',
     },
     stepLine: {

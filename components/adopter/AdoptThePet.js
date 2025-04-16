@@ -11,11 +11,11 @@ import {
 import { Divider } from 'react-native-paper';
 import AppBar from '../design/AppBar';
 import config from '../../server/config/config';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const AdoptThePet = ({ route, navigation }) => {
   const { pet } = route.params;
 
-  
   return (
     <ImageBackground
       source={require('../../assets/Images/pawbg.png')}
@@ -44,11 +44,11 @@ const AdoptThePet = ({ route, navigation }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Basic Information</Text>
             <Divider style={styles.sectionDivider} />
-            <DetailRow label="Name:" value={pet.p_name} />
-            <DetailRow label="Type:" value={pet.p_type} />
-            <DetailRow label="Breed:" value={pet.p_breed} />
-            <DetailRow label="Gender:" value={pet.p_gender} />
-            <DetailRow label="Age:" value={pet.p_age} />
+            <DetailRow label="Name" icon="pets" value={pet.p_name} />
+            <DetailRow label="Pet Type" icon="category" value={pet.p_type} />
+            <DetailRow label="Breed" icon="pets" value={pet.p_breed} />
+            <DetailRow label="Gender" icon="wc" value={pet.p_gender} />
+            <DetailRow label="Age" icon="calendar-today" value={pet.p_age} />
           </View>
 
           {/* Description */}
@@ -59,6 +59,7 @@ const AdoptThePet = ({ route, navigation }) => {
               <Text style={styles.multilineText}>{pet.p_description}</Text>
             </View>
           )}
+
           {/* Adopt Me Button */}
           <TouchableOpacity
             style={styles.adoptButton}
@@ -67,17 +68,18 @@ const AdoptThePet = ({ route, navigation }) => {
             <Text style={styles.adoptButtonText}>Adopt me!</Text>
           </TouchableOpacity>
         </ScrollView>
-
-        
       </View>
     </ImageBackground>
   );
 };
 
-const DetailRow = ({ label, value }) => (
+const DetailRow = ({ label, icon, value }) => (
   <View>
     <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>{label}</Text>
+      <View style={styles.iconLabel}>
+        <MaterialIcons name={icon} size={18} color="#ff69b4" style={{ marginRight: 6 }} />
+        <Text style={styles.detailLabel}>{label}:</Text>
+      </View>
       <Text style={styles.detailValue}>{value || 'N/A'}</Text>
     </View>
     <Divider style={styles.rowDivider} />
@@ -111,7 +113,6 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     alignItems: 'center',
-    marginBottom: 16,
   },
   petImage: {
     width: '100%',
@@ -144,11 +145,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
+    alignItems: 'center',
+  },
+  iconLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   detailLabel: {
     fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+    color: '#444',
+    fontWeight: 'bold',
   },
   detailValue: {
     fontSize: 14,

@@ -1,28 +1,25 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  StyleSheet, 
-  Image, 
-  TouchableOpacity, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
   Animated,
   Dimensions,
   RefreshControl
 } from 'react-native';
 import axios from 'axios';
-import { 
-  TextInput, 
-  Button, 
-  Divider, 
-  PaperProvider, 
+import {
+  TextInput,
+  Button,
+  PaperProvider,
   Chip,
   ActivityIndicator
 } from 'react-native-paper';
 import AppBar from '../design/AppBar';
 import config from '../../server/config/config';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
@@ -52,7 +49,7 @@ const ManagePets = ({ navigation }) => {
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 500,
+      duration: 600,
       useNativeDriver: true,
     }).start();
     fetchPets();
@@ -74,7 +71,6 @@ const ManagePets = ({ navigation }) => {
 
       return matchesSearch && matchesFilter;
     });
-
     setFilteredPets(filtered);
   };
 
@@ -90,18 +86,15 @@ const ManagePets = ({ navigation }) => {
   const renderItem = ({ item }) => (
     <Animated.View style={{ opacity: fadeAnim }}>
       <TouchableOpacity onPress={() => navigateToPetDetails(item)} style={styles.petCard}>
-        <Image 
-          source={{ uri: `${config.address}${item.pet_img[0]}` }} 
-          style={styles.petImage} 
-          
+        <Image
+          source={{ uri: `${config.address}${item.pet_img[0]}` }}
+          style={styles.petImage}
         />
         <View style={styles.petInfoContainer}>
           <Text style={styles.petName}>{item.p_name}</Text>
-          <View style={styles.chipContainer}>
-            <View style={styles.inlineChipGroup}>
-              <Chip icon="paw" style={styles.chip}>{item.p_type}</Chip>
-              <Chip icon="gender-male-female" style={styles.chip}>{item.p_gender}</Chip>
-            </View>
+          <View style={styles.inlineChipGroup}>
+            <Chip icon="paw" style={styles.chip}>{item.p_type}</Chip>
+            <Chip icon="gender-male-female" style={styles.chip}>{item.p_gender}</Chip>
           </View>
         </View>
       </TouchableOpacity>
@@ -131,17 +124,14 @@ const ManagePets = ({ navigation }) => {
             mode="outlined"
             style={styles.searchInput}
             left={<TextInput.Icon name="magnify" />}
-            theme={{ 
-              colors: { 
+            theme={{
+              colors: {
                 primary: '#FF66C4',
-                background: '#FFFFFF',
-                text: '#333333'
-              } 
+                background: '#fff',
+                text: '#333',
+              }
             }}
-            outlineColor="#E2E8F0"
-            activeOutlineColor="#FF66C4"
           />
-
           <View style={styles.fullWidthFilterContainer}>
             {['All', 'Dog', 'Cat'].map((type) => (
               <Button
@@ -156,7 +146,6 @@ const ManagePets = ({ navigation }) => {
                   styles.filterLabel,
                   filter === type && styles.activeFilterLabel
                 ]}
-                contentStyle={styles.filterButtonContent}
               >
                 {type}
               </Button>
@@ -181,8 +170,8 @@ const ManagePets = ({ navigation }) => {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No pets found</Text>
-              <Button 
-                mode="contained" 
+              <Button
+                mode="contained"
                 onPress={fetchPets}
                 style={styles.refreshButton}
                 labelStyle={styles.refreshButtonLabel}
@@ -208,31 +197,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   searchContainer: {
-    paddingHorizontal: 15,
-    
-    paddingBottom: 5,
+    paddingHorizontal: 16,
+    paddingBottom: 6,
   },
   searchInput: {
     backgroundColor: 'white',
     borderRadius: 10,
-    marginBottom: 10,
-
+    marginBottom: 12,
     height: 50,
   },
   fullWidthFilterContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
   },
   filterButton: {
     flex: 1,
     marginHorizontal: 4,
     borderRadius: 8,
+    height: 38,
     borderColor: '#FF66C4',
-    height: 40,
-  },
-  filterButtonContent: {
-    height: '100%',
   },
   activeFilter: {
     backgroundColor: '#FF66C4',
@@ -242,23 +225,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   activeFilterLabel: {
-    color: 'white',
+    color: '#fff',
     fontWeight: 'bold',
   },
   listContainer: {
-    padding: 10,
+    paddingHorizontal: 10,
+    paddingBottom: 80,
   },
   petCard: {
     width: width / 2 - 20,
     margin: 8,
-    borderRadius: 15,
+    borderRadius: 16,
+    backgroundColor: '#fff',
     overflow: 'hidden',
-    backgroundColor: 'white',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 2,
   },
   petImage: {
     width: '100%',
@@ -274,31 +258,25 @@ const styles = StyleSheet.create({
     color: '#2D3748',
     marginBottom: 8,
   },
-  chipContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
   inlineChipGroup: {
     flexDirection: 'row',
+    gap: 6,
     flexWrap: 'wrap',
   },
   chip: {
-    marginRight: 3,
-    marginBottom: 5,
     backgroundColor: '#ff99ce',
-    height: 32,
-    justifyContent: 'center',
+    height: 30,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    paddingTop: 80,
   },
   emptyText: {
-    fontSize: 18,
-    color: '#718096',
-    marginBottom: 20,
+    fontSize: 16,
+    color: '#999',
+    marginBottom: 16,
   },
   refreshButton: {
     backgroundColor: '#FF66C4',

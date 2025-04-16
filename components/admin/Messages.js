@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, FlatList } from 'react-native';
+import {
+  View, Text, TextInput, TouchableOpacity, Image,
+  StyleSheet, FlatList, Animated, Easing
+} from 'react-native';
 import io from 'socket.io-client/dist/socket.io';
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
+import { MaterialIcons } from '@expo/vector-icons';
 import config from '../../server/config/config';
 
 const AdminImg = require('../../assets/Images/nobglogo.png');
@@ -12,10 +15,9 @@ const Messages = ({ navigation }) => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showSearchBox, setShowSearchBox] = useState(false);
   const adminId = '670a04a34f63c22acf3d8c9a';
-  const [senderId, setSenderId] = useState(null);
   const socket = useRef(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     socket.current = io(`${config.address}`, {
@@ -68,6 +70,14 @@ const Messages = ({ navigation }) => {
         }));
         setUsers(sortedUsers);
         setFilteredUsers(sortedUsers);
+
+        // Animate list appearance
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }).start();
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -77,18 +87,19 @@ const Messages = ({ navigation }) => {
   const handleSearchChange = (text) => {
     const value = text.toLowerCase();
     setSearchTerm(value);
-    setFilteredUsers(
-      value.trim() === '' ? users : users.filter(user => 
-        user.name.toLowerCase().includes(value)
-      )
-    );
+    const filtered = value.trim() === ''
+      ? users
+      : users.filter(user =>
+          user.name.toLowerCase().includes(value)
+        );
+    setFilteredUsers(filtered);
   };
 
   const handleUserSelection = (user) => {
-    navigation.navigate('Chat History', { 
+    navigation.navigate('Chat History', {
       userId: user._id,
       userName: user.name,
-      userImage: user.image 
+      userImage: user.image
         ? `${config.address}/${user.image.replace(/^\/+/, '')}`.replace('undefined/', '')
         : null
     });
@@ -103,15 +114,12 @@ const Messages = ({ navigation }) => {
   };
 
   const renderUserItem = ({ item }) => {
-    const userImage = item.image 
+    const userImage = item.image
       ? { uri: `${config.address}/${item.image.replace(/^\/+/, '')}`.replace('undefined/', '') }
       : UserPh;
 
     return (
-      <TouchableOpacity
-        style={styles.userItem}
-        onPress={() => handleUserSelection(item)}
-      >
+      <TouchableOpacity style={styles.userItem} onPress={() => handleUserSelection(item)}>
         <Image source={userImage} style={styles.userImage} />
         <View style={styles.userInfo}>
           <Text style={styles.userName}>{item.name}</Text>
@@ -120,9 +128,7 @@ const Messages = ({ navigation }) => {
           </Text>
         </View>
         <Text style={styles.messageTimeSmall}>
-          {item.latestMessage?.createdAt 
-            ? formatMessageTime(item.latestMessage.createdAt)
-            : ''}
+          {formatMessageTime(item.latestMessage?.createdAt)}
         </Text>
       </TouchableOpacity>
     );
@@ -136,20 +142,21 @@ const Messages = ({ navigation }) => {
       </View>
 
       <View style={styles.searchContainer}>
+        <MaterialIcons name="search" size={22} color="#ff69b4" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search for people"
+          placeholder="Search by name"
           value={searchTerm}
           onChangeText={handleSearchChange}
-          onFocus={() => setShowSearchBox(true)}
+          placeholderTextColor="#aaa"
         />
       </View>
 
-      <FlatList
+      <Animated.FlatList
         data={filteredUsers}
         renderItem={renderUserItem}
         keyExtractor={item => item._id}
-        style={styles.userList}
+        style={[styles.userList, { opacity: fadeAnim }]}
         contentContainerStyle={styles.listContent}
       />
     </View>
@@ -165,71 +172,79 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ff69b4',
-    marginTop: 35,
     paddingHorizontal: 15,
-    height: 80,
+    paddingTop: 50,
+    paddingBottom: 15,
   },
   logo: {
-    width: 50,
-    height: 50,
-    marginRight: 15,
+    width: 40,
+    height: 40,
+    marginRight: 10,
   },
   headerTitle: {
     color: 'white',
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    textAlign: 'left',
-    flex: 1,
   },
   searchContainer: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    margin: 15,
+    backgroundColor: '#fff',
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  searchIcon: {
+    marginRight: 8,
   },
   searchInput: {
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    backgroundColor: '#f5f5f5',
+    flex: 1,
+    height: 45,
+    fontSize: 16,
+    color: '#333',
   },
   userList: {
     flex: 1,
-    width: '100%',
   },
   listContent: {
-    paddingBottom: 20,
+    paddingBottom: 30,
   },
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fff',
   },
   userImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 15,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#ff69b4',
   },
   userInfo: {
     flex: 1,
     justifyContent: 'center',
   },
   userName: {
-    fontWeight: 'bold',
     fontSize: 16,
-    marginBottom: 3,
+    fontWeight: '600',
+    color: '#2a2a2a',
   },
   userLastMessage: {
-    color: '#666',
     fontSize: 14,
+    color: '#777',
+    marginTop: 2,
   },
   messageTimeSmall: {
     fontSize: 12,
-    color: '#999',
+    color: '#aaa',
   },
 });
 

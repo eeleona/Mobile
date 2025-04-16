@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import config from '../../server/config/config';
 import AppBar from '../design/AppBar';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 const AdoptionForm = ({ navigation, route }) => {
     const { id } = route.params;
@@ -177,127 +178,186 @@ const AdoptionForm = ({ navigation, route }) => {
     return (
         <ApplicationProvider {...eva} theme={eva.light}>
             <PaperProvider>
-            <AppBar></AppBar>
-                    <ScrollView style={styles.container}>
-                        
-                        
-                        {loading ? (
-                            <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="large" color="#ff69b4" />
-                                <Text style={styles.loadingText}>Loading information...</Text>
-                            </View>
-                        ) : (
-                            <>
-                                {/* Pet Information */}
-                                {petInfo && (
-                                    <View style={styles.sectionContainer}>
+                <AppBar></AppBar>
+                <ScrollView style={styles.container}>
+                    {loading ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="large" color="#ff69b4" />
+                            <Text style={styles.loadingText}>Loading information...</Text>
+                        </View>
+                    ) : (
+                        <>
+                            {/* Pet Information */}
+                            {petInfo && (
+                                <View style={styles.sectionContainer}>
+                                    
+                                    <View style={styles.infoCard}>
+                                    <View style={styles.sectionHeader}>
+                                        <MaterialIcons name="pets" size={24} color="#ff69b4" />
                                         <Text style={styles.sectionTitle}>Pet Information</Text>
-                                        <View style={styles.infoCard}>
+                                    </View>
+                                        <View style={styles.infoRow}>
+                                            <MaterialIcons name="badge" size={18} color="#666" style={styles.infoIcon} />
                                             <Text style={styles.infoText}>Name: {petInfo.p_name}</Text>
+                                        </View>
+                                        <View style={styles.infoRow}>
+                                            <MaterialIcons name="category" size={18} color="#666" style={styles.infoIcon} />
                                             <Text style={styles.infoText}>Type: {petInfo.p_type}</Text>
+                                        </View>
+                                        <View style={styles.infoRow}>
+                                            <MaterialIcons name="cake" size={18} color="#666" style={styles.infoIcon} />
                                             <Text style={styles.infoText}>Age: {petInfo.p_age} years old</Text>
+                                        </View>
+                                        <View style={styles.infoRow}>
+                                            <MaterialIcons name="wc" size={18} color="#666" style={styles.infoIcon} />
                                             <Text style={styles.infoText}>Gender: {petInfo.p_gender}</Text>
+                                        </View>
+                                        <View style={styles.infoRow}>
+                                            <MaterialIcons name="grass" size={18} color="#666" style={styles.infoIcon} />
                                             <Text style={styles.infoText}>Breed: {petInfo.p_breed}</Text>
                                         </View>
                                     </View>
-                                )}
+                                </View>
+                            )}
+                            
+                            {/* User Information */}
+                            <View style={styles.sectionContainer}>
                                 
-                                {/* User Information */}
-                                <View style={styles.sectionContainer}>
+                                <View style={styles.infoCard}>
+                                <View style={styles.sectionHeader}>
+                                    <MaterialIcons name="person" size={24} color="#ff69b4" />
                                     <Text style={styles.sectionTitle}>Your Information</Text>
-                                    <View style={styles.infoCard}>
+                                </View>
+                                    <View style={styles.infoRow}>
+                                        <MaterialIcons name="badge" size={18} color="#666" style={styles.infoIcon} />
                                         <Text style={styles.infoText}>Full Name: {userInfo.fullName}</Text>
-                                        <Text style={styles.infoText}>Address: {userInfo.gender}</Text>
+                                    </View>
+                                    <View style={styles.infoRow}>
+                                        <MaterialIcons name="transgender" size={18} color="#666" style={styles.infoIcon} />
+                                        <Text style={styles.infoText}>Gender: {userInfo.gender}</Text>
+                                    </View>
+                                    <View style={styles.infoRow}>
+                                        <MaterialIcons name="phone" size={18} color="#666" style={styles.infoIcon} />
                                         <Text style={styles.infoText}>Contact: {userInfo.contactNumber}</Text>
+                                    </View>
+                                    <View style={styles.infoRow}>
+                                        <MaterialIcons name="home" size={18} color="#666" style={styles.infoIcon} />
                                         <Text style={styles.infoText}>Address: {userInfo.address}</Text>
                                     </View>
                                 </View>
+                            </View>
+                            
+                            {/* Adoption Form */}
+                            <View style={styles.sectionContainer}>
                                 
-                                {/* Adoption Form */}
-                                <View style={styles.sectionContainer}>
+                                <View style={styles.formCard}>
+                                <View style={styles.sectionHeader}>
+                                    <MaterialIcons name="description" size={24} color="#ff69b4" />
                                     <Text style={styles.sectionTitle}>Adoption Details</Text>
-                                    <View style={styles.formCard}>
-                                        <Text style={styles.label}>Occupation</Text>
-                                        <Input
-                                            style={styles.input}
-                                            value={occupation}
-                                            onChangeText={setOccupation}
-                                            placeholder="Your occupation"
-                                        />
-                                        
-                                        <Text style={styles.label}>Home Type</Text>
-                                        <Select
-                                            style={styles.select}
-                                            selectedIndex={homeTypeIndex}
-                                            onSelect={index => setHomeTypeIndex(index)}
-                                            value={homeTypes[homeTypeIndex.row]}
-                                        >
-                                            {homeTypes.map((type, i) => (
-                                                <SelectItem key={i} title={type} />
-                                            ))}
-                                        </Select>
-                                        
-                                        <Text style={styles.label}>Years Resided</Text>
-                                        <Input
-                                            style={styles.input}
-                                            value={yearsResided}
-                                            onChangeText={setYearsResided}
-                                            placeholder="Number of years"
-                                            keyboardType="numeric"
-                                        />
-                                        
-                                        <Text style={styles.label}>Adults in Household</Text>
-                                        <Input
-                                            style={styles.input}
-                                            value={adultsInHousehold}
-                                            onChangeText={setAdultsInHousehold}
-                                            placeholder="Number of adults"
-                                            keyboardType="numeric"
-                                        />
-                                        
-                                        <Text style={styles.label}>Children in Household</Text>
-                                        <Input
-                                            style={styles.input}
-                                            value={childrenInHousehold}
-                                            onChangeText={setChildrenInHousehold}
-                                            placeholder="Number of children"
-                                            keyboardType="numeric"
-                                        />
-                                        
-                                        <Text style={styles.label}>Household Description</Text>
-                                        <Select
-                                            style={styles.select}
-                                            selectedIndex={householdDescIndex}
-                                            onSelect={index => setHouseholdDescIndex(index)}
-                                            value={householdDescriptions[householdDescIndex.row]}
-                                        >
-                                            {householdDescriptions.map((desc, i) => (
-                                                <SelectItem key={i} title={desc} />
-                                            ))}
-                                        </Select>
-                                        
-                                        <Text style={styles.label}>Anyone allergic to pets?</Text>
-                                        <Select
-                                            style={styles.select}
-                                            selectedIndex={allergicIndex}
-                                            onSelect={index => setAllergicIndex(index)}
-                                            value={allergicOptions[allergicIndex.row]}
-                                        >
-                                            {allergicOptions.map((option, i) => (
-                                                <SelectItem key={i} title={option} />
-                                            ))}
-                                        </Select>
-                                    </View>
                                 </View>
-                                
-                                <TouchableOpacity 
-                                    style={styles.submitButton} 
-                                    onPress={showModal}
-                                >
-                                    <Text style={styles.submitButtonText}>Submit Application</Text>
-                                </TouchableOpacity>
-                            </>
-                        )}
+                                    <View style={styles.labelContainer}>
+                                        <MaterialIcons name="work" size={20} color="#ff69b4" style={styles.labelIcon} />
+                                        <Text style={styles.label}>Occupation</Text>
+                                    </View>
+                                    <Input
+                                        style={styles.input}
+                                        value={occupation}
+                                        onChangeText={setOccupation}
+                                        placeholder="Your occupation"
+                                    />
+                                    
+                                    <View style={styles.labelContainer}>
+                                        <MaterialIcons name="home" size={20} color="#ff69b4" style={styles.labelIcon} />
+                                        <Text style={styles.label}>Home Type</Text>
+                                    </View>
+                                    <Select
+                                        style={styles.select}
+                                        selectedIndex={homeTypeIndex}
+                                        onSelect={index => setHomeTypeIndex(index)}
+                                        value={homeTypes[homeTypeIndex.row]}
+                                    >
+                                        {homeTypes.map((type, i) => (
+                                            <SelectItem key={i} title={type} />
+                                        ))}
+                                    </Select>
+                                    
+                                    <View style={styles.labelContainer}>
+                                        <MaterialIcons name="calendar-today" size={20} color="#ff69b4" style={styles.labelIcon} />
+                                        <Text style={styles.label}>Years Resided</Text>
+                                    </View>
+                                    <Input
+                                        style={styles.input}
+                                        value={yearsResided}
+                                        onChangeText={setYearsResided}
+                                        placeholder="Number of years"
+                                        keyboardType="numeric"
+                                    />
+                                    
+                                    <View style={styles.labelContainer}>
+                                        <MaterialIcons name="people" size={20} color="#ff69b4" style={styles.labelIcon} />
+                                        <Text style={styles.label}>Adults in Household</Text>
+                                    </View>
+                                    <Input
+                                        style={styles.input}
+                                        value={adultsInHousehold}
+                                        onChangeText={setAdultsInHousehold}
+                                        placeholder="Number of adults"
+                                        keyboardType="numeric"
+                                    />
+                                    
+                                    <View style={styles.labelContainer}>
+                                        <MaterialIcons name="child-care" size={20} color="#ff69b4" style={styles.labelIcon} />
+                                        <Text style={styles.label}>Children in Household</Text>
+                                    </View>
+                                    <Input
+                                        style={styles.input}
+                                        value={childrenInHousehold}
+                                        onChangeText={setChildrenInHousehold}
+                                        placeholder="Number of children"
+                                        keyboardType="numeric"
+                                    />
+                                    
+                                    <View style={styles.labelContainer}>
+                                        <MaterialIcons name="groups" size={20} color="#ff69b4" style={styles.labelIcon} />
+                                        <Text style={styles.label}>Household Description</Text>
+                                    </View>
+                                    <Select
+                                        style={styles.select}
+                                        selectedIndex={householdDescIndex}
+                                        onSelect={index => setHouseholdDescIndex(index)}
+                                        value={householdDescriptions[householdDescIndex.row]}
+                                    >
+                                        {householdDescriptions.map((desc, i) => (
+                                            <SelectItem key={i} title={desc} />
+                                        ))}
+                                    </Select>
+                                    
+                                    <View style={styles.labelContainer}>
+                                        <MaterialIcons name="warning" size={20} color="#ff69b4" style={styles.labelIcon} />
+                                        <Text style={styles.label}>Anyone allergic to pets?</Text>
+                                    </View>
+                                    <Select
+                                        style={styles.select}
+                                        selectedIndex={allergicIndex}
+                                        onSelect={index => setAllergicIndex(index)}
+                                        value={allergicOptions[allergicIndex.row]}
+                                    >
+                                        {allergicOptions.map((option, i) => (
+                                            <SelectItem key={i} title={option} />
+                                        ))}
+                                    </Select>
+                                </View>
+                            </View>
+                            
+                            <TouchableOpacity 
+                                style={styles.submitButton} 
+                                onPress={showModal}
+                            >
+                                <MaterialIcons name="send" size={20} color="white" style={styles.buttonIcon} />
+                                <Text style={styles.submitButtonText}>Submit Application</Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
                         
                         <Portal>
                             <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={containerStyle}>
@@ -339,25 +399,16 @@ const styles = StyleSheet.create({
         padding: 16,
         backgroundColor: '#FAF9F6',
     },
-    gradientOverlay: {
-        flex: 1,
-    },
-    formHeader: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#FAF9F6',
-        textAlign: 'center',
-        marginVertical: 20,
-        fontFamily: 'Inter_700Bold',
-    },
-    sectionContainer: {
-        marginBottom: 24,
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
     },
     sectionTitle: {
         fontSize: 22,
         fontWeight: 'bold',
         color: '#ff69b4',
-        marginBottom: 12,
+        marginLeft: 8,
         fontFamily: 'Inter_700Bold',
     },
     infoCard: {
@@ -369,6 +420,15 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+        marginBottom: 15,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    infoIcon: {
+        marginRight: 8,
     },
     formCard: {
         backgroundColor: 'white',
@@ -379,17 +439,20 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+        
     },
-    infoText: {
-        fontSize: 16,
-        marginBottom: 8,
-        fontFamily: 'Inter_500Medium',
+    labelContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 12,
+        marginBottom: 6,
+    },
+    labelIcon: {
+        marginRight: 8,
     },
     label: {
         fontSize: 16,
         fontWeight: '600',
-        marginTop: 12,
-        marginBottom: 6,
         fontFamily: 'Inter_500Medium',
     },
     input: {
@@ -413,6 +476,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginVertical: 20,
         elevation: 3,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginBottom: 40,
+    },
+    buttonIcon: {
+        marginRight: 8,
     },
     submitButtonText: {
         color: 'white',
