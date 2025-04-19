@@ -19,8 +19,12 @@ const VerifiedUsers = () => {
   const fetchUsers = async () => {
     try {
       const response = await axios.get(`${config.address}/api/verified/all`);
-      setAllUsers(response.data.users);
-      setFilteredUsers(response.data.users); // ← add this
+      // Sort users by verification date (newest first)
+      const sortedUsers = response.data.users.sort((a, b) => {
+        return new Date(b.verifiedAt || b.createdAt) - new Date(a.verifiedAt || a.createdAt);
+      });
+      setAllUsers(sortedUsers);
+      setFilteredUsers(sortedUsers);
     } catch (error) {
       console.error('Error fetching verified users:', error);
     } finally {
