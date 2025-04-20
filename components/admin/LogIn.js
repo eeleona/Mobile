@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, Text, TouchableOpacity, View, Image,
-  KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard
+  KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, StatusBar
 } from 'react-native';
 import { useFonts, Inter_700Bold, Inter_500Medium, Inter_400Regular } from '@expo-google-fonts/inter';
 import { ApplicationProvider, Input } from '@ui-kitten/components';
@@ -88,7 +88,10 @@ const LogIn = ({ navigation }) => {
         style={styles.container}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        
+
           <View style={styles.innerContainer}>
+          <StatusBar barStyle="default" />
             <View style={styles.headercontainer}>
               <Image
                 style={styles.header}
@@ -184,7 +187,7 @@ const styles = StyleSheet.create({
   },
   headercontainer: {
     width: '100%',
-    height: '35%',
+    height: '40%',
   },
   header: {
     width: '100%',

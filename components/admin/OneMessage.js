@@ -5,58 +5,131 @@ import {
 } from 'react-native';
 import io from 'socket.io-client/dist/socket.io';
 import axios from 'axios';
-import config from '../../server/config/config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
+import config from '../../server/config/config';
+
+// Create socket connection outside component
+const socket = io(`${config.address}`, {
+  secure: true,
+  transports: ['websocket', 'polling']
+});
 
 const OneMessage = ({ navigation, route }) => {
   const { userId, userName, userImage } = route.params;
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
-  const messagesEndRef = useRef(null);
+  const [users, setUsers] = useState([]);
+  const flatListRef = useRef(null);
   const adminId = '670a04a34f63c22acf3d8c9a';
-
-  const socket = useRef(null);
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
-    socket.current = io(`${config.address}`, {
-      transports: ['websocket'],
-      forceNew: true,
-      jsonp: false,
-    });
+    if (adminId) {
+      // Join room with admin ID
+      socket.emit('joinRoom', adminId);
+    }
 
-    if (adminId) socket.current.emit('joinRoom', adminId);
+    return () => {
+      socket.off('receiveMessage');
+    };
+  }, [adminId]);
 
-    fetchMessages();
+  useEffect(() => {
+    fetchUsers();
+    if (userId) {
+      fetchMessages(userId);
+    }
+  }, [userId]);
 
-    socket.current.on('receiveMessage', (newMessage) => {
-      if (newMessage.senderId === userId || newMessage.receiverId === userId) {
-        setMessages(prev => [...prev, newMessage]);
-        scrollToBottom();
-      }
+  useEffect(() => {
+    socket.on('receiveMessage', (newMessage) => {
+      // Add new message to messages list
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      
+      // Update the latest message in users list
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user._id === newMessage.senderId || user._id === newMessage.receiverId
+            ? { ...user, latestMessage: newMessage.message }
+            : user
+        )
+      );
+      
+      scrollToBottom();
     });
 
     return () => {
-      if (socket.current) {
-        socket.current.off('receiveMessage');
-        socket.current.disconnect();
-      }
+      socket.off('receiveMessage');
     };
-  }, [userId]);
+  }, []);
 
-  const fetchMessages = async () => {
+  const fetchUsers = async () => {
     try {
-      const response = await axios.get(`${config.address}/api/messages/${adminId}/${userId}`);
-      setMessages(response.data);
-      scrollToBottom();
-    } catch (err) {
-      console.error('Fetch error:', err);
+      const token = await AsyncStorage.getItem('token');
+      const response = await axios.get(`${config.address}/api/messages/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (Array.isArray(response.data)) {
+        const sortedUsers = response.data.map(user => ({
+          ...user,
+          latestMessage: user.latestMessage || { message: 'No messages yet' }
+        }));
+        
+        setUsers(sortedUsers);
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      Alert.alert('Error', 'Failed to load users');
     }
   };
 
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollToEnd({ animated: true });
+  const fetchMessages = async (selectedUserId) => {
+    try {
+      if (!selectedUserId) return;
+      
+      const token = await AsyncStorage.getItem('token');
+      const response = await axios.get(
+        `${config.address}/api/messages/${adminId}/${selectedUserId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setMessages(response.data);
+      scrollToBottom();
+    } catch (error) {
+      console.error('Failed to fetch messages:', error);
+      Alert.alert('Error', 'Failed to load messages');
     }
+  };
+
+  const handleSendMessage = () => {
+    if (!message.trim() || !userId || isSending) return;
+
+    setIsSending(true);
+
+    const newMessage = {
+      senderId: adminId,
+      receiverId: userId,
+      message: message.trim(),
+    };
+
+    // Emit the message through socket
+    socket.emit('sendMessage', newMessage);
+
+    // Update the local messages state immediately
+    setMessages((prevMessages) => [...prevMessages, newMessage]);
+    setMessage('');
+    scrollToBottom();
+    setIsSending(false);
+  };
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      if (flatListRef.current && messages.length > 0) {
+        flatListRef.current.scrollToEnd({ animated: true });
+      }
+    }, 100);
   };
 
   const formatMessageTime = (timestamp) => {
@@ -66,67 +139,40 @@ const OneMessage = ({ navigation, route }) => {
     });
   };
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) return;
-    const newMessage = {
-      senderId: adminId,
-      receiverId: userId,
-      message: message.trim(),
-    };
-    const tempMessage = {
-      ...newMessage,
-      _id: 'temp-' + Date.now(),
-      createdAt: new Date().toISOString(),
-      pending: true,
-    };
-    setMessages(prev => [...prev, tempMessage]);
-    setMessage('');
-    scrollToBottom();
-
-    try {
-      const response = await axios.post(`${config.address}/api/messages/send`, newMessage);
-      const sent = response.data?.newMessage;
-      if (sent) {
-        setMessages(prev =>
-          prev.map(msg => (msg._id === tempMessage._id ? sent : msg))
-        );
-        socket.current.emit('sendMessage', sent);
-      }
-    } catch (err) {
-      console.error('Send failed:', err);
-      setMessages(prev =>
-        prev.map(msg =>
-          msg._id === tempMessage._id ? { ...msg, error: true } : msg
-        )
-      );
-      Alert.alert('Failed to send', 'Try again.', [
-        { text: 'Retry', onPress: () => handleSendMessage() },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
-    }
-  };
-
   const renderMessage = ({ item }) => {
     const isAdmin = item.senderId === adminId;
-    const bubbleStyle = isAdmin ? styles.adminBubble : styles.userBubble;
-    const textStyle = isAdmin ? styles.adminText : styles.userText;
-    const timeStyle = isAdmin ? styles.adminTime : styles.userTime;
-    const avatar = isAdmin
-      ? require('../../assets/Images/nobglogo.png')
-      : userImage
-      ? { uri: userImage }
-      : require('../../assets/Images/user.png');
-
+    const isPending = item.pending;
+    const isFailed = item.error;
+    
     return (
       <View style={[styles.messageRow, isAdmin ? styles.alignRight : styles.alignLeft]}>
-        {!isAdmin && <Image source={avatar} style={styles.avatar} />}
-        <View style={[styles.bubble, bubbleStyle]}>
-          <Text style={textStyle}>{item.message}</Text>
-          <Text style={timeStyle}>
-            {item.pending ? 'Sending...' : formatMessageTime(item.createdAt)}
+        {!isAdmin && (
+          <Image
+            source={userImage ? { uri: userImage } : require('../../assets/Images/user.png')}
+            style={styles.avatar}
+          />
+        )}
+        <View style={[
+          styles.bubble, 
+          isAdmin ? styles.adminBubble : styles.userBubble,
+          isPending && styles.pendingBubble,
+          isFailed && styles.failedBubble
+        ]}>
+          <Text style={isAdmin ? styles.adminText : styles.userText}>
+            {item.message}
+          </Text>
+          <Text style={styles.timeText}>
+            {isPending ? 'Sending...' : 
+             isFailed ? 'Failed to send' : 
+             formatMessageTime(item.createdAt)}
           </Text>
         </View>
-        {isAdmin && <Image source={avatar} style={styles.avatar} />}
+        {isAdmin && (
+          <Image
+            source={require('../../assets/Images/nobglogo.png')}
+            style={styles.avatar}
+          />
+        )}
       </View>
     );
   };
@@ -135,6 +181,7 @@ const OneMessage = ({ navigation, route }) => {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -142,31 +189,41 @@ const OneMessage = ({ navigation, route }) => {
         </TouchableOpacity>
         <Image
           source={userImage ? { uri: userImage } : require('../../assets/Images/user.png')}
-          style={styles.headerImage}
+          style={styles.headerAvatar}
         />
-        <Text style={styles.headerName}>{userName}</Text>
+        <Text style={styles.headerTitle}>{userName}</Text>
       </View>
 
       <FlatList
-        ref={messagesEndRef}
+        ref={flatListRef}
         data={messages}
+        keyExtractor={(item, index) => item._id || `msg-${index}`}
         renderItem={renderMessage}
-        keyExtractor={(item, index) => item._id || index.toString()}
         contentContainerStyle={styles.messagesContainer}
         onContentSizeChange={scrollToBottom}
         onLayout={scrollToBottom}
       />
 
-      <View style={styles.inputWrapper}>
+      <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Type a message"
           value={message}
           onChangeText={setMessage}
+          placeholder="Type a message..."
+          placeholderTextColor="#ccc"
+          multiline
           onSubmitEditing={handleSendMessage}
         />
-        <TouchableOpacity style={styles.sendBtn} onPress={handleSendMessage}>
-          <MaterialIcons name="send" size={22} color="#fff" />
+        <TouchableOpacity 
+          onPress={handleSendMessage} 
+          style={[styles.sendButton, (isSending || !message.trim()) && styles.disabledButton]}
+          disabled={isSending || !message.trim()}
+        >
+          <MaterialIcons 
+            name="send" 
+            size={24} 
+            color={isSending || !message.trim() ? '#aaa' : '#fff'} 
+          />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -174,70 +231,112 @@ const OneMessage = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF9F6' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F8F9FB',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FF66C4',
-    padding: 15,
-    paddingTop: 50,
+    backgroundColor: '#5A67D8',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    elevation: 4,
   },
-  headerImage: { width: 36, height: 36, borderRadius: 18, marginHorizontal: 10 },
-  headerName: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  messagesContainer: { paddingVertical: 10, paddingHorizontal: 12 },
+  headerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginHorizontal: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  messagesContainer: {
+    padding: 12,
+    paddingBottom: 80,
+  },
   messageRow: {
     flexDirection: 'row',
     marginVertical: 6,
     alignItems: 'flex-end',
   },
-  alignRight: { justifyContent: 'flex-end' },
-  alignLeft: { justifyContent: 'flex-start' },
-  avatar: { width: 32, height: 32, borderRadius: 16, marginHorizontal: 8 },
+  alignLeft: {
+    justifyContent: 'flex-start',
+  },
+  alignRight: {
+    justifyContent: 'flex-end',
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginHorizontal: 6,
+  },
   bubble: {
     maxWidth: '75%',
     padding: 10,
-    borderRadius: 15,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 4,
-  },
-  adminBubble: {
-    backgroundColor: '#FF66C4',
-    borderTopRightRadius: 0,
+    borderRadius: 14,
   },
   userBubble: {
-    backgroundColor: '#fff',
+    backgroundColor: '#E2E8F0',
     borderTopLeftRadius: 0,
-    borderWidth: 1,
-    borderColor: '#eee',
   },
-  adminText: { color: 'white', fontSize: 14 },
-  userText: { color: '#333', fontSize: 14 },
-  adminTime: { color: '#ffe5f1', fontSize: 10, textAlign: 'right', marginTop: 4 },
-  userTime: { color: '#aaa', fontSize: 10, textAlign: 'right', marginTop: 4 },
-  inputWrapper: {
+  adminBubble: {
+    backgroundColor: '#5A67D8',
+    borderTopRightRadius: 0,
+  },
+  pendingBubble: {
+    opacity: 0.7,
+  },
+  failedBubble: {
+    backgroundColor: '#ffcccc',
+  },
+  userText: {
+    color: '#333',
+    fontSize: 15,
+  },
+  adminText: {
+    color: '#fff',
+    fontSize: 15,
+  },
+  timeText: {
+    fontSize: 10,
+    color: '#888',
+    marginTop: 4,
+    textAlign: 'right',
+  },
+  inputContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
+    padding: 10,
     backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderColor: '#eee',
+    borderColor: '#ddd',
+    alignItems: 'center',
   },
   input: {
     flex: 1,
-    height: 45,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 25,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 20,
     paddingHorizontal: 16,
+    paddingVertical: 10,
     fontSize: 15,
-    marginRight: 10,
+    maxHeight: 100,
   },
-  sendBtn: {
-    backgroundColor: '#FF66C4',
-    padding: 12,
-    borderRadius: 25,
+  sendButton: {
+    marginLeft: 10,
+    backgroundColor: '#5A67D8',
+    borderRadius: 20,
+    padding: 10,
+  },
+  disabledButton: {
+    backgroundColor: '#cccccc',
   },
 });
 

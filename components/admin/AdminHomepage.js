@@ -44,7 +44,7 @@ const AdminHomepage = ({ navigation }) => {
     { name: 'Pending Users', action: handlePendingUsers },
     { name: 'Verified Users', action: handleVerifiedUsers },
     { name: 'Staff', action: handleStaff },
-    { name: 'Admin', action: () => {} }, // Add appropriate navigation if needed
+    { name: 'Admin', action: () => { navigation.navigate('Manage Staff') } }, // Add appropriate navigation if needed
     { name: 'Admin Logs', action: handleAdminlogs },
   ];
 
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     position: 'absolute',
-    top: 40,
+    top: 10,
     left: 10,
     right: 10,
     flexDirection: 'row',
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderColor: '#ff69b4',
-    borderRadius: 20,
+    borderRadius: 15,
     paddingHorizontal: 10,
     backgroundColor: 'white',
   },
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     fontSize: 14,
-    color: '#ff69b4',
+    color: 'black',
   },
   searchResultsContainer: {
     position: 'absolute',
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
   },
   welcomecontainer: {
     marginLeft: 1,
-    marginTop: 130,
+    marginTop: 100,
     flexDirection: 'row',
     alignItems: 'center',
     height: 60,
