@@ -80,7 +80,7 @@ const ActiveAdoptions = () => {
           <ActivityIndicator
             animating={true}
             size="large"
-            color="#4CAF50"
+            color="#ff69b4"
             style={styles.loadingIndicator}
           />
           <Text style={styles.loadingText}>Loading active adoptions...</Text>
@@ -103,7 +103,7 @@ const ActiveAdoptions = () => {
           <MaterialIcons
             name="search"
             size={24}
-            color="#4CAF50"
+            color="#ff69b4"
             style={styles.searchIcon}
           />
         </View>
@@ -161,8 +161,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 6,
+    marginTop: 15,
     borderRadius: 10,
     borderColor: '#eee',
     borderWidth: 1,

@@ -10,7 +10,8 @@ import {
   Animated, 
   Easing, 
   Image,
-  ActivityIndicator
+  ActivityIndicator,
+  TextInput
 } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import axios from 'axios';
@@ -24,6 +25,7 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [search, setSearch] = useState('');
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(300)).current;
 
@@ -31,26 +33,38 @@ const Admin = () => {
     fetchAdmins();
   }, []);
 
+  useEffect(() => {
+    if (!search.trim()) {
+      setFilteredAdmins(adminList);
+    } else {
+      const lower = search.toLowerCase();
+      setFilteredAdmins(
+        adminList.filter(
+          admin =>
+            ((admin.a_fname && admin.a_fname.toLowerCase().includes(lower)) ||
+            (admin.a_lname && admin.a_lname.toLowerCase().includes(lower))) ||
+            (admin.s_role && (
+              (admin.s_role === 'admin' && 'admin'.includes(lower)) ||
+              (admin.s_role === 'pending-admin' && 'pending admin'.includes(lower)) ||
+              admin.s_role.toLowerCase().includes(lower)
+            ))
+        )
+      );
+    }
+  }, [search, adminList]);
+
   const fetchAdmins = async () => {
     try {
-      console.log("Fetching admins from:", `${config.address}/api/admin/all`);
       const response = await axios.get(`${config.address}/api/admin/all`);
-      console.log("Full API response:", response.data);
-      
       if (response.data && Array.isArray(response.data.admins)) {
         const filteredAdmins = response.data.admins.filter(admin => 
           admin.s_role === 'admin' || admin.s_role === 'pending-admin'
         );
-        
-        console.log("Filtered admins:", filteredAdmins);
         setAdminList(filteredAdmins);
         setFilteredAdmins(filteredAdmins);
-      } else {
-        console.error("Unexpected response structure:", response.data);
       }
     } catch (error) {
       console.error('Error fetching admins:', error.message);
-      console.error('Full error:', error);
     } finally {
       setLoading(false);
     }
@@ -110,9 +124,6 @@ const Admin = () => {
       activeOpacity={0.8}
     >
       <View style={styles.cardContent}>
-        <View style={styles.avatarContainer}>
-          
-        </View>
         <View style={styles.cardTextContainer}>
           <Text style={styles.cardTitle}>
             {item.a_fname} {item.a_lname}
@@ -135,15 +146,6 @@ const Admin = () => {
     </TouchableOpacity>
   );
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ff69b4" />
-        <Text style={styles.loadingText}>Loading admins...</Text>
-      </View>
-    );
-  }
-
   const DetailRow = ({ icon, label, value }) => (
     <View style={styles.detailRow}>
       <View style={styles.detailIcon}>
@@ -156,10 +158,39 @@ const Admin = () => {
     </View>
   );
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#ff69b4" />
+        <Text style={styles.loadingText}>Loading admins...</Text>
+      </View>
+    );
+  }
+
   return (
     <PaperProvider>
       <View style={styles.container}>
-        
+        {/* Search Bar styled like Staff.js */}
+        <View style={styles.searchContainer}>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+            <TextInput
+              style={styles.searchBar}
+              placeholder="Search"
+              placeholderTextColor="#aaa"
+              value={search}
+              onChangeText={setSearch}
+              underlineColorAndroid="transparent"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <MaterialIcons
+              name="search"
+              size={24}
+              color="#ff69b4"
+              style={styles.searchIcon}
+            />
+          </View>
+        </View>
         <FlatList
           data={filteredAdmins}
           renderItem={renderItem}
@@ -196,7 +227,6 @@ const Admin = () => {
                 {selectedAdmin && (
                   <View style={styles.modalContent}>
                     <View style={styles.profileSection}>
-                      
                       <Text style={styles.profileName}>
                         {selectedAdmin.a_fname} {selectedAdmin.a_lname}
                       </Text>
@@ -237,6 +267,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAF9F6',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 15,
+    borderRadius: 10,
+    borderColor: '#eee',
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  searchBar: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+    color: '#333',
+    backgroundColor: 'transparent',
+  },
+  searchIcon: {
+    marginLeft: 8,
   },
   header: {
     fontFamily: 'Inter_700Bold',

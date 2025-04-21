@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Animated,
+} from 'react-native';
 import { Divider } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import AppBar from '../design/AppBar';
@@ -34,7 +42,6 @@ const VerifiedUserDetails = ({ route, navigation }) => {
   return (
     <View style={styles.container}>
       <AppBar title="Verified User Details" onBackPress={() => navigation.goBack()} />
-      
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* Profile Section */}
         <View style={styles.profile}>
@@ -56,67 +63,40 @@ const VerifiedUserDetails = ({ route, navigation }) => {
 
           <View style={styles.statusContainer}>
             <MaterialIcons name="verified-user" size={20} color="white" />
-            <Text style={styles.statusText}>{user.v_role}</Text>
+            <Text style={styles.statusText}>
+              {user.v_role.charAt(0).toUpperCase() + user.v_role.slice(1)}
+            </Text>
           </View>
 
           <Divider style={styles.divider} />
 
-          <View style={styles.detailItem}>
-            <View style={styles.detailLabel}>
-              <MaterialIcons name="person-outline" size={20} color="#ff69b4" />
-              <Text style={styles.labelText}>Username</Text>
+          {[
+            { icon: 'person-outline', label: 'Username', value: user.v_username },
+            { icon: 'email', label: 'Email Address', value: user.v_emailadd },
+            { icon: 'phone', label: 'Contact Number', value: user.v_contactnumber },
+            { icon: 'location-on', label: 'Address', value: user.v_add },
+            { icon: 'wc', label: 'Gender', value: user.v_gender },
+            { icon: 'cake', label: 'Birthday', value: user.v_birthdate },
+          ].map((item, index) => (
+            <View key={index}>
+              <View style={styles.detailRow}>
+                <MaterialIcons name={item.icon} size={20} color="#ff69b4" />
+                <View style={styles.labelContainer}>
+                  <Text style={styles.label}>{item.label}:</Text>
+                </View>
+                <View style={styles.valueContainer}>
+                  <Text style={styles.value}>{item.value}</Text>
+                </View>
+              </View>
+              <Divider style={styles.divider} />
             </View>
-            <Text style={styles.detailValue}>{user.v_username}</Text>
-          </View>
-
-          <View style={styles.detailItem}>
-            <View style={styles.detailLabel}>
-              <MaterialIcons name="email" size={20} color="#ff69b4" />
-              <Text style={styles.labelText}>Email Address</Text>
-            </View>
-            <Text style={styles.detailValue}>{user.v_emailadd}</Text>
-          </View>
-
-          <View style={styles.detailItem}>
-            <View style={styles.detailLabel}>
-              <MaterialIcons name="phone" size={20} color="#ff69b4" />
-              <Text style={styles.labelText}>Contact Number</Text>
-            </View>
-            <Text style={styles.detailValue}>{user.v_contactnumber}</Text>
-          </View>
-
-          <View style={styles.detailItem}>
-            <View style={styles.detailLabel}>
-              <MaterialIcons name="location-on" size={20} color="#ff69b4" />
-              <Text style={styles.labelText}>Address</Text>
-            </View>
-            <Text style={styles.detailValue}>{user.v_add}</Text>
-          </View>
-
-          <View style={styles.detailItem}>
-            <View style={styles.detailLabel}>
-              <MaterialIcons name="wc" size={20} color="#ff69b4" />
-              <Text style={styles.labelText}>Gender</Text>
-            </View>
-            <Text style={styles.detailValue}>{user.v_gender}</Text>
-          </View>
-
-          <View style={styles.detailItem}>
-            <View style={styles.detailLabel}>
-              <MaterialIcons name="cake" size={20} color="#ff69b4" />
-              <Text style={styles.labelText}>Birthday</Text>
-            </View>
-            <Text style={styles.detailValue}>{user.v_birthdate}</Text>
-          </View>
+          ))}
         </View>
 
         {/* Valid ID Section */}
         {user.v_validID && (
           <View style={styles.validID}>
-            <TouchableOpacity 
-              style={styles.validIdButton} 
-              onPress={toggleValidIdVisibility}
-            >
+            <TouchableOpacity style={styles.validIdButton} onPress={toggleValidIdVisibility}>
               <View style={styles.detailLabel}>
                 <MaterialIcons name="verified" size={20} color="#ff69b4" />
                 <Text style={styles.sectionTitle}>Valid ID</Text>
@@ -125,7 +105,7 @@ const VerifiedUserDetails = ({ route, navigation }) => {
                 <MaterialIcons name="keyboard-arrow-right" size={24} color="#333" />
               </Animated.View>
             </TouchableOpacity>
-            
+
             {isValidIdVisible && (
               <View style={styles.imageContainer}>
                 <Image
@@ -154,18 +134,72 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 10,
     padding: 15,
+    marginTop: 15,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
   },
+  imageContainer: {
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  profileImage: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    borderWidth: 2,
+  },
+  name: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginVertical: 10,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#ff69b4',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignSelf: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  statusText: {
+    color: 'white',
+    fontSize: 14,
+    marginLeft: 5,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  labelContainer: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  valueContainer: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  label: {
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  value: {
+    fontSize: 14,
+  },
+  divider: {
+    marginVertical: 5,
+  },
   validID: {
-    marginTop: 10,
     backgroundColor: 'white',
     borderRadius: 10,
     padding: 15,
-    marginBottom: 50,
+    marginTop: 20,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -177,76 +211,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  imageContainer: {
-    alignItems: 'center',
-  },
-  profileImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    marginTop: 10,
-    borderWidth: 4,
-  },
-  validIdImage: {
-    marginTop: 10,
-    width: '100%',
-    height: 200,
-    borderRadius: 10,
-  },
-  name: {
-    marginTop: 15,
-    fontSize: 24,
-    color: '#2a2a2a',
-    textAlign: 'center',
-    fontFamily: 'Inter_700Bold',
-  },
-  detailItem: {
-    marginBottom: 15,
-  },
   detailLabel: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5,
-  },
-  labelText: {
-    fontSize: 16,
-    color: '#ff69b4',
-    marginLeft: 10,
-    fontFamily: 'Inter_500Medium',
-  },
-  detailValue: {
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 30,
-    fontFamily: 'Inter_500Medium',
   },
   sectionTitle: {
-    fontSize: 20,
-    color: '#333',
-    marginLeft: 10,
-    fontFamily: 'Inter_700Bold',
-  },
-  divider: {
-    marginVertical: 15,
-    backgroundColor: '#e6dde3',
-    height: 1,
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ff69b4',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    alignSelf: 'center',
-    marginTop: 10,
-  },
-  statusText: {
-    color: 'white',
-    fontWeight: 'bold',
-    marginLeft: 5,
     fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  validIdImage: {
+    width: '100%',
+    height: 200,
+    marginTop: 10,
+    borderRadius: 10,
   },
 });
 

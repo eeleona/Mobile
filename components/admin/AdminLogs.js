@@ -36,8 +36,12 @@ const AdminLogs = () => {
       setRefreshing(true);
       const response = await axios.get(`${config.address}/api/logs/all`);
       const data = response.data;
-      setLogs(data);
-      setFilteredLogs(data);
+  
+      // Sort by timestamp descending (most recent first)
+      const sortedData = data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  
+      setLogs(sortedData);
+      setFilteredLogs(sortedData);
     } catch (err) {
       console.error('Error fetching logs:', err);
     } finally {
@@ -45,6 +49,7 @@ const AdminLogs = () => {
       setRefreshing(false);
     }
   };
+  
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -172,7 +177,7 @@ const AdminLogs = () => {
             <MaterialIcons 
               name={showDateDropdown ? "arrow-drop-up" : "arrow-drop-down"} 
               size={20} 
-              color={(selectedDate && selectedDate !== 'All') ? "#fff" : "#6200ee"} 
+              color={(selectedDate && selectedDate !== 'All') ? "#fff" : "gray"} 
             />
           </TouchableOpacity>
           {showDateDropdown && (
@@ -209,7 +214,7 @@ const AdminLogs = () => {
             <MaterialIcons 
               name={showUserDropdown ? "arrow-drop-up" : "arrow-drop-down"} 
               size={20} 
-              color={(selectedUser && selectedUser !== 'All') ? "#fff" : "#6200ee"} 
+              color={(selectedUser && selectedUser !== 'All') ? "#fff" : "gray"} 
             />
           </TouchableOpacity>
           {showUserDropdown && (
@@ -246,7 +251,7 @@ const AdminLogs = () => {
             <MaterialIcons 
               name={showActionDropdown ? "arrow-drop-up" : "arrow-drop-down"} 
               size={20} 
-              color={(selectedAction && selectedAction !== 'All') ? "#fff" : "#6200ee"} 
+              color={(selectedAction && selectedAction !== 'All') ? "#fff" : "gray"} 
             />
           </TouchableOpacity>
           {showActionDropdown && (
@@ -312,23 +317,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 10,
-    
-    
   },
   filterContainer: {
     flex: 1,
-    marginHorizontal: 4,
+    marginHorizontal: 5,
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#ff69b4',
     backgroundColor: '#fff',
+    marginTop: 10,
   },
   activeFilter: {
     backgroundColor: '#ff69b4',
@@ -374,7 +378,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 12,
-    paddingBottom: 32,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -383,7 +386,8 @@ const styles = StyleSheet.create({
   },
   logItem: {
     backgroundColor: '#fff',
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 13,
     marginBottom: 10,
     borderRadius: 8,
     elevation: 1,

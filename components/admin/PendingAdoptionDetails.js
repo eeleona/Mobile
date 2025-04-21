@@ -78,14 +78,14 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
           )}
           <DetailRow icon="pets" label="Name:" value={adoption.p_id?.p_name} />
           <Divider style={styles.rowDivider} />
-          <DetailRow icon="category" label="Type:" value={adoption.p_id?.p_type} />
+          <DetailRow icon="pets" label="Type:" value={adoption.p_id?.p_type} />
           <Divider style={styles.rowDivider} />
           <DetailRow icon="pets" label="Breed:" value={adoption.p_id?.p_breed} />
           <Divider style={styles.rowDivider} />
-          <DetailRow icon="male" label="Gender:" value={adoption.p_id?.p_gender} />
+          <DetailRow icon="pets" label="Gender:" value={adoption.p_id?.p_gender} />
           <Divider style={styles.rowDivider} />
           <DetailRow
-            icon="calendar-today"
+            icon="pets"
             label="Age:"
             value={adoption.p_id?.p_age ? `${adoption.p_id.p_age} years` : null}
           />
@@ -141,17 +141,6 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
         {/* Buttons */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={[styles.button, styles.acceptButton]}
-            onPress={handleAccept}
-            disabled={loading && actionType === 'accept'}
-          >
-            {loading && actionType === 'accept' ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Accept</Text>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
             style={[styles.button, styles.rejectButton]}
             onPress={handleReject}
             disabled={loading && actionType === 'reject'}
@@ -162,6 +151,18 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
               <Text style={styles.buttonText}>Reject</Text>
             )}
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.acceptButton]}
+            onPress={handleAccept}
+            disabled={loading && actionType === 'accept'}
+          >
+            {loading && actionType === 'accept' ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Accept</Text>
+            )}
+          </TouchableOpacity>
+          
         </View>
       </ScrollView>
     </View>
@@ -258,7 +259,7 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginBottom: 40,
   },
   button: {
     flex: 1,

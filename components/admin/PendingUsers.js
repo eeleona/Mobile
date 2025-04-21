@@ -166,8 +166,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 6,
+    marginTop: 15,
+    
     borderRadius: 10,
     borderColor: '#eee',
     borderWidth: 1,

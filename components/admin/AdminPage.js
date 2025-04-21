@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
   TextInput, 
@@ -6,7 +6,9 @@ import {
   StyleSheet, 
   Modal, 
   TouchableOpacity, 
-  Text 
+  Text,
+  Animated,
+  Easing
 } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -24,34 +26,79 @@ function EmptyScreen() {
 function AdminPage({ navigation }) {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
+  // Animated values for modal
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(100)).current;
+
   const handleLogoutPress = () => {
     setLogoutModalVisible(true);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
 
   const confirmLogout = () => {
-    setLogoutModalVisible(false);
-    // Add any logout logic here (clear tokens, etc.)
-    navigation.navigate('Login'); // Navigate to login screen
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 100,
+        duration: 200,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setLogoutModalVisible(false);
+      // Add any logout logic here (clear tokens, etc.)
+      navigation.navigate('Login'); // Navigate to login screen
+    });
   };
 
   const cancelLogout = () => {
-    setLogoutModalVisible(false);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 100,
+        duration: 200,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => setLogoutModalVisible(false));
   };
 
   return (
     <View style={styles.container}>
       {/* Search Bar */}
       
-
-      {/* Logout Confirmation Modal */}
+      {/* Animated Logout Confirmation Modal */}
       <Modal
-        animationType="slide"
+        animationType="none"
         transparent={true}
         visible={logoutModalVisible}
         onRequestClose={() => setLogoutModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
+        <Animated.View style={[styles.modalContainer, { opacity: fadeAnim }]}>
+          <Animated.View style={[
+            styles.modalContent,
+            { transform: [{ translateY: slideAnim }] }
+          ]}>
             <Text style={styles.modalTitle}>Log Out</Text>
             <Text style={styles.modalText}>Are you sure you want to log out?</Text>
             <View style={styles.modalButtons}>
@@ -68,8 +115,8 @@ function AdminPage({ navigation }) {
                 <Text style={styles.buttonText}>Log Out</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+          </Animated.View>
+        </Animated.View>
       </Modal>
 
       <Tab.Navigator
@@ -141,7 +188,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  
   tabBar: {
     position: 'absolute',
     bottom: 15,
@@ -181,10 +227,9 @@ const styles = StyleSheet.create({
     padding: 20,
     width: '80%',
     alignItems: 'center',
-    zIndex: 1000, // <-- add this
-    elevation: 10, // <-- add this
+    zIndex: 1000,
+    elevation: 10,
   },
-  
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',

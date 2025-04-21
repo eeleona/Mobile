@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 10,
     marginHorizontal: 10,
-    marginTop: 5,
+    marginTop: 15,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },

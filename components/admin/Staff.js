@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, ScrollView, Animated, Easing, Image } from 'react-native';
+import { View, Text, TextInput, StyleSheet, FlatList, TouchableOpacity, Modal, ScrollView, Animated, Easing } from 'react-native';
 import { PaperProvider, ActivityIndicator } from 'react-native-paper';
 import axios from 'axios';
 import config from '../../server/config/config';
 import { useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
 import { MaterialIcons } from '@expo/vector-icons';
 
-
 const Staff = () => {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filteredStaff, setFilteredStaff] = useState([]);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(300)).current;
 
@@ -19,10 +20,28 @@ const Staff = () => {
     fetchStaff();
   }, []);
 
+  useEffect(() => {
+    if (!search.trim()) {
+      setFilteredStaff(staffList);
+    } else {
+      const lower = search.toLowerCase();
+      setFilteredStaff(
+        staffList.filter(
+          s =>
+            (s.s_fname && s.s_fname.toLowerCase().includes(lower)) ||
+            (s.s_lname && s.s_lname.toLowerCase().includes(lower)) ||
+            (s.s_position && s.s_position.toLowerCase().includes(lower)) ||
+            (s.s_gender && s.s_gender.toLowerCase().includes(lower))
+        )
+      );
+    }
+  }, [search, staffList]);
+
   const fetchStaff = async () => {
     try {
       const response = await axios.get(`${config.address}/api/staff/all`);
       setStaffList(response.data.theStaff);
+      setFilteredStaff(response.data.theStaff);
     } catch (error) {
       console.error('Error fetching staff:', error);
     } finally {
@@ -80,7 +99,6 @@ const Staff = () => {
       activeOpacity={0.8}
     >
       <View style={styles.cardContent}>
-        
         <View style={styles.cardTextContainer}>
           <Text style={styles.cardTitle}>
             {item.s_fname} {item.s_lname}
@@ -112,9 +130,29 @@ const Staff = () => {
   return (
     <PaperProvider>
       <View style={styles.container}>
-        
+        {/* Search Bar styled like PendingAdoptions */}
+        <View style={styles.searchContainer}>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+            <TextInput
+              style={styles.searchBar}
+              placeholder="Search"
+              placeholderTextColor="#aaa"
+              value={search}
+              onChangeText={setSearch}
+              underlineColorAndroid="transparent"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <MaterialIcons
+              name="search"
+              size={24}
+              color="#ff69b4"
+              style={styles.searchIcon}
+            />
+          </View>
+        </View>
         <FlatList
-          data={staffList}
+          data={filteredStaff}
           renderItem={renderItem}
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.listContainer}
@@ -126,16 +164,16 @@ const Staff = () => {
           }
         />
 
-        {/* Enhanced Staff Details Modal */}
+        {/* Staff Details Modal */}
         <Modal
           transparent={true}
           visible={modalVisible}
           onRequestClose={closeModal}
         >
           <Animated.View style={[styles.modalBackdrop, { opacity: fadeAnim }]}>
-            <Animated.View 
+            <Animated.View
               style={[
-                styles.modalContainer, 
+                styles.modalContainer,
                 { transform: [{ translateY: slideAnim }] }
               ]}
             >
@@ -150,7 +188,6 @@ const Staff = () => {
                 {selectedStaff && (
                   <View style={styles.modalContent}>
                     <View style={styles.profileSection}>
-                      
                       <Text style={styles.profileName}>
                         {selectedStaff.s_fname} {selectedStaff.s_lname}
                       </Text>
@@ -198,6 +235,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAF9F6',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 15,
+    borderRadius: 10,
+    borderColor: '#eee',
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  searchBar: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+    color: '#333',
+    backgroundColor: 'transparent',
+  },
+  searchIcon: {
+    marginLeft: 8,
   },
   header: {
     fontFamily: 'Inter_700Bold',
