@@ -14,7 +14,6 @@ require("./config/mongo_config");
 const app = express();
 const port = 8000;
 
-// ✅ Load SSL Certificate Files
 const options = {
   key: fs.readFileSync("/etc/letsencrypt/live/api.e-pet-adopt.site/privkey.pem"),
   cert: fs.readFileSync("/etc/letsencrypt/live/api.e-pet-adopt.site/fullchain.pem"),
@@ -61,8 +60,15 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Debugging Middleware
 app.use((req, res, next) => {
-  console.log("🔹 Incoming Request Path:", req.path);
-  console.log("🔹 Authorization Header:", req.headers["authorization"]);
+  res.setHeader("Content-Security-Policy",
+    "default-src 'self'; " +
+    "style-src 'self' 'unsafe-inline' https://unpkg.com; " +
+    "script-src 'self' https://unpkg.com; " +
+    "connect-src 'self' wss://api.e-pet-adopt.site:8000 https://api.e-pet-adopt.site:8000; " +
+    "img-src 'self' https://api.e-pet-adopt.site:8000 data:; " + // Added API server URL
+    "font-src 'self'; " +
+    "report-uri /csp-violation-report-endpoint;"
+  );
   next();
 });
 
@@ -75,33 +81,29 @@ app.use("/api/messages", MessageRoutes);
 
 // Socket.IO Real-Time Messaging
 io.on("connection", (socket) => {
-  console.log(`User connected: ${socket.id}`);
+  // console.log(`User connected: ${socket.id}`);
 
   socket.on("joinRoom", (userId) => {
     socket.join(userId);
-    console.log(`User ${userId} joined room`);
+    // console.log(`User ${userId} joined room`);
   });
 
   socket.on("sendMessage", async ({ senderId, receiverId, message }) => {
-    console.log("🔹 Received sendMessage event:", { senderId, receiverId, message });
     try {
       const newMessage = new Message({ senderId, receiverId, message });
       await newMessage.save();
-      console.log("✅ Message saved to database:", newMessage);
       io.to(receiverId).emit("receiveMessage", newMessage);
     } catch (error) {
-      console.error("❌ Error sending message:", error);
+      // console.error("Error sending message:", error);
     }
   });
 
   socket.on("disconnect", () => {
-    console.log(`User disconnected: ${socket.id}`);
+    // console.log(`User disconnected: ${socket.id}`);
   });
 });
 
 // ✅ Start HTTPS Server
 server.listen(port, "0.0.0.0", () => {
-  console.log(`🚀 HTTPS Server running on port ${port}`);
+  // console.log(`🚀 HTTPS Server running on port ${port}`);
 });
-
-module.exports.io = io;

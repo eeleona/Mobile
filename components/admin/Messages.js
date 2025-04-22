@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, Image,
-  StyleSheet, FlatList, Animated, Easing
+  StyleSheet, FlatList, Animated, Easing, StatusBar
 } from 'react-native';
 import io from 'socket.io-client/dist/socket.io';
 import axios from 'axios';
@@ -136,6 +136,7 @@ const Messages = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="default" />
       <View style={styles.header}>
         <Image source={AdminImg} style={styles.logo} />
         <Text style={styles.headerTitle}>Messages</Text>
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#ff69b4',
     paddingHorizontal: 15,
-    paddingTop: 50,
+    paddingTop: 15,
     paddingBottom: 15,
   },
   logo: {

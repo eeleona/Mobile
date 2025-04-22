@@ -167,7 +167,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginHorizontal: 16,
     marginTop: 15,
-    
     borderRadius: 10,
     borderColor: '#eee',
     borderWidth: 1,
@@ -178,7 +177,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
   },
-  
   searchBar: {
     flex: 1,
     height: 50,

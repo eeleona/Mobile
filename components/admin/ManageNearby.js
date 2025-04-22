@@ -13,10 +13,13 @@ import { WebView } from 'react-native-webview';
 import axios from 'axios';
 import config from '../../server/config/config';
 import AppBar from '../design/AppBar';
+import { MaterialIcons } from '@expo/vector-icons'; // Import MaterialIcons for the edit icon
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const NearbyServices = () => {
+import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native'; // Import necessary components
+
+const NearbyServices = ({ navigation }) => {
   const [clinics, setClinics] = useState([]);
   const [activeButton, setActiveButton] = useState('veterinary');
   const [services, setServices] = useState([]);
@@ -41,6 +44,10 @@ const NearbyServices = () => {
     setActiveButton(type);
     const filteredServices = servicesList.filter(service => service.ns_type === type);
     setClinics(filteredServices); 
+  };
+
+  const handleEditClick = (service) => {
+    navigation.navigate('Edit Nearby', { serviceId: service._id });
   };
 
   const handleBoxClick = (ns_pin) => {
@@ -88,85 +95,107 @@ const NearbyServices = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <AppBar />
-      {/* Map Section */}
-      <View style={styles.mapContainer}>
-        <WebView
-          originWhitelist={['*']}
-          source={{ html: generateMapHtml(mapSrc) }}
-          style={styles.mapWebView}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-          startInLoadingState={true}
-        />
-      </View>
-
-      {/* Search Bar */}
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Search clinics or address..."
-        value={searchQuery}
-        onChangeText={(text) => setSearchQuery(text)}
-        placeholderTextColor="#999"
-      />
-
-      {/* Filter Buttons */}
-      <View style={styles.buttonContainer}>
-        {['veterinary', 'neutering', 'hotel', 'grooming'].map(type => (
-          <TouchableOpacity
-            key={type}
-            style={[
-              styles.filterButton,
-              activeButton === type 
-                ? styles.activeFilterButton 
-                : styles.inactiveFilterButton
-            ]}
-            onPress={() => handleFilter(type)}
-          >
-            <Text style={[
-              styles.filterButtonText,
-              activeButton === type 
-                ? styles.activeFilterButtonText 
-                : styles.inactiveFilterButtonText
-            ]}>
-              {type.charAt(0).toUpperCase() + type.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Clinics List */}
-      <FlatList
-        data={filteredClinics}
-        renderItem={({ item }) => (
-          <View style={styles.clinicBox} key={item._id}>
-            <View style={styles.clinicRow}>
-              <Image
-                source={{ 
-                  uri: item.ns_image 
-                    ? `${config.address}${item.ns_image}` 
-                    : 'https://via.placeholder.com/60'
-                }}
-                style={styles.clinicImage}
-              />
-              <View style={styles.clinicDetails}>
-                <Text style={styles.clinicName}>{item.ns_name}</Text>
-                <Text style={styles.clinicAddress}>{item.ns_address}</Text>
-              </View>
-            </View>
-            <TouchableOpacity 
-              style={styles.mapButton}
-              onPress={() => handleBoxClick(item.ns_pin)}
-            >
-              <Text style={styles.mapButtonText}>View on Map</Text>
-            </TouchableOpacity>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // Adjust behavior for iOS and Android
+    >
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <View style={styles.container}>
+          <AppBar />
+          {/* Map Section */}
+          <View style={styles.mapContainer}>
+            <WebView
+              originWhitelist={['*']}
+              source={{ html: generateMapHtml(mapSrc) }}
+              style={styles.mapWebView}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              startInLoadingState={true}
+            />
           </View>
-        )}
-        keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.listContent}
-      />
-    </View>
+
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchBar}
+              placeholder="Search"
+              placeholderTextColor="#aaa"
+              value={searchQuery}
+              onChangeText={(text) => setSearchQuery(text)} // Fix: Update the state with the input text
+            />
+            <MaterialIcons
+              name="search"
+              size={24}
+              color="#ff69b4"
+              style={styles.searchIcon}
+            />
+          </View>
+
+          {/* Filter Buttons */}
+          <View style={styles.buttonContainer}>
+            {['veterinary', 'neutering', 'hotel', 'grooming'].map(type => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.filterButton,
+                  activeButton === type 
+                    ? styles.activeFilterButton 
+                    : styles.inactiveFilterButton
+                ]}
+                onPress={() => handleFilter(type)}
+              >
+                <Text style={[
+                  styles.filterButtonText,
+                  activeButton === type 
+                    ? styles.activeFilterButtonText 
+                    : styles.inactiveFilterButtonText
+                ]}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Clinics List */}
+          <FlatList
+            data={filteredClinics}
+            renderItem={({ item }) => (
+              <View style={styles.clinicBox} key={item._id}>
+                <View style={styles.clinicRow}>
+                  <Image
+                    source={{
+                      uri: item.ns_image
+                        ? `${config.address}${item.ns_image}`
+                        : 'https://via.placeholder.com/60',
+                    }}
+                    style={styles.clinicImage}
+                  />
+                  <View style={styles.clinicDetails}>
+                    <Text style={styles.clinicName}>{item.ns_name}</Text>
+                    <Text style={styles.clinicAddress}>{item.ns_address}</Text>
+                  </View>
+                  {/* Edit Icon */}
+                  <TouchableOpacity
+                    style={styles.editIconContainer}
+                    onPress={() => handleEditClick(item)}
+                  >
+                    <MaterialIcons name="edit" size={24} color="#FF69C4" />
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  style={styles.mapButton}
+                  onPress={() => handleBoxClick(item.ns_pin)}
+                >
+                  <Text style={styles.mapButtonText}>View on Map</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            keyExtractor={(item) => item._id}
+            contentContainerStyle={styles.listContent}
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -179,7 +208,7 @@ const styles = StyleSheet.create({
   mapContainer: {
     height: SCREEN_HEIGHT * 0.35,
     minHeight: 250,
-    marginBottom: 16,
+    marginVertical: 15,
     borderRadius: 12,
     overflow: 'hidden',
     elevation: 3,
@@ -192,16 +221,31 @@ const styles = StyleSheet.create({
   mapWebView: {
     flex: 1,
   },
-  searchInput: {
-    height: 50,
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginBottom: 15,
+    borderRadius: 10,
+    borderColor: '#eee',
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  searchBar: {
+    flex: 1,
+    height: 50,
     fontSize: 16,
-    backgroundColor: '#f8f8f8',
-    marginHorizontal: 20,
+    color: '#333',
+  },
+  
+  searchIcon: {
+    marginLeft: 8,
   },
   buttonContainer: {
     flexDirection: 'row',

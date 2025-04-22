@@ -11,10 +11,11 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
-  Easing
+  Easing,
+  TextInput
 } from 'react-native';
 import axios from 'axios';
-import { Card, Avatar } from 'react-native-paper';
+import { Avatar } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import config from '../../server/config/config';
@@ -23,13 +24,14 @@ import AppBar from '../design/AppBar';
 
 const Feedbacks = () => {
   const [feedbacks, setFeedbacks] = useState([]);
+  const [filteredFeedbacks, setFilteredFeedbacks] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Use useRef for animated values so they persist across renders
   const modalOpacity = useRef(new Animated.Value(0)).current;
   const modalTranslateY = useRef(new Animated.Value(50)).current;
 
@@ -46,7 +48,11 @@ const Feedbacks = () => {
   const fetchFeedbacks = async () => {
     try {
       const response = await axios.get(`${config.address}/api/feedback`);
-      setFeedbacks(response.data);
+      const sortedFeedbacks = response.data.sort(
+        (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)
+      );
+      setFeedbacks(sortedFeedbacks);
+      setFilteredFeedbacks(sortedFeedbacks);
       setError(null);
     } catch (err) {
       console.error('Error fetching feedbacks:', err);
@@ -60,6 +66,17 @@ const Feedbacks = () => {
   const onRefresh = () => {
     setRefreshing(true);
     fetchFeedbacks();
+  };
+
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+    const query = text.toLowerCase();
+    const filtered = feedbacks.filter(feedback => {
+      const adopterName = feedback.adopterUsername?.toLowerCase() || '';
+      const petName = feedback.petName?.toLowerCase() || '';
+      return adopterName.includes(query) || petName.includes(query);
+    });
+    setFilteredFeedbacks(filtered);
   };
 
   const openFeedbackModal = (feedback) => {
@@ -111,7 +128,6 @@ const Feedbacks = () => {
             <Image 
               source={{ uri: `${config.address}${item.userAvatar}` }} 
               style={styles.avatarImage}
-              onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
               resizeMode="cover"
             />
           ) : (
@@ -172,8 +188,25 @@ const Feedbacks = () => {
   return (
     <View style={styles.container}>
       <AppBar />
-      
-      {feedbacks.length === 0 ? (
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchBar}
+          placeholder="Search by adopter or pet name"
+          placeholderTextColor="#aaa"
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+        <MaterialIcons
+          name="search"
+          size={24}
+          color="#FF66C4"
+          style={styles.searchIcon}
+        />
+      </View>
+
+      {filteredFeedbacks.length === 0 ? (
         <View style={styles.centerContainer}>
           <Image 
             source={require('../../assets/Images/pawicon2.png')} 
@@ -184,7 +217,7 @@ const Feedbacks = () => {
         </View>
       ) : (
         <FlatList
-          data={feedbacks}
+          data={filteredFeedbacks}
           renderItem={renderFeedbackItem}
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.listContainer}
@@ -237,7 +270,6 @@ const Feedbacks = () => {
                       <Image 
                         source={{ uri: `${config.address}${selectedFeedback.userAvatar}` }} 
                         style={styles.modalAvatar}
-                        onError={(e) => console.log('Modal image error:', e.nativeEvent.error)}
                         resizeMode="cover"
                       />
                     ) : (
@@ -363,6 +395,31 @@ const styles = StyleSheet.create({
     color: 'white',
     fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 15,
+    borderRadius: 10,
+    borderColor: '#eee',
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  searchBar: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+    color: '#333',
+  },
+  searchIcon: {
+    marginLeft: 8,
   },
   listContainer: {
     padding: 16,

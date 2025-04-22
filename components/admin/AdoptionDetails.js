@@ -174,9 +174,7 @@ const AdoptionDetails = ({ route, navigation }) => {
                 style={styles.profileImage}
                 source={{ uri: `${config.address}${adoption.v_id.v_img}` }}
               />
-              <Text style={styles.verifiedStatus}>
-                {adoption.v_id?.v_role || 'Not Verified'}
-              </Text>
+              
             </View>
           ) : (
             <View style={styles.imagePlaceholder}>
@@ -195,7 +193,7 @@ const AdoptionDetails = ({ route, navigation }) => {
             value={formatContactNumber(adoption.v_id?.v_contactnumber)}
           />
           <Divider style={styles.rowDivider} />
-          <DetailRow icon="work" label="Role:" value={adoption.v_id?.v_role} />
+          <DetailRow icon="work" label="Occupation:" value={adoption.occupation} />
           <Divider style={styles.rowDivider} />
           <DetailRow icon="home" label="Address:" value={adoption.v_id?.v_add} />
         </View>
@@ -278,7 +276,7 @@ const styles = StyleSheet.create({
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginVertical: 2,
   },
   detailIcon: {
     marginRight: 8,

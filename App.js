@@ -58,6 +58,7 @@ import Profile from './components/adopter/Profile';
 import MessageShelter from './components/adopter/MessageShelter';
 import AdoptionTracker from './components/adopter/AdoptionTracker';
 import ForgetPassword from './components/adopter/ForgetPassword';
+import EditNearby from './components/admin/EditNearby';
 
 export default function App() {
   const Stack = createNativeStackNavigator();
@@ -86,6 +87,7 @@ export default function App() {
         <Stack.Screen name='Feedback' component={Feedbacks} options={{ headerShown: false }} />
         <Stack.Screen name='Admin Logs' component={AdminLogs} options={{ headerShown: false }} />
         <Stack.Screen name='Manage Nearby Services' component={ManageNearby} options={{ headerShown: false }} />
+        <Stack.Screen name='Edit Nearby' component={EditNearby} options={{ headerShown: false }} />
         
         <Stack.Screen name='Manage User' component={ManageUser} options={{ headerShown: false }} />
         <Stack.Screen name='Verified Users' component={VerifiedUsers} options={{ headerShown: false }} />

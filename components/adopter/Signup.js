@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator, Platform } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator, Platform, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Checkbox, Modal, Portal, Button, PaperProvider, RadioButton } from 'react-native-paper';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
@@ -220,6 +220,7 @@ const Signup = () => {
 
     return (
         <PaperProvider>
+            <StatusBar barStyle="default" />
             <AppBar />
             <ScrollView style={styles.container}>
                 <View style={styles.whitebg}>
@@ -265,7 +266,7 @@ const Signup = () => {
                     {errors.email && <Text style={styles.error}>{errors.email}</Text>}
 
                     <View style={styles.row}>
-                        <View style={[styles.passwordInput, {marginRight: 10}]}>
+                        <View style={[styles.passwordInput]}>
                             <Text style={styles.label}>Password</Text>
                             <View style={styles.inputContainer}>
                                 <TextInput
@@ -294,7 +295,7 @@ const Signup = () => {
                             <View style={styles.inputContainer}>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Confirm password"
+                                    placeholder="Password"
                                     secureTextEntry={!showConfirmPassword}
                                     value={formData.confirmPassword}
                                     onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
@@ -318,7 +319,7 @@ const Signup = () => {
                     <Text style={styles.header2}>Personal Information</Text>
                     
                     <View style={styles.row}>
-                        <View style={[styles.firstNameInput, {marginRight: 10}]}>
+                        <View style={[styles.firstNameInput]}>
                             <Text style={styles.label}>First Name</Text>
                             <View style={styles.inputContainer}>
                                 <TextInput
@@ -537,7 +538,7 @@ const Signup = () => {
                                             <Checkbox
                                                 status={privacyAccepted ? 'checked' : 'unchecked'}
                                                 onPress={() => setPrivacyAccepted(!privacyAccepted)}
-                                                color="#ff69b4"
+                                                
                                             />
                                         </View>
                                         <Text style={styles.checkboxLabel}>I accept the Data Privacy Policy</Text>
@@ -795,10 +796,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     checkboxWrapper: {
-        borderWidth: 1,
+        
         // width: 20,
         // height: 20,
-        borderColor: '#ff69b4',
+        
         borderRadius: 4,
         marginLeft: -4, // To compensate for the default padding
     },
