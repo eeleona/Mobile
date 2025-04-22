@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { PaperProvider, Modal, Portal } from 'react-native-paper';
-import { ApplicationProvider, CheckBox, Input, Text, Select, SelectItem, IndexPath } from '@ui-kitten/components';
+import { ApplicationProvider, Input, Text, Select, SelectItem, IndexPath } from '@ui-kitten/components';
 import { useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
 import * as eva from '@eva-design/eva';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,10 +13,22 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 const AdoptionForm = ({ navigation, route }) => {
     const { id } = route.params;
     const [visible, setVisible] = React.useState(false);
+    const [disclaimerVisible, setDisclaimerVisible] = React.useState(false);
     const showModal = () => setVisible(true);
     const hideModal = () => setVisible(false);
-    const containerStyle = {backgroundColor: 'white', padding: 20};
+    const showDisclaimer = () => setDisclaimerVisible(true);
+    const hideDisclaimer = () => setDisclaimerVisible(false);
     
+    const containerStyle = {backgroundColor: 'white', padding: 20, marginHorizontal: 20, borderRadius: 10};
+    const disclaimerContainerStyle = {
+        backgroundColor: 'white', 
+        padding: 20,
+        maxHeight: '80%',
+        width: '90%',
+        alignSelf: 'center',
+        borderRadius: 10
+    };
+
     // Form state
     const [occupation, setOccupation] = useState('');
     const [yearsResided, setYearsResided] = useState('');
@@ -190,12 +201,11 @@ const AdoptionForm = ({ navigation, route }) => {
                             {/* Pet Information */}
                             {petInfo && (
                                 <View style={styles.sectionContainer}>
-                                    
                                     <View style={styles.infoCard}>
-                                    <View style={styles.sectionHeader}>
-                                        <MaterialIcons name="pets" size={24} color="#ff69b4" />
-                                        <Text style={styles.sectionTitle}>Pet Information</Text>
-                                    </View>
+                                        <View style={styles.sectionHeader}>
+                                            <MaterialIcons name="pets" size={24} color="#ff69b4" />
+                                            <Text style={styles.sectionTitle}>Pet Information</Text>
+                                        </View>
                                         <View style={styles.infoRow}>
                                             <MaterialIcons name="badge" size={18} color="#666" style={styles.infoIcon} />
                                             <Text style={styles.infoText}>Name: {petInfo.p_name}</Text>
@@ -222,12 +232,11 @@ const AdoptionForm = ({ navigation, route }) => {
                             
                             {/* User Information */}
                             <View style={styles.sectionContainer}>
-                                
                                 <View style={styles.infoCard}>
-                                <View style={styles.sectionHeader}>
-                                    <MaterialIcons name="person" size={24} color="#ff69b4" />
-                                    <Text style={styles.sectionTitle}>Your Information</Text>
-                                </View>
+                                    <View style={styles.sectionHeader}>
+                                        <MaterialIcons name="person" size={24} color="#ff69b4" />
+                                        <Text style={styles.sectionTitle}>Your Information</Text>
+                                    </View>
                                     <View style={styles.infoRow}>
                                         <MaterialIcons name="badge" size={18} color="#666" style={styles.infoIcon} />
                                         <Text style={styles.infoText}>Full Name: {userInfo.fullName}</Text>
@@ -249,12 +258,11 @@ const AdoptionForm = ({ navigation, route }) => {
                             
                             {/* Adoption Form */}
                             <View style={styles.sectionContainer}>
-                                
                                 <View style={styles.formCard}>
-                                <View style={styles.sectionHeader}>
-                                    <MaterialIcons name="description" size={24} color="#ff69b4" />
-                                    <Text style={styles.sectionTitle}>Adoption Details</Text>
-                                </View>
+                                    <View style={styles.sectionHeader}>
+                                        <MaterialIcons name="description" size={24} color="#ff69b4" />
+                                        <Text style={styles.sectionTitle}>Adoption Details</Text>
+                                    </View>
                                     <View style={styles.labelContainer}>
                                         <MaterialIcons name="work" size={20} color="#ff69b4" style={styles.labelIcon} />
                                         <Text style={styles.label}>Occupation</Text>
@@ -351,43 +359,118 @@ const AdoptionForm = ({ navigation, route }) => {
                             
                             <TouchableOpacity 
                                 style={styles.submitButton} 
-                                onPress={showModal}
+                                onPress={showDisclaimer}
                             >
                                 <MaterialIcons name="send" size={20} color="white" style={styles.buttonIcon} />
                                 <Text style={styles.submitButtonText}>Submit Application</Text>
                             </TouchableOpacity>
                         </>
                     )}
-                        
-                        <Portal>
-                            <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={containerStyle}>
-                                <View style={styles.modalContainer}>
-                                    <Text style={styles.modalTitle}>Confirm Submission</Text>
-                                    <Text style={styles.modalText}>Are you sure you want to submit this adoption application?</Text>
-                                    
-                                    <View style={styles.modalButtons}>
-                                        <TouchableOpacity 
-                                            style={[styles.modalButton, styles.cancelButton]}
-                                            onPress={hideModal}
-                                        >
-                                            <Text style={styles.buttonText}>Cancel</Text>
-                                        </TouchableOpacity>
-                                        
-                                        <TouchableOpacity 
-                                            style={[styles.modalButton, styles.confirmButton]}
-                                            onPress={() => {
-                                                hideModal();
-                                                handleSubmitAdoption();
-                                            }}
-                                        >
-                                            <Text style={styles.buttonText}>Submit</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            </Modal>
-                        </Portal>
-                    </ScrollView>
+                </ScrollView>
                 
+                {/* Disclaimer Modal */}
+                <Portal>
+                    <Modal 
+                        visible={disclaimerVisible} 
+                        onDismiss={hideDisclaimer} 
+                        contentContainerStyle={disclaimerContainerStyle}
+                    >
+                        <ScrollView>
+                            <Text style={styles.disclaimerTitle}>Disclaimer</Text>
+                            <Text style={styles.disclaimerText}>
+                                Before proceeding with your application, please read and acknowledge the following:
+                            </Text>
+                            
+                            <View style={styles.disclaimerItem}>
+                                <MaterialIcons name="check-circle" size={18} color="#ff69b4" style={styles.bulletIcon} />
+                                <Text style={styles.disclaimerText}>
+                                    All information provided in this form must be accurate and truthful to the best of your knowledge.
+                                </Text>
+                            </View>
+                            
+                            <View style={styles.disclaimerItem}>
+                                <MaterialIcons name="check-circle" size={18} color="#ff69b4" style={styles.bulletIcon} />
+                                <Text style={styles.disclaimerText}>
+                                    Submission of this form <Text style={styles.boldText}>does not guarantee</Text> approval of your application.
+                                </Text>
+                            </View>
+                            
+                            <View style={styles.disclaimerItem}>
+                                <MaterialIcons name="check-circle" size={18} color="#ff69b4" style={styles.bulletIcon} />
+                                <Text style={styles.disclaimerText}>
+                                    Pasay City Animal Shelter reserves the right to:
+                                </Text>
+                                <View style={styles.nestedItem}>
+                                    <MaterialIcons name="fiber-manual-record" size={14} color="#ff69b4" style={styles.nestedBullet} />
+                                    <Text style={styles.disclaimerText}>Evaluate applications based on established criteria</Text>
+                                </View>
+                                <View style={styles.nestedItem}>
+                                    <MaterialIcons name="fiber-manual-record" size={14} color="#ff69b4" style={styles.nestedBullet} />
+                                    <Text style={styles.disclaimerText}>Conduct follow-up communications or home assessments if necessary</Text>
+                                </View>
+                            </View>
+                            
+                            <View style={styles.disclaimerItem}>
+                                <MaterialIcons name="check-circle" size={18} color="#ff69b4" style={styles.bulletIcon} />
+                                <Text style={styles.disclaimerText}>
+                                    Your personal information will be used solely for evaluating your eligibility to adopt a pet and will be kept confidential in accordance with our privacy policy.
+                                </Text>
+                            </View>
+                            
+                            <Text style={[styles.disclaimerText, {marginTop: 16}]}>
+                                By continuing, you confirm that you have read, understood, and agree to the terms of this disclaimer.
+                            </Text>
+                            
+                            <View style={styles.disclaimerButtons}>
+                                <TouchableOpacity 
+                                    style={[styles.disclaimerButton, styles.cancelButton]}
+                                    onPress={hideDisclaimer}
+                                >
+                                    <Text style={styles.disclaimerButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                
+                                <TouchableOpacity 
+                                    style={[styles.disclaimerButton, styles.confirmButton]}
+                                    onPress={() => {
+                                        hideDisclaimer();
+                                        showModal();
+                                    }}
+                                >
+                                    <Text style={styles.disclaimerButtonText}>I Understand & Continue</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </ScrollView>
+                    </Modal>
+                </Portal>
+
+                {/* Confirmation Modal */}
+                <Portal>
+                    <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={containerStyle}>
+                        <View style={styles.modalContainer}>
+                            <Text style={styles.modalTitle}>Confirm Submission</Text>
+                            <Text style={styles.modalText}>Are you sure you want to submit this adoption application?</Text>
+                            
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity 
+                                    style={[styles.modalButton, styles.cancelButton]}
+                                    onPress={hideModal}
+                                >
+                                    <Text style={styles.buttonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                
+                                <TouchableOpacity 
+                                    style={[styles.modalButton, styles.confirmButton]}
+                                    onPress={() => {
+                                        hideModal();
+                                        handleSubmitAdoption();
+                                    }}
+                                >
+                                    <Text style={styles.buttonText}>Submit</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </Modal>
+                </Portal>
             </PaperProvider>
         </ApplicationProvider>
     );
@@ -430,6 +513,10 @@ const styles = StyleSheet.create({
     infoIcon: {
         marginRight: 8,
     },
+    infoText: {
+        fontSize: 16,
+        fontFamily: 'Inter_500Medium',
+    },
     formCard: {
         backgroundColor: 'white',
         borderRadius: 10,
@@ -439,7 +526,6 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
-        
     },
     labelContainer: {
         flexDirection: 'row',
@@ -502,8 +588,7 @@ const styles = StyleSheet.create({
     },
     modalContainer: {
         alignItems: 'center',
-        padding: 20,
-        marginHorizontal: 20,
+        marginHorizontal: 40,
     },
     modalTitle: {
         fontSize: 22,
@@ -536,6 +621,60 @@ const styles = StyleSheet.create({
         backgroundColor: '#ff69b4',
     },
     buttonText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontFamily: 'Inter_700Bold',
+    },
+    // Disclaimer styles
+    disclaimerTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#ff69b4',
+        marginBottom: 16,
+        fontFamily: 'Inter_700Bold',
+        textAlign: 'center',
+    },
+    disclaimerText: {
+        fontSize: 16,
+        fontFamily: 'Inter_500Medium',
+        marginBottom: 8,
+        lineHeight: 22,
+    },
+    boldText: {
+        fontWeight: 'bold',
+        fontFamily: 'Inter_700Bold',
+    },
+    disclaimerItem: {
+        flexDirection: 'row',
+        marginBottom: 12,
+        alignItems: 'flex-start',
+    },
+    bulletIcon: {
+        marginRight: 8,
+        marginTop: 3,
+    },
+    nestedItem: {
+        flexDirection: 'row',
+        marginLeft: 26,
+        marginTop: 6,
+        alignItems: 'flex-start',
+    },
+    nestedBullet: {
+        marginRight: 8,
+        marginTop: 3,
+    },
+    disclaimerButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 20,
+    },
+    disclaimerButton: {
+        padding: 12,
+        borderRadius: 8,
+        width: '48%',
+        alignItems: 'center',
+    },
+    disclaimerButtonText: {
         color: 'white',
         fontWeight: 'bold',
         fontFamily: 'Inter_700Bold',

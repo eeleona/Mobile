@@ -6,6 +6,7 @@ import AppBar from '../design/AppBar';
 import axios from 'axios';
 import config from '../../server/config/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import jwt_decode from 'jwt-decode';
 
 const PendingAdoptionDetails = ({ route, navigation }) => {
   const { adoption } = route.params;
@@ -21,13 +22,26 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
         ]);
         return false;
       }
-
-      const userRole = await AsyncStorage.getItem('userRole');
-      if (!['admin', 'super-admin'].includes(userRole)) {
+  
+      // Decode the token to get user role
+      const decodedToken = jwt_decode(token);
+      const currentTime = Date.now() / 1000;
+      
+      // Check if token is expired
+      if (decodedToken.exp < currentTime) {
+        await AsyncStorage.removeItem('authToken');
+        Alert.alert('Session Expired', 'Your session has expired. Please log in again.', [
+          { text: 'OK', onPress: () => navigation.navigate('Login') },
+        ]);
+        return false;
+      }
+  
+      // Check if user has admin role
+      if (!['admin', 'super-admin'].includes(decodedToken.role)) {
         Alert.alert('Access Denied', 'Only administrators can perform this action.');
         return false;
       }
-
+  
       return token;
     } catch (error) {
       console.error('Error verifying access:', error);
@@ -37,16 +51,72 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
   };
 
   const handleAccept = async () => {
-    const token = await verifyAdminAccess();
-    if (!token) return;
-    Alert.alert('Success', 'Adoption accepted!');
+    setLoading(true);
+    setActionType('accept');
+    try {
+      const token = await verifyAdminAccess();
+      if (!token) return;
+  
+      const response = await axios.patch(
+        `${config.address}/api/adoption/approve/${adoption._id}`,
+        {}, // Empty body since approval is handled by route
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+  
+      Alert.alert('Success', 'Adoption request approved!');
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error accepting adoption:', error);
+      Alert.alert(
+        'Error', 
+        error.response?.data?.message || 
+        `Request failed with status ${error.response?.status}` ||
+        'Failed to approve adoption'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
-
+  
   const handleReject = async () => {
-    const token = await verifyAdminAccess();
-    if (!token) return;
-    Alert.alert('Success', 'Adoption rejected!');
+    setLoading(true);
+    setActionType('reject');
+    try {
+      const token = await verifyAdminAccess();
+      if (!token) return;
+  
+      const response = await axios.patch(
+        `${config.address}/api/adoption/decline/${adoption._id}`,
+        {}, // Empty body since decline is handled by route
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+  
+      Alert.alert('Success', 'Adoption request declined!');
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error rejecting adoption:', error);
+      Alert.alert(
+        'Error', 
+        error.response?.data?.message || 
+        `Request failed with status ${error.response?.status}` ||
+        'Failed to decline adoption'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
+  
+    
 
   const formatContactNumber = (number) => {
     if (!number) return 'N/A';

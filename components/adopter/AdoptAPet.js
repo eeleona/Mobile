@@ -185,7 +185,7 @@ const AdoptAPet = ({ navigation }) => {
                 ]}
               >
                 <MaterialIcons
-                  name={type === 'Dog' ? 'pets' : type === 'Cat' ? 'cat' : 'all-inclusive'}
+                  name={type === 'Dog' ? 'pets' : type === 'Cat' ? 'pets' : 'all-inclusive'}
                   size={20}
                   color={filter === type ? '#FFF' : '#FF66C4'}
                   style={styles.filterIcon}

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Image, Modal, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image, Modal, ScrollView, ActivityIndicator, StatusBar } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
 import config from '../../server/config/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+const AdminImg = require('../../assets/Images/nobglogo.png');
 
 const Account = ({ navigation }) => {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
@@ -26,65 +27,62 @@ const Account = ({ navigation }) => {
   const [avatarLoading, setAvatarLoading] = useState(false);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const token = await AsyncStorage.getItem('authToken');
-        if (!token) {
-          navigation.replace('Login');
-          return;
-        }
+    // In the fetchUserData function:
+const fetchUserData = async () => {
+  try {
+    const token = await AsyncStorage.getItem('authToken');
+    if (!token) {
+      navigation.replace('Login');
+      return;
+    }
 
-        setAvatarLoading(true);
-        const response = await axios.get(`${config.address}/api/user/profile`, {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        const user = response.data.user;
-        const fullName = `${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}`;
-        
-        let avatarSource = require('../../assets/Images/user.png');
-        if (user.avatar) {
-          try {
-            const avatarUrl = `${config.address}/${user.avatar.replace(/\\/g, '/')}`;
-            await Image.prefetch(avatarUrl);
-            avatarSource = { uri: avatarUrl };
-          } catch (imgError) {
-            console.log('Using default avatar due to error:', imgError);
-          }
-        }
-        
-        setUserData({
-          username: user.username || '',
-          firstName: user.firstName || '',
-          middleName: user.middleName || '',
-          lastName: user.lastName || '',
-          fullName,
-          email: user.email || '',
-          contactNumber: user.contactNumber || '',
-          address: user.address || '',
-          birthday: user.birthday || '',
-          gender: user.gender || '',
-          role: user.role || '',
-          avatar: avatarSource
-        });
-        
-        setError(null);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        setError('Failed to load user data. Please try again.');
-        
-        if (error.response?.status === 401) {
-          await AsyncStorage.removeItem('authToken');
-          navigation.replace('Login');
-        }
-      } finally {
-        setLoading(false);
-        setAvatarLoading(false);
+    setAvatarLoading(true);
+    const response = await axios.get(`${config.address}/api/user/profile`, {
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
-    };
+    });
+    
+    const user = response.data.user;
+    const fullName = `${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}`;
+    
+    let avatarSource = require('../../assets/Images/user.png');
+    if (user.profileImage) {  // Make sure this matches your API response
+      const avatarUrl = `${config.address}${user.profileImage.replace(/\\/g, '/')}`;
+      console.log('Avatar URL:', avatarUrl); // Debugging
+      avatarSource = { uri: avatarUrl };
+    }
+    
+    setUserData({
+      username: user.username || '',
+      firstName: user.firstName || '',
+      middleName: user.middleName || '',
+      lastName: user.lastName || '',
+      fullName,
+      email: user.email || '',
+      contactNumber: user.contactNumber || '',
+      address: user.address || '',
+      birthday: user.birthday || '',
+      gender: user.gender || '',
+      role: user.role || '',
+      avatar: avatarSource
+    });
+    
+    setError(null);
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    setError('Failed to load user data. Please try again.');
+    
+    if (error.response?.status === 401) {
+      await AsyncStorage.removeItem('authToken');
+      navigation.replace('Login');
+    }
+  } finally {
+    setLoading(false);
+    setAvatarLoading(false);
+  }
+};
 
     fetchUserData();
   }, [navigation]);
@@ -103,7 +101,7 @@ const Account = ({ navigation }) => {
   }
 
   const handleAdopt = () => {
-    navigation.navigate('MyAdoptions');
+    navigation.navigate('Adoption Tracker');
   };
 
   const handleProfile = () => {
@@ -182,6 +180,11 @@ const Account = ({ navigation }) => {
   return (
     <PaperProvider>
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <StatusBar barStyle="default" />
+        <View style={styles.header1}>
+                <Image source={AdminImg} style={styles.logo} />
+                <Text style={styles.headerTitle}>Account</Text>
+              </View>
         <View style={styles.headerContainer}>
           <View style={styles.header}>
             {avatarLoading ? (
@@ -209,21 +212,11 @@ const Account = ({ navigation }) => {
           </View>
         </View>
 
-        {/* <View style={styles.userDetailsContainer}>
-          <Text style={styles.detailsHeader}>Account Information</Text>
-          <View style={styles.detailsContent}>
-            <Text style={styles.detailLabel}>Full Name: <Text style={styles.detailValue}>{userData.fullName}</Text></Text>
-            <Text style={styles.detailLabel}>Email: <Text style={styles.detailValue}>{userData.email || 'Not specified'}</Text></Text>
-            <Text style={styles.detailLabel}>Birthday: <Text style={styles.detailValue}>{formatDate(userData.birthday)}</Text></Text>
-            <Text style={styles.detailLabel}>Gender: <Text style={styles.detailValue}>{userData.gender || 'Not specified'}</Text></Text>
-            <Text style={styles.detailLabel}>Contact: <Text style={styles.detailValue}>{formatContactNumber(userData.contactNumber)}</Text></Text>
-            <Text style={styles.detailLabel}>Address: <Text style={styles.detailValue}>{userData.address || 'Not specified'}</Text></Text>
-          </View>
-        </View> */}
+        
         
         <View style={styles.navContainer}>
           <TouchableOpacity style={styles.navButton} onPress={handleProfile}>
-            <Text style={styles.navButtonText}>Edit Profile</Text>
+            <Text style={styles.navButtonText}>Profile</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.navButton} onPress={handleAdopt}>
             <Text style={styles.navButtonText}>My Adoptions</Text>
@@ -271,10 +264,34 @@ const Account = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F4F4F4',
+    backgroundColor: '#FAF9F6',
+  },
+  header1: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ff69b4',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  logo: {
+    width: 40,
+    height: 40,
+    marginRight: 15,
+  },
+  headerTitle: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'left',
+    flex: 1,
   },
   scrollContent: {
-    paddingBottom: 30,
+    paddingBottom: 230,
   },
   loadingContainer: {
     flex: 1,
@@ -357,12 +374,12 @@ const styles = StyleSheet.create({
   welcome: {
     fontFamily: 'Inter_500Medium',
     color: '#333',
-    fontSize: 20,
+    fontSize: 18,
   },
   welcome2: {
     fontFamily: 'Inter_700Bold',
     color: '#ff69b4',
-    fontSize: 24,
+    fontSize: 30,
   },
   userRole: {
     fontFamily: 'Inter_500Medium',
@@ -430,7 +447,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   bottomContainer: {
-    marginTop: 20,
+    marginTop: 340,
     marginBottom: 30,
     alignItems: 'center',
   },

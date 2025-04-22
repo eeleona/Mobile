@@ -7,12 +7,14 @@ import {
   StyleSheet, 
   Text, 
   Image, 
-  Dimensions 
+  Dimensions, StatusBar
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import axios from 'axios';
 import config from '../../server/config/config';
 import AppBar from '../design/AppBar';
+import { MaterialIcons } from '@expo/vector-icons'; // Import MaterialIcons for the edit icon
+
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -89,6 +91,7 @@ const UserNearby = () => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="default" />
       <AppBar />
       {/* Map Section */}
       <View style={styles.mapContainer}>
@@ -103,13 +106,21 @@ const UserNearby = () => {
       </View>
 
       {/* Search Bar */}
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Search clinics or address..."
-        value={searchQuery}
-        onChangeText={(text) => setSearchQuery(text)}
-        placeholderTextColor="#999"
-      />
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchBar}
+          placeholder="Search"
+          placeholderTextColor="#aaa"
+          value={searchQuery}
+          onChangeText={(text) => setSearchQuery(text)} // Fix: Update the state with the input text
+        />
+        <MaterialIcons
+          name="search"
+          size={24}
+          color="#ff69b4"
+          style={styles.searchIcon}
+        />
+      </View>
 
       {/* Filter Buttons */}
       <View style={styles.buttonContainer}>
@@ -179,7 +190,7 @@ const styles = StyleSheet.create({
   mapContainer: {
     height: SCREEN_HEIGHT * 0.35,
     minHeight: 250,
-    marginBottom: 16,
+    marginVertical: 16,
     borderRadius: 12,
     overflow: 'hidden',
     elevation: 3,
@@ -192,16 +203,31 @@ const styles = StyleSheet.create({
   mapWebView: {
     flex: 1,
   },
-  searchInput: {
-    height: 50,
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginBottom: 15,
+    borderRadius: 10,
+    borderColor: '#eee',
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  searchBar: {
+    flex: 1,
+    height: 50,
     fontSize: 16,
-    backgroundColor: '#f8f8f8',
-    marginHorizontal: 20,
+    color: '#333',
+  },
+  
+  searchIcon: {
+    marginLeft: 8,
   },
   buttonContainer: {
     flexDirection: 'row',

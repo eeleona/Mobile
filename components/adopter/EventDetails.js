@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, StatusBar } from 'react-native';
 import { Divider } from 'react-native-paper';
 import axios from 'axios';
 import config from '../../server/config/config';
@@ -44,6 +44,7 @@ const EventDetails = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="default" />
       <AppBar title="Event Details" onBackPress={() => navigation.goBack()} />
       
       <ScrollView contentContainerStyle={styles.scrollContainer}>

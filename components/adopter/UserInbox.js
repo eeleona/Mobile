@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, FlatList, StatusBar } from 'react-native';
 import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
@@ -51,6 +51,7 @@ const UserInbox = () => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="default" />
       <View style={styles.header}>
               <Image source={AdminImg} style={styles.logo} />
               <Text style={styles.headerTitle}>Messages</Text>
@@ -70,24 +71,28 @@ const UserInbox = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FAF9F6',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ff69b4',
-    marginTop: 35,
-    paddingHorizontal: 15,
-    height: 80,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   logo: {
-    width: 50,
-    height: 50,
+    width: 40,
+    height: 40,
     marginRight: 15,
   },
   headerTitle: {
     color: 'white',
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'left',
     flex: 1,
@@ -104,6 +109,11 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: '#f5f5f5',
     borderRadius: 8,
+    elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
   },
   chatImage: {
     width: 50,

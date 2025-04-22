@@ -45,10 +45,10 @@ const AdoptThePet = ({ route, navigation }) => {
             <Text style={styles.sectionTitle}>Basic Information</Text>
             <Divider style={styles.sectionDivider} />
             <DetailRow label="Name" icon="pets" value={pet.p_name} />
-            <DetailRow label="Pet Type" icon="category" value={pet.p_type} />
+            <DetailRow label="Pet Type" icon="pets" value={pet.p_type} />
             <DetailRow label="Breed" icon="pets" value={pet.p_breed} />
-            <DetailRow label="Gender" icon="wc" value={pet.p_gender} />
-            <DetailRow label="Age" icon="calendar-today" value={pet.p_age} />
+            <DetailRow label="Gender" icon="pets" value={pet.p_gender} />
+            <DetailRow label="Age" icon="pets" value={pet.p_age} />
           </View>
 
           {/* Description */}
@@ -98,11 +98,11 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 50,
   },
   section: {
     backgroundColor: 'white',
-    borderRadius: 12,
+    
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
@@ -176,7 +176,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '100%',
     borderRadius: 8,
-    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   adoptButtonText: {
     color: 'white',

@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
 import * as React from 'react';
+import { useAuth } from './components/context/AuthContext';
 
 // Importing all components
 import AdminHomepage from './components/admin/AdminHomepage';
@@ -64,6 +65,7 @@ export default function App() {
   const Stack = createNativeStackNavigator();
 
   return (
+    
     <NavigationContainer>
       <Stack.Navigator initialRouteName='Login'>
 
@@ -127,8 +129,8 @@ export default function App() {
         <Stack.Screen name='User Nearby Services' component={UserNearby} options={{ headerShown: false }} />
         <Stack.Screen name='Account' component={Account} options={{ headerShown: false }} />
         <Stack.Screen name='My Profile' component={Profile} options={{ headerShown: false }} />
-        <Stack.Screen name='MyAdoptions' component={MyAdoptions} options={{ headerShown: false }} />
-        <Stack.Screen name='Adoption Tracker' component={AdoptionTracker} options={{ headerShown: false }} />
+        <Stack.Screen name='Adoption Tracker' component={MyAdoptions} options={{ headerShown: false }} />
+        <Stack.Screen name='View Adoption' component={AdoptionTracker} options={{ headerShown: false }} />
 
         {/* ADOPTER SUB-MODULES */}
         <Stack.Screen name='Data Privacy' component={DataPrivacy} options={{ headerShown: false }} />
@@ -140,5 +142,6 @@ export default function App() {
         <Stack.Screen name='Adoption Form' component={AdoptionForm} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
+    
   );
 }

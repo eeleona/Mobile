@@ -180,38 +180,42 @@ const MyAdoptions = () => {
       if (!headers.Authorization) return;
       
       const response = await axios.get(`${config.address}/api/pet/${petId}`, { headers });
-      setSelectedPet(response.data?.thePet || null);
+      return response.data?.thePet || null;
     } catch (error) {
       console.error('Error fetching pet:', error);
       setError('Failed to fetch pet details');
+      return null;
     }
   };
 
-  // Handle adoption selection
+  // Handle adoption selection - Fixed to properly await pet data before navigation
   const handleAdoptionClick = async (adoption) => {
     try {
+      setLoading(true);
       setSelectedAdoption(adoption || null);
-      if (adoption?.p_id?._id) {
-        await fetchPetById(adoption.p_id._id);
-      }
-      if (adoption?._id) {
-        await checkFeedbackExists(adoption._id);
-      }
+      
+      // Fetch pet details first
+      const petData = await fetchPetById(adoption.p_id?._id);
+      
+      // Check feedback status
+      await checkFeedbackExists(adoption._id);
 
       // Navigate to AdoptionTracker with all necessary data
-      navigation.navigate('Adoption Tracker', {
+      navigation.navigate('View Adoption', {
         adoptionId: adoption._id,
         petId: adoption.p_id?._id,
         status: adoption.status,
         visitDate: adoption.visitDate,
         visitTime: adoption.visitTime,
-        petData: selectedPet,
+        petData: petData, // Use the freshly fetched pet data
         adoptionData: adoption
       });
       
     } catch (error) {
       console.error('Navigation failed:', error);
       Alert.alert('Error', 'Could not navigate to adoption tracker');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -366,6 +370,7 @@ const MyAdoptions = () => {
     <TouchableOpacity 
       style={styles.adoptionItem}
       onPress={() => handleAdoptionClick(item)}
+      disabled={loading}
     >
       {item.p_id?.pet_img?.length > 0 ? (
         <Image
@@ -450,7 +455,7 @@ const MyAdoptions = () => {
 
       {/* Adoption List */}
       <View style={styles.listContainer}>
-        {loading ? (
+        {loading && !selectedAdoption ? (
           <ActivityIndicator size="large" color="#FF66C4" style={styles.loader} />
         ) : error ? (
           <Text style={styles.errorText}>{error}</Text>
@@ -590,11 +595,11 @@ const MyAdoptions = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FAF9F6',
   },
   header: {
     padding: 20,
-    backgroundColor: '#F8F8F8',
+    
     borderBottomWidth: 1,
     borderBottomColor: '#EEE',
   },
@@ -603,10 +608,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   profileImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     marginRight: 15,
+    borderWidth: 2,
+    borderColor: '#ff69b4',
   },
   profileText: {
     flex: 1,

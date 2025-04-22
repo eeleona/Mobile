@@ -293,42 +293,63 @@ const Feedbacks = () => {
                   </View>
 
                   <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Adoption Ratings</Text>
                     <View style={styles.ratingItem}>
-                      <Text style={styles.ratingLabel}>Requirements clarity:</Text>
+                      <Text style={styles.ratingLabel}>The adoption requirements and eligibility criteria were easy to understand.</Text>
                       <Text style={styles.ratingValue}>
                         {selectedFeedback.adoptionRatings?.requirementsClear ?? "N/A"}
                       </Text>
                     </View>
                     <View style={styles.ratingItem}>
-                      <Text style={styles.ratingLabel}>Pet information:</Text>
+                      <Text style={styles.ratingLabel}>The pet’s history, and behavior information were clearly provided.</Text>
                       <Text style={styles.ratingValue}>
                         {selectedFeedback.adoptionRatings?.petInfoClear ?? "N/A"}
                       </Text>
                     </View>
                     <View style={styles.ratingItem}>
-                      <Text style={styles.ratingLabel}>Team helpfulness:</Text>
+                      <Text style={styles.ratingLabel}>The adoption team was responsive and helpful throughout the process.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>The pet matched the description and details provided on the website.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>Navigating the website and finding available pets was easy.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>The search and filtering options helped in finding suitable pets.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>The adoption application form was clear and user-friendly.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>The website functioned well on my device, with good loading speed and responsiveness.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>I would recommend this website to others looking to adopt a pet.</Text>
                       <Text style={styles.ratingValue}>
                         {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
                       </Text>
                     </View>
                   </View>
 
-                  <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Website Ratings</Text>
-                    <View style={styles.ratingItem}>
-                      <Text style={styles.ratingLabel}>Easy navigation:</Text>
-                      <Text style={styles.ratingValue}>
-                        {selectedFeedback.websiteRatings?.easyNavigation ?? "N/A"}
-                      </Text>
-                    </View>
-                    <View style={styles.ratingItem}>
-                      <Text style={styles.ratingLabel}>Search helpfulness:</Text>
-                      <Text style={styles.ratingValue}>
-                        {selectedFeedback.websiteRatings?.searchHelpful ?? "N/A"}
-                      </Text>
-                    </View>
-                  </View>
+                  
                 </ScrollView>
               )}
             </Animated.View>
@@ -554,7 +575,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 30,
   },
   sectionTitle: {
     fontSize: 18,

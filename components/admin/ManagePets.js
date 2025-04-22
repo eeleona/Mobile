@@ -7,21 +7,21 @@ import {
   Image,
   TouchableOpacity,
   Animated,
+  ImageBackground,
   Dimensions,
-  RefreshControl
+  RefreshControl,
+  TextInput,
 } from 'react-native';
 import axios from 'axios';
-import {
-  TextInput,
-  Button,
-  PaperProvider,
-  Chip,
-  ActivityIndicator
-} from 'react-native-paper';
+import { PaperProvider, ActivityIndicator } from 'react-native-paper';
 import AppBar from '../design/AppBar';
 import config from '../../server/config/config';
+import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
+const CARD_MARGIN = 10;
+const CARD_WIDTH = (width - CARD_MARGIN * 3) / 2;
 
 const ManagePets = ({ navigation }) => {
   const [pets, setPets] = useState([]);
@@ -40,6 +40,7 @@ const ManagePets = ({ navigation }) => {
       setFilteredPets(response.data.thePet);
     } catch (err) {
       console.log(err);
+      Alert.alert('Error', 'Failed to fetch pets');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -49,7 +50,7 @@ const ManagePets = ({ navigation }) => {
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 600,
+      duration: 500,
       useNativeDriver: true,
     }).start();
     fetchPets();
@@ -61,16 +62,19 @@ const ManagePets = ({ navigation }) => {
 
   const handleFilterSearch = () => {
     const lowerText = searchText.toLowerCase();
-    const filtered = pets.filter(pet => {
+    const filtered = pets.filter((pet) => {
       const matchesSearch =
         pet.p_name.toLowerCase().includes(lowerText) ||
         pet.p_breed.toLowerCase().includes(lowerText) ||
         pet.p_type.toLowerCase().includes(lowerText);
 
-      const matchesFilter = filter === 'All' || pet.p_type.toLowerCase() === filter.toLowerCase();
+      const matchesFilter =
+        filter === 'All' ||
+        pet.p_type.toLowerCase() === filter.toLowerCase();
 
       return matchesSearch && matchesFilter;
     });
+
     setFilteredPets(filtered);
   };
 
@@ -85,16 +89,41 @@ const ManagePets = ({ navigation }) => {
 
   const renderItem = ({ item }) => (
     <Animated.View style={{ opacity: fadeAnim }}>
-      <TouchableOpacity onPress={() => navigateToPetDetails(item)} style={styles.petCard}>
-        <Image
+      <TouchableOpacity
+        onPress={() => navigateToPetDetails(item)}
+        style={styles.petCard}
+      >
+        <ImageBackground
           source={{ uri: `${config.address}${item.pet_img[0]}` }}
           style={styles.petImage}
-        />
+          imageStyle={styles.petImageStyle}
+        >
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.7)']}
+            style={styles.imageGradient}
+          >
+            <View style={styles.petBadge}>
+              <MaterialIcons
+                name={item.p_type === 'Dog' ? 'pets' : 'pets'}
+                size={16}
+                color="#fff"
+              />
+              <Text style={styles.petTypeText}>{item.p_type}</Text>
+            </View>
+          </LinearGradient>
+        </ImageBackground>
         <View style={styles.petInfoContainer}>
           <Text style={styles.petName}>{item.p_name}</Text>
-          <View style={styles.inlineChipGroup}>
-            <Chip icon="paw" style={styles.chip}>{item.p_type}</Chip>
-            <Chip icon="gender-male-female" style={styles.chip}>{item.p_gender}</Chip>
+          <View style={styles.petDetails}>
+            <Text style={styles.petDetailText}>{item.p_breed}</Text>
+            <View style={styles.genderContainer}>
+              <MaterialIcons
+                name={item.p_gender === 'Male' ? 'male' : 'female'}
+                size={16}
+                color={item.p_gender === 'Male' ? '#4FD1C5' : '#F687B3'}
+              />
+              <Text style={styles.petDetailText}>{item.p_gender}</Text>
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -117,38 +146,48 @@ const ManagePets = ({ navigation }) => {
         <AppBar title="Manage Pets" onBackPress={() => navigation.goBack()} />
 
         <View style={styles.searchContainer}>
-          <TextInput
-            label="Search pets..."
-            value={searchText}
-            onChangeText={setSearchText}
-            mode="outlined"
-            style={styles.searchInput}
-            left={<TextInput.Icon name="magnify" />}
-            theme={{
-              colors: {
-                primary: '#FF66C4',
-                background: '#fff',
-                text: '#333',
-              }
-            }}
-          />
-          <View style={styles.fullWidthFilterContainer}>
+          <View style={styles.searchBox}>
+            <MaterialIcons 
+              name="search" 
+              size={20} 
+              color="#ff69b4" 
+              style={styles.searchIcon} 
+            />
+            <TextInput 
+              placeholder="Search by name, breed or type..." 
+              placeholderTextColor="#A0AEC0"
+              value={searchText}
+              onChangeText={setSearchText}
+              style={styles.searchInput}
+              clearButtonMode="while-editing"
+            />
+          </View>
+
+          <View style={styles.filterButtonsContainer}>
             {['All', 'Dog', 'Cat'].map((type) => (
-              <Button
+              <TouchableOpacity
                 key={type}
-                mode={filter === type ? 'contained' : 'outlined'}
                 onPress={() => setFilter(type)}
                 style={[
                   styles.filterButton,
-                  filter === type && styles.activeFilter
-                ]}
-                labelStyle={[
-                  styles.filterLabel,
-                  filter === type && styles.activeFilterLabel
+                  filter === type && styles.activeFilterButton,
                 ]}
               >
-                {type}
-              </Button>
+                <MaterialIcons
+                  name={type === 'Dog' ? 'pets' : type === 'Cat' ? 'pets' : 'all-inclusive'}
+                  size={20}
+                  color={filter === type ? '#FFF' : '#FF66C4'}
+                  style={styles.filterIcon}
+                />
+                <Text
+                  style={[
+                    styles.filterText,
+                    filter === type && styles.activeFilterText,
+                  ]}
+                >
+                  {type}
+                </Text>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
@@ -158,6 +197,7 @@ const ManagePets = ({ navigation }) => {
           renderItem={renderItem}
           keyExtractor={(item) => item._id}
           numColumns={2}
+          columnWrapperStyle={{ justifyContent: 'space-between' }}
           contentContainerStyle={styles.listContainer}
           refreshControl={
             <RefreshControl
@@ -169,15 +209,17 @@ const ManagePets = ({ navigation }) => {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
+              <MaterialIcons name="pets" size={60} color="#CBD5E0" />
               <Text style={styles.emptyText}>No pets found</Text>
-              <Button
-                mode="contained"
-                onPress={fetchPets}
+              <Text style={styles.emptySubText}>
+                Try adjusting your search or filters
+              </Text>
+              <TouchableOpacity
                 style={styles.refreshButton}
-                labelStyle={styles.refreshButtonLabel}
+                onPress={fetchPets}
               >
-                Refresh
-              </Button>
+                <Text style={styles.refreshButtonText}>Refresh Pets</Text>
+              </TouchableOpacity>
             </View>
           }
         />
@@ -197,93 +239,157 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   searchContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 6,
+    paddingHorizontal: 20,
+    paddingTop: 10,
   },
-  searchInput: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    marginBottom: 12,
-    height: 50,
-  },
-  fullWidthFilterContainer: {
+  searchBox: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  filterButton: {
-    flex: 1,
-    marginHorizontal: 4,
-    borderRadius: 8,
-    height: 38,
-    borderColor: '#FF66C4',
-  },
-  activeFilter: {
-    backgroundColor: '#FF66C4',
-  },
-  filterLabel: {
-    color: '#FF66C4',
-    fontWeight: 'bold',
-  },
-  activeFilterLabel: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  listContainer: {
-    paddingHorizontal: 10,
-    paddingBottom: 80,
-  },
-  petCard: {
-    width: width / 2 - 20,
-    margin: 8,
-    borderRadius: 16,
+    alignItems: 'center',
     backgroundColor: '#fff',
-    overflow: 'hidden',
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    height: 50,
+    marginBottom: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 14,
+    color: '#333333',
+  },
+  filterButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  filterButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 25,
+    borderWidth: 1.5,
+    borderColor: '#FF66C4',
+    marginHorizontal: 5,
+    backgroundColor: '#FFF',
+  },
+  activeFilterButton: {
+    backgroundColor: '#FF66C4',
+    borderColor: '#FF66C4',
+  },
+  filterIcon: {
+    marginRight: 5,
+  },
+  filterText: {
+    color: '#FF66C4',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  activeFilterText: {
+    color: '#FFF',
+    fontWeight: '600',
+  },
+  listContainer: {
+    paddingHorizontal: CARD_MARGIN,
+    paddingBottom: 30,
+  },
+  petCard: {
+    width: CARD_WIDTH,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginBottom: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
   },
   petImage: {
     width: '100%',
-    height: 150,
-    resizeMode: 'cover',
+    height: 160,
+    justifyContent: 'flex-end',
+  },
+  petImageStyle: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  imageGradient: {
+    height: 50,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 8,
+    paddingBottom: 6,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  petBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  petTypeText: {
+    color: '#fff',
+    marginLeft: 4,
+    fontWeight: '600',
+    fontSize: 13,
   },
   petInfoContainer: {
     padding: 10,
   },
   petName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#2D3748',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  inlineChipGroup: {
+  petDetails: {
     flexDirection: 'row',
-    gap: 6,
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  chip: {
-    backgroundColor: '#ff99ce',
-    height: 30,
+  petDetailText: {
+    fontSize: 13,
+    color: '#4A5568',
+  },
+  genderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 80,
+    marginTop: 50,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#999',
-    marginBottom: 16,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#A0AEC0',
+    marginTop: 12,
+  },
+  emptySubText: {
+    color: '#CBD5E0',
+    fontSize: 14,
+    marginTop: 4,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   refreshButton: {
+    marginTop: 16,
     backgroundColor: '#FF66C4',
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
-  refreshButtonLabel: {
-    color: 'white',
+  refreshButtonText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
 

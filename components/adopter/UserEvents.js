@@ -1,22 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl, ImageBackground } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  Image, 
+  ActivityIndicator, 
+  RefreshControl, 
+  ImageBackground,
+  TextInput,
+  FlatList, StatusBar
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import config from '../../server/config/config';
 import AppBar from '../design/AppBar';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const UserEvents = () => {
   const [events, setEvents] = useState([]);
+  const [filteredEvents, setFilteredEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigation = useNavigation();
 
   const fetchEvents = async () => {
     try {
       const response = await axios.get(`${config.address}/api/events/all`);
-      // Filter events with images as in original
       const eventsWithImages = (response.data?.theEvent || []).filter(event => event.e_image);
-      setEvents(eventsWithImages);
+      
+      // Sort events by date (nearest first)
+      const sortedEvents = [...eventsWithImages].sort((a, b) => {
+        return new Date(a.e_date) - new Date(b.e_date);
+      });
+      
+      setEvents(sortedEvents);
+      setFilteredEvents(sortedEvents);
     } catch (error) {
       console.error('Error fetching events:', error);
     } finally {
@@ -34,6 +55,19 @@ const UserEvents = () => {
     fetchEvents();
   }, []);
 
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredEvents(events);
+    } else {
+      const filtered = events.filter(event => 
+        event.e_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (event.e_location && event.e_location.toLowerCase().includes(searchQuery.toLowerCase()))
+      ); // <-- Added the closing parenthesis here
+      setFilteredEvents(filtered);
+      
+    }
+  }, [searchQuery, events]);
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return {
@@ -46,9 +80,11 @@ const UserEvents = () => {
 
   const EventItem = ({ event }) => {
     const { date, day, month, time } = formatDate(event.e_date);
-    
+
     return (
+      
       <View style={styles.eventCard}>
+        <StatusBar barStyle="default" />
         <View style={styles.dateContainer}>
           <Text style={styles.dateText}>{date}</Text>
           <Text style={styles.dayText}>{day}</Text>
@@ -65,11 +101,15 @@ const UserEvents = () => {
           <Text style={styles.eventTitle}>{event.e_title}</Text>
           <Text style={styles.eventTime}>{time}</Text>
           <View style={styles.locationContainer}>
-            <Image 
-              source={require('../../assets/Images/usernearby.png')} 
+            <MaterialIcons 
+              name="location-on" 
+              size={16} 
+              color="#888" 
               style={styles.locationIcon}
             />
-            <Text style={styles.eventLocation}>Pasay Animal Shelter</Text>
+            <Text style={styles.eventLocation}>
+              {event.e_location || 'Pasay Animal Shelter'}
+            </Text>
           </View>
         </View>
       </View>
@@ -90,33 +130,57 @@ const UserEvents = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={['#F9739A']}
-              tintColor="#F9739A"
+              colors={['#ff69b4']}
+              tintColor="#ff69b4"
             />
           }
         >
           <Text style={styles.headerText}>UPCOMING EVENTS</Text>
           <Text style={styles.subHeaderText}>at Pasay Animal Shelter</Text>
-          
+
+          {/* Search Bar - Same style as UserNearby.js */}
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchBar}
+              placeholder="Search events or location..."
+              placeholderTextColor="#aaa"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            <MaterialIcons
+              name="search"
+              size={24}
+              color="#ff69b4"
+              style={styles.searchIcon}
+            />
+          </View>
+
           {loading ? (
-            <ActivityIndicator size="large" color="#F9739A" style={styles.loader} />
-          ) : events.length > 0 ? (
-            events.map(event => (
-              <TouchableOpacity
-                key={event._id}
-                activeOpacity={0.9}
-                onPress={() => navigation.navigate('Event Details', { event })}
-              >
-                <EventItem event={event} />
-              </TouchableOpacity>
-            ))
+            <ActivityIndicator size="large" color="#ff69b4" style={styles.loader} />
+          ) : filteredEvents.length > 0 ? (
+            <FlatList
+              data={filteredEvents}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  key={item._id}
+                  activeOpacity={0.9}
+                  onPress={() => navigation.navigate('Event Details', { event: item })}
+                >
+                  <EventItem event={item} />
+                </TouchableOpacity>
+              )}
+              keyExtractor={item => item._id}
+              scrollEnabled={false}
+            />
           ) : (
             <View style={styles.noEventsContainer}>
               <Image 
                 source={require('../../assets/Images/profiledp.png')}
                 style={styles.noEventsImage}
               />
-              <Text style={styles.noEventsText}>No upcoming events</Text>
+              <Text style={styles.noEventsText}>
+                {searchQuery ? 'No matching events found' : 'No upcoming events'}
+              </Text>
             </View>
           )}
         </ScrollView>
@@ -143,7 +207,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     textAlign: 'center',
     marginVertical: 10,
-    color: '#F9739A',
+    color: '#ff69b4',
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
@@ -154,6 +218,32 @@ const styles = StyleSheet.create({
     marginBottom: 25,
     fontFamily: 'Inter_500Medium',
     color: '#555',
+  },
+  // Search bar styles (same as UserNearby.js)
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 10,
+    borderColor: '#eee',
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  searchBar: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+    color: '#333',
+  },
+  searchIcon: {
+    marginLeft: 8,
   },
   eventCard: {
     flexDirection: 'row',
@@ -170,7 +260,7 @@ const styles = StyleSheet.create({
     height: 120,
   },
   dateContainer: {
-    backgroundColor: '#F9739A',
+    backgroundColor: '#ff69b4',
     padding: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -211,7 +301,7 @@ const styles = StyleSheet.create({
   },
   eventTime: {
     fontSize: 14,
-    color: '#F9739A',
+    color: '#ff69b4',
     fontFamily: 'Inter_500Medium',
     marginBottom: 8,
   },
@@ -220,10 +310,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   locationIcon: {
-    width: 14,
-    height: 14,
     marginRight: 5,
-    tintColor: '#888',
   },
   eventLocation: {
     fontSize: 13,
