@@ -57,6 +57,7 @@ import EventDetails from './components/adopter/EventDetails';
 import Profile from './components/adopter/Profile';
 import MessageShelter from './components/adopter/MessageShelter';
 import AdoptionTracker from './components/adopter/AdoptionTracker';
+import ForgetPassword from './components/adopter/ForgetPassword';
 
 export default function App() {
   const Stack = createNativeStackNavigator();
@@ -66,6 +67,7 @@ export default function App() {
       <Stack.Navigator initialRouteName='Login'>
 
         <Stack.Screen name='Login' component={LogIn} options={{ headerShown: false }} />
+        <Stack.Screen name='Forget Password' component={ForgetPassword} options={{ headerShown: false }} />
         {/* Super Admin Pages */}
         <Stack.Screen name='Admin Page' component={AdminPage} options={{ headerShown: false }} />
         <Stack.Screen name='Admin Homepage' component={AdminHomepage} options={{ headerShown: false }} />

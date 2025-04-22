@@ -136,6 +136,11 @@ const LogIn = ({ navigation }) => {
                       accessoryRight={renderPasswordIcon}
                       size="large"
                     />
+                    <View style={styles.forgotPasswordContainer}>
+                      <TouchableOpacity onPress={() => navigation.navigate('Forget Password')}>
+                        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                      </TouchableOpacity>
+                    </View>
                     {error && (
                       <Animatable.Text animation="shake" duration={500} style={styles.error}>
                         {error}
@@ -235,6 +240,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 3,
+  },
+  forgotPasswordContainer: {
+    alignItems: 'flex-end',
+    marginTop: -5,
+    marginBottom: 20,
+  },
+  forgotPasswordText: {
+    fontFamily: 'Inter_700Bold',
+    color: '#FF69B4',
+    fontSize: 14,
   },
   buttons: {
     marginTop: 20,
