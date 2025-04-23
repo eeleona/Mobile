@@ -101,25 +101,7 @@ const AdminHomepage = ({ navigation }) => {
                 style={styles.logo} 
                 accessibilityLabel="App logo"
               />
-              <View style={styles.searchBox}>
-                <MaterialIcons 
-                  name="search" 
-                  size={20} 
-                  color="#ff69b4" 
-                  style={styles.searchIcon} 
-                  accessibilityRole="imagebutton"
-                />
-                <TextInput 
-                  placeholder="Search..." 
-                  placeholderTextColor="#ff69b4" 
-                  style={styles.input}
-                  accessibilityLabel="Search input"
-                  value={searchQuery}
-                  onChangeText={handleSearch}
-                  onFocus={() => searchQuery.length > 0 && setShowSearchResults(true)}
-                  onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
-                />
-              </View>
+              <Text style={styles.welcome1}>Welcome, </Text><Text style={styles.welcome2}>Super Admin! </Text>
             </View> 
             
             {/* Search Results Modal */}
@@ -445,6 +427,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     width: 80,
     height: 80,
+  },
+  welcome1: {
+    fontFamily: 'Inter_700Bold',
+    color: 'black',
+    fontSize: 25,
+  },
+  welcome2: {
+    fontFamily: 'Inter_700Bold',
+    color: '#ff69b4',
+    fontSize: 25,
   },
   welcome: {
     fontFamily: 'Inter_700Bold',

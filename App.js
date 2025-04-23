@@ -61,6 +61,7 @@ import AdoptionTracker from './components/adopter/AdoptionTracker';
 import ForgetPassword from './components/adopter/ForgetPassword';
 import EditNearby from './components/admin/EditNearby';
 
+
 export default function App() {
   const Stack = createNativeStackNavigator();
 

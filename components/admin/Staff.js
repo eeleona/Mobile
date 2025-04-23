@@ -1,18 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, FlatList, TouchableOpacity, Modal, ScrollView, Animated, Easing } from 'react-native';
-import { PaperProvider, ActivityIndicator } from 'react-native-paper';
+import { View, Text, TextInput, StyleSheet, FlatList, TouchableOpacity, Modal, ScrollView, Animated, Alert, Easing } from 'react-native';
+import { PaperProvider, ActivityIndicator, FAB } from 'react-native-paper';
 import axios from 'axios';
 import config from '../../server/config/config';
 import { useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
 import { MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import jwt_decode from 'jwt-decode';
 
-const Staff = () => {
+const Staff = ({ navigation }) => {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [search, setSearch] = useState('');
   const [filteredStaff, setFilteredStaff] = useState([]);
+  const [formData, setFormData] = useState({
+    s_fname: '',
+    s_lname: '',
+    s_mname: '',
+    s_add: '',
+    s_contactnumber: '',
+    s_position: '',
+    s_gender: '',
+    s_birthdate: '',
+    s_email: ''
+  });
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(300)).current;
 
@@ -49,9 +63,55 @@ const Staff = () => {
     }
   };
 
+  const verifyAdminAccess = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Alert.alert('Login Required', 'Admin access required. Please log in.', [
+          { text: 'OK', onPress: () => navigation.navigate('Login') },
+        ]);
+        return false;
+      }
+
+      const decodedToken = jwt_decode(token);
+      const currentTime = Date.now() / 1000;
+      
+      if (decodedToken.exp < currentTime) {
+        await AsyncStorage.removeItem('authToken');
+        Alert.alert('Session Expired', 'Your session has expired. Please log in again.', [
+          { text: 'OK', onPress: () => navigation.navigate('Login') },
+        ]);
+        return false;
+      }
+
+      if (!['admin', 'super-admin'].includes(decodedToken.role)) {
+        Alert.alert('Access Denied', 'Only administrators can perform this action.');
+        return false;
+      }
+
+      return token;
+    } catch (error) {
+      console.error('Error verifying access:', error);
+      Alert.alert('Error', 'Failed to verify permissions');
+      return false;
+    }
+  };
+
   const openModal = (staff) => {
     setSelectedStaff(staff);
+    setFormData({
+      s_fname: staff.s_fname,
+      s_lname: staff.s_lname,
+      s_mname: staff.s_mname || '',
+      s_add: staff.s_add,
+      s_contactnumber: staff.s_contactnumber,
+      s_position: staff.s_position,
+      s_gender: staff.s_gender,
+      s_birthdate: staff.s_birthdate,
+      s_email: staff.s_email
+    });
     setModalVisible(true);
+    setEditMode(false);
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -81,6 +141,65 @@ const Staff = () => {
         useNativeDriver: true,
       }),
     ]).start(() => setModalVisible(false));
+  };
+
+  const handleInputChange = (name, value) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleEdit = () => {
+    setEditMode(true);
+  };
+
+  const handleDelete = async () => {
+    const token = await verifyAdminAccess();
+    if (!token) return;
+
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete ${selectedStaff.s_fname} ${selectedStaff.s_lname}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await axios.delete(`${config.address}/api/staff/delete/${selectedStaff._id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              setStaffList(staffList.filter(staff => staff._id !== selectedStaff._id));
+              closeModal();
+              Alert.alert('Success', 'Staff member deleted successfully');
+            } catch (error) {
+              console.error('Error deleting staff:', error);
+              Alert.alert('Error', 'Failed to delete staff member');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleUpdate = async () => {
+    const token = await verifyAdminAccess();
+    if (!token) return;
+
+    try {
+      const response = await axios.put(
+        `${config.address}/api/staff/update/${selectedStaff._id}`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setStaffList(staffList.map(staff => 
+        staff._id === selectedStaff._id ? response.data.theUpdateStaff : staff
+      ));
+      setEditMode(false);
+      Alert.alert('Success', 'Staff information updated successfully');
+    } catch (error) {
+      console.error('Error updating staff:', error);
+      Alert.alert('Error', 'Failed to update staff information');
+    }
   };
 
   let [fontsLoaded] = useFonts({
@@ -164,6 +283,14 @@ const Staff = () => {
           }
         />
 
+        {/* FAB Button */}
+        <FAB
+          style={styles.fab}
+          icon="plus"
+          color="white"
+          onPress={() => navigation.navigate('Add Staff')}
+        />
+
         {/* Staff Details Modal */}
         <Modal
           transparent={true}
@@ -188,25 +315,135 @@ const Staff = () => {
                 {selectedStaff && (
                   <View style={styles.modalContent}>
                     <View style={styles.profileSection}>
-                      <Text style={styles.profileName}>
-                        {selectedStaff.s_fname} {selectedStaff.s_lname}
-                      </Text>
+                      {editMode ? (
+                        <TextInput
+                          style={styles.editInput}
+                          value={formData.s_fname}
+                          onChangeText={(text) => handleInputChange('s_fname', text)}
+                        />
+                      ) : (
+                        <Text style={styles.profileName}>
+                          {selectedStaff.s_fname} {selectedStaff.s_lname}
+                        </Text>
+                      )}
                       <View style={[styles.statusBadge, { backgroundColor: '#ff69b4' }]}>
-                        <Text style={styles.statusText}>{selectedStaff.s_position}</Text>
+                        {editMode ? (
+                          <TextInput
+                            style={styles.editInput}
+                            value={formData.s_position}
+                            onChangeText={(text) => handleInputChange('s_position', text)}
+                          />
+                        ) : (
+                          <Text style={styles.statusText}>{selectedStaff.s_position}</Text>
+                        )}
                       </View>
                     </View>
 
                     <View style={styles.detailsSection}>
-                      <DetailRow icon="person-outline" label="Staff ID" value={selectedStaff._id} />
-                      <DetailRow icon="badge" label="First Name" value={selectedStaff.s_fname} />
-                      <DetailRow icon="badge" label="Last Name" value={selectedStaff.s_lname} />
-                      <DetailRow icon="badge" label="Middle Name" value={selectedStaff.s_mname || 'N/A'} />
-                      <DetailRow icon="wc" label="Gender" value={selectedStaff.s_gender} />
-                      <DetailRow icon="work-outline" label="Position" value={selectedStaff.s_position} />
-                      <DetailRow icon="location-on" label="Address" value={selectedStaff.s_add} />
-                      <DetailRow icon="phone" label="Contact" value={selectedStaff.s_contactnumber} />
-                      <DetailRow icon="cake" label="Birthdate" value={new Date(selectedStaff.s_birthdate).toLocaleDateString()} />
-                      <DetailRow icon="email" label="Email" value={selectedStaff.s_email} />
+                      <DetailRow 
+                        icon="person-outline" 
+                        label="Staff ID" 
+                        value={selectedStaff._id} 
+                        editMode={false}
+                      />
+                      <DetailRow 
+                        icon="badge" 
+                        label="First Name" 
+                        value={editMode ? formData.s_fname : selectedStaff.s_fname}
+                        editMode={editMode}
+                        onChangeText={(text) => handleInputChange('s_fname', text)}
+                      />
+                      <DetailRow 
+                        icon="badge" 
+                        label="Last Name" 
+                        value={editMode ? formData.s_lname : selectedStaff.s_lname}
+                        editMode={editMode}
+                        onChangeText={(text) => handleInputChange('s_lname', text)}
+                      />
+                      <DetailRow 
+                        icon="badge" 
+                        label="Middle Name" 
+                        value={editMode ? formData.s_mname : selectedStaff.s_mname || 'N/A'}
+                        editMode={editMode}
+                        onChangeText={(text) => handleInputChange('s_mname', text)}
+                      />
+                      <DetailRow 
+                        icon="wc" 
+                        label="Gender" 
+                        value={editMode ? formData.s_gender : selectedStaff.s_gender}
+                        editMode={editMode}
+                        onChangeText={(text) => handleInputChange('s_gender', text)}
+                      />
+                      <DetailRow 
+                        icon="work-outline" 
+                        label="Position" 
+                        value={editMode ? formData.s_position : selectedStaff.s_position}
+                        editMode={editMode}
+                        onChangeText={(text) => handleInputChange('s_position', text)}
+                      />
+                      <DetailRow 
+                        icon="location-on" 
+                        label="Address" 
+                        value={editMode ? formData.s_add : selectedStaff.s_add}
+                        editMode={editMode}
+                        onChangeText={(text) => handleInputChange('s_add', text)}
+                      />
+                      <DetailRow 
+                        icon="phone" 
+                        label="Contact" 
+                        value={editMode ? formData.s_contactnumber : selectedStaff.s_contactnumber}
+                        editMode={editMode}
+                        onChangeText={(text) => handleInputChange('s_contactnumber', text)}
+                      />
+                      <DetailRow 
+                        icon="cake" 
+                        label="Birthdate" 
+                        value={editMode ? formData.s_birthdate : new Date(selectedStaff.s_birthdate).toLocaleDateString()}
+                        editMode={editMode}
+                        onChangeText={(text) => handleInputChange('s_birthdate', text)}
+                      />
+                      <DetailRow 
+                        icon="email" 
+                        label="Email" 
+                        value={editMode ? formData.s_email : selectedStaff.s_email}
+                        editMode={editMode}
+                        onChangeText={(text) => handleInputChange('s_email', text)}
+                      />
+                    </View>
+
+                    {/* Action Buttons */}
+                    <View style={styles.modalActions}>
+                      {editMode ? (
+                        <>
+                          <TouchableOpacity 
+                            style={[styles.actionButton, styles.cancelButton]}
+                            onPress={() => setEditMode(false)}
+                          >
+                            <Text style={styles.actionButtonText}>Cancel</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={[styles.actionButton, styles.saveButton]}
+                            onPress={handleUpdate}
+                          >
+                            <Text style={styles.actionButtonText}>Save</Text>
+                          </TouchableOpacity>
+                        </>
+                      ) : (
+                        <>
+                          <TouchableOpacity 
+                            style={[styles.actionButton, styles.editButton]}
+                            onPress={handleEdit}
+                          >
+                            <Text style={styles.actionButtonText}>Edit</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={[styles.actionButton, styles.deleteButton]}
+                            onPress={handleDelete}
+                          >
+                            <Text style={styles.actionButtonText}>Delete</Text>
+                          </TouchableOpacity>
+                        </>
+                      )}
                     </View>
                   </View>
                 )}
@@ -219,14 +456,22 @@ const Staff = () => {
   );
 };
 
-const DetailRow = ({ icon, label, value }) => (
+const DetailRow = ({ icon, label, value, editMode, onChangeText }) => (
   <View style={styles.detailRow}>
     <View style={styles.detailIcon}>
       <MaterialIcons name={icon} size={20} color="#ff69b4" />
     </View>
     <View style={styles.detailTextContainer}>
       <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue}>{value}</Text>
+      {editMode ? (
+        <TextInput
+          style={styles.editInput}
+          value={value}
+          onChangeText={onChangeText}
+        />
+      ) : (
+        <Text style={styles.detailValue}>{value}</Text>
+      )}
     </View>
   </View>
 );
@@ -447,6 +692,56 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     fontSize: 16,
     color: '#1e293b',
+  },
+  editInput: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 16,
+    color: '#1e293b',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ff69b4',
+    paddingVertical: 4,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+    marginBottom: 15,
+  },
+  actionButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
+    color: 'white',
+  },
+  editButton: {
+    backgroundColor: '#4CAF50',
+  },
+  deleteButton: {
+    backgroundColor: '#F44336',
+  },
+  saveButton: {
+    backgroundColor: '#2196F3',
+  },
+  cancelButton: {
+    backgroundColor: '#9E9E9E',
+  },
+  fab: {
+    position: 'absolute',
+    margin: 20,
+    right: 10,
+    bottom: 10,
+    backgroundColor: '#ff69b4',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
 });
 
