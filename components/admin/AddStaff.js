@@ -1,397 +1,198 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView, ImageBackground, Image, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Checkbox, List, PaperProvider, Modal, Portal } from 'react-native-paper';
-import AppBar from '../design/AppBar';
-import { ApplicationProvider, CheckBox, Datepicker, DatepickerProps, Radio, IndexPath, Select, SelectItem, Input, Text } from '@ui-kitten/components';
-import {  useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
-import * as eva from '@eva-design/eva';
- 
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { TextInput, Button, ActivityIndicator } from 'react-native-paper';
+import axios from 'axios';
+import config from '../../server/config/config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import jwt_decode from 'jwt-decode';
+
 const AddStaff = ({ navigation }) => {
-    const [dateOfBirth, setDateOfBirth] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [expanded, setExpanded] = React.useState(true);
-    const [visible, setVisible] = React.useState(false);
-    const showModal = () => setVisible(true);
-    const hideModal = () => setVisible(false);
-    const containerStyle = {backgroundColor: 'white', padding: 20};
-    const [activeChecked, setActiveChecked] = React.useState(false);
-    const handlePress = () => setExpanded(!expanded);
-    const [checked, setChecked] = React.useState(false);
-    let [fontsLoaded] = useFonts({
-        Inter_700Bold,
-        Inter_500Medium,
-      });
-    
-      if (!fontsLoaded) {
-        return null;
+  const [formData, setFormData] = useState({
+    s_fname: '',
+    s_lname: '',
+    s_mname: '',
+    s_add: '',
+    s_contactnumber: '',
+    s_position: '',
+    s_gender: '',
+    s_birthdate: '',
+    s_email: ''
+  });
+  const [loading, setLoading] = useState(false);
+
+  const verifyAdminAccess = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Alert.alert('Login Required', 'Admin access required. Please log in.', [
+          { text: 'OK', onPress: () => navigation.navigate('Login') },
+        ]);
+        return false;
       }
 
-      const handleLogin = () => {
-        navigation.navigate('Login');
-      };
-    return (
-        <ApplicationProvider {...eva} theme={eva.light}>
-        <PaperProvider>
-            <LinearGradient
-                colors={['rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.7)']}
-                style={styles.gradientOverlay}
-            >
-                <ScrollView style={styles.container}>
-                    <AppBar></AppBar>
-                    <Text style={styles.formHeader}>Edit Admin</Text>
-                    <View style={styles.formContainer}>
-                        <Text style={styles.formsubHeader}>Personal Information</Text>
-                        <View style={styles.info}>
-                        <Text style={styles.label}>First Name</Text>
-                        <Input style={styles.input}/>
-                        <View style={styles.mlnamelabel}>
-                        <Text style={styles.mlabel}>Middle Name</Text>
-                        <Text style={styles.llabel}>Last Name</Text>
-                        </View>
-                        <View style={styles.mlname}>
-                            <Input style={styles.minput}/>
-                            <Input style={styles.linput}/>
-                        </View>
-                        <View style={styles.mlnamelabel}>
-                            <Text style={styles.label}>Gender</Text>
-                            <Text style={styles.bdaylabel}>Birthdate</Text>
-                        </View>
-                            <View style={styles.genderContainer}>
-                            <Radio
-                                style={styles.radio}
-                                checked={activeChecked}
-                                onChange={nextChecked => setActiveChecked(nextChecked)}
-                            >
-                                Male
-                            </Radio>
-                            <Radio
-                                style={styles.radio}
-                                checked={activeChecked}
-                                onChange={nextChecked => setActiveChecked(nextChecked)}
-                            >
-                                Female
-                            </Radio>
-                            <Input style={styles.binput} placeholder='MM/DD/YYYY'/>
-                            </View>
-                            <Text style={styles.label}>Position</Text>
-                            <Input style={styles.input}/>
-                        <Text style={styles.label}>Contact Number</Text>
-                        <Input style={styles.input} placeholder='+63'/>
-                        <Text style={styles.label}>Address 1</Text>
-                        <Input style={styles.input} placeholder='Floor or Unit Number, Street Name, Lot Number'/>
-                        <Text style={styles.label}>Address 2</Text>
-                        <Input style={styles.input} placeholder='Building, Subdivision, City/Municipality, Province'/>
-                        {/* <List.Accordion
-                            style={styles.id}
-                            title="Please select the Valid ID"
-                            left={props => <List.Icon {...props} icon="identifier" />}>
-                            <List.Item title="Postal ID" />
-                            <List.Item title="National ID" />
-                            <List.Item title="Passport" />
-                            <List.Item title="Drivers License" />
-                        </List.Accordion> */}
-                        
-                        <TouchableOpacity style={styles.submitButton} onPress={showModal}>
-                            <Text style={styles.submitButtonText}>Edit Admin</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.submitButton1} onPress={showModal}>
-                            <Text style={styles.submitButtonText}>Delete Admin</Text>
-                        </TouchableOpacity>
-                        </View>
-                    </View>
-                        <View style={styles.pinfo}>
-                        <Portal>
-                            <Modal style={styles.mContainer} visible={visible} onDismiss={hideModal} contentContainerStyle={containerStyle}>
-                                <View style={styles.modalcontainer}>
-                                <Text style={styles.successtext}>Admin Information Updated!</Text>
-                                
-                                <View style={styles.btncontainer}>
-                                  <TouchableOpacity style={styles.editbtn}>
-                                    <Text style={styles.editbtntext}>Back</Text>
-                                  </TouchableOpacity>
-                                  
-                                </View>
-                                </View>
-                            </Modal>
-                        </Portal>
-                        
-                    </View>
-                </ScrollView>
-            </LinearGradient>
-        </PaperProvider>
-        </ApplicationProvider>
-    );
-};
- 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    check: {
-        flexDirection: 'row',
-    },
-    containers: {
-        minHeight: 128,
-      },
-      btncontainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-      },
-    logo: {
-        width: 40,
-        height: 40,
-        alignItems: 'center',
-        
-    },
-    background: {
-        width: '100%',
-        height: '100%',
-        flex: 1,
-    },
-    gradientOverlay: {
-        flex: 1,
-        width: '100%',
-        height: '100%',
-    },
-    formContainer: {
-        padding: 5,
-        backgroundColor: '#fff',
-        margin: 15,
-        marginTop: 10,
-        height: '80%',
-        borderRadius: 5,
-        shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-        shadowOffset: { width: 0, height: 2 },
-        alignItems: 'center',
-        elevation: 5,
-    },
-    radio: {
-        fontFamily: 'Inter_500Medium',
-        marginTop: 5,
-        fonstSize: 15,
-    },
-    gender: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    genderContainer: {
-        width: '114%',
-        flexDirection: 'row',
-    },
-    formHeader: {
-        fontSize: 40,
-        marginTop: 10,
-        width: '100%',
-        color: '#ff69b4',
-        textAlign: 'center',
-        fontFamily: 'Inter_700Bold'
-    },
-    formsubHeader: {
-        fontSize: 27,
-        marginTop: 10,
-        marginBottom: 5,
-        width: '100%',
-        color: '#ff69b4',
-        textAlign: 'left',
-        marginLeft: 35,
-        fontFamily: 'Inter_700Bold',
-    },
-    labelcontainer: {
-        width: '100%',
-        alignItems: 'flex-start',
-        flexDirection: 'row',
-        justifyContent: 'flex-start',
-    },
-    label: {
-        marginTop: 5,
-        fontSize: 15,
-        fontWeight: '600',
-        alignItems: 'flex-start',
-        fontFamily: 'Inter_500Medium',
-    },
-    mlnamelabel: {
-        flexDirection: 'row',
-    },
-    mlabel: {
-        marginTop: 5,
-        fontSize: 15,
-        fontWeight: '600',
-        alignItems: 'flex-start',
-        fontFamily: 'Inter_500Medium',
-    },
-    llabel: {
-        marginTop: 5,
-        fontSize: 15,
-        fontWeight: '600',
-        alignItems: 'flex-start',
-        fontFamily: 'Inter_500Medium',
-        marginLeft: 28,
-    },
-    bdaylabel:{
-        marginTop: 5,
-        fontSize: 15,
-        fontWeight: '600',
-        alignItems: 'flex-start',
-        fontFamily: 'Inter_500Medium',
-        marginLeft: 103,
-    },
-    input: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '90%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 2,
-    },
-    editbtn: {
-      width: 160,
-      backgroundColor: '#cad47c',
-      paddingVertical: 15,
-      borderRadius: 5,
-      marginTop: 10,
-      marginRight: 5,
-    },
-    editbtntext: {
-      textAlign: 'center',
-      fontFamily: 'Inter_700Bold',
-      fontSize: 16,
-      color: 'white',
-    },
-    deletebtn: {
-      width: 160,
-      backgroundColor: '#e85d5d',
-      fontFamily: 'Inter_700Bold',
-      paddingVertical: 15,
-      borderRadius: 5,
-      marginTop: 10,
-      marginLeft: 5,
-    },
-    deletebtntext: {
-      textAlign: 'center',
-      fontFamily: 'Inter_700Bold',
-      fontSize: 16,
-      color: 'white',
-    },
-    mlname: {
-        width: '106%',
-        flexDirection: 'row',
-    },
-    minput: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '25%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 2,
-    },
-    linput: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '60%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        elevation: 2,
-        paddingLeft: 5,
-    },
-    binput: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '45%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 2,
-    },
-    dateInput: {
-        backgroundColor: '#f5f5f5',
-        padding: 15,
-        marginBottom: 15,
-        borderRadius: 5,
-        fontSize: 16,
-        borderColor: '#ddd',
-        borderWidth: 1,
-        textAlign: 'center',
-    },
-    IDButton: {
-        backgroundColor: '#cad47c',
-        paddingVertical: 15,
-        borderRadius: 5,
-        marginTop: 20,
-    },
-    id: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '90%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 2,
-    },
-    submitButton2: {
-        backgroundColor: '#ff69b4',
-        paddingVertical: 15,
-        borderRadius: 5,
-        marginTop: 10,
-        width: '60%',
-        
-    },
-    submitButton: {
-        backgroundColor: '#ff69b4',
-        paddingVertical: 15,
-        borderRadius: 5,
-        marginTop: 5,
-        marginBottom: 10,
-    },
-    submitButton1: {
-      backgroundColor: '#e85d5d',
-      paddingVertical: 15,
-      borderRadius: 5,
+      const decodedToken = jwt_decode(token);
+      const currentTime = Date.now() / 1000;
       
-      marginBottom: 10,
+      if (decodedToken.exp < currentTime) {
+        await AsyncStorage.removeItem('authToken');
+        Alert.alert('Session Expired', 'Your session has expired. Please log in again.', [
+          { text: 'OK', onPress: () => navigation.navigate('Login') },
+        ]);
+        return false;
+      }
+
+      if (!['admin', 'super-admin'].includes(decodedToken.role)) {
+        Alert.alert('Access Denied', 'Only administrators can perform this action.');
+        return false;
+      }
+
+      return token;
+    } catch (error) {
+      console.error('Error verifying access:', error);
+      Alert.alert('Error', 'Failed to verify permissions');
+      return false;
+    }
+  };
+
+  const handleInputChange = (name, value) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    const token = await verifyAdminAccess();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await axios.post(`${config.address}/api/staff/new`, formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      Alert.alert('Success', 'Staff member added successfully');
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error adding staff:', error);
+      Alert.alert('Error', 'Failed to add staff member');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Add New Staff</Text>
+      
+      <TextInput
+        label="First Name"
+        value={formData.s_fname}
+        onChangeText={(text) => handleInputChange('s_fname', text)}
+        style={styles.input}
+        mode="outlined"
+      />
+      
+      <TextInput
+        label="Last Name"
+        value={formData.s_lname}
+        onChangeText={(text) => handleInputChange('s_lname', text)}
+        style={styles.input}
+        mode="outlined"
+      />
+      
+      <TextInput
+        label="Middle Name"
+        value={formData.s_mname}
+        onChangeText={(text) => handleInputChange('s_mname', text)}
+        style={styles.input}
+        mode="outlined"
+      />
+      
+      <TextInput
+        label="Address"
+        value={formData.s_add}
+        onChangeText={(text) => handleInputChange('s_add', text)}
+        style={styles.input}
+        mode="outlined"
+      />
+      
+      <TextInput
+        label="Contact Number"
+        value={formData.s_contactnumber}
+        onChangeText={(text) => handleInputChange('s_contactnumber', text)}
+        style={styles.input}
+        mode="outlined"
+        keyboardType="phone-pad"
+      />
+      
+      <TextInput
+        label="Position"
+        value={formData.s_position}
+        onChangeText={(text) => handleInputChange('s_position', text)}
+        style={styles.input}
+        mode="outlined"
+      />
+      
+      <TextInput
+        label="Gender"
+        value={formData.s_gender}
+        onChangeText={(text) => handleInputChange('s_gender', text)}
+        style={styles.input}
+        mode="outlined"
+      />
+      
+      <TextInput
+        label="Birthdate"
+        value={formData.s_birthdate}
+        onChangeText={(text) => handleInputChange('s_birthdate', text)}
+        style={styles.input}
+        mode="outlined"
+        placeholder="YYYY-MM-DD"
+      />
+      
+      <TextInput
+        label="Email"
+        value={formData.s_email}
+        onChangeText={(text) => handleInputChange('s_email', text)}
+        style={styles.input}
+        mode="outlined"
+        keyboardType="email-address"
+      />
+      
+      <Button
+        mode="contained"
+        onPress={handleSubmit}
+        style={styles.button}
+        loading={loading}
+        disabled={loading}
+      >
+        {loading ? 'Adding...' : 'Add Staff'}
+      </Button>
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    backgroundColor: '#FAF9F6',
   },
-    submitButtonText: {
-        textAlign: 'center',
-        color: '#fff',
-        fontSize: 16,
-        fontFamily: 'Inter_500Medium',
-    },
-    label2: {
-        marginTop: 8,
-        marginBottom: 3,
-        fontSize: 15,
-        fontFamily: 'Inter',
-    },
-    successtext:{
-        fontSize: 25,
-        color: '#cad47c',
-        fontFamily: 'Inter_700Bold',
-    },
-    mContainer: {
-        width: '95%',
-        alignContent: 'center',
-        alignItems: 'center',
-        marginLeft: 10,
-    },
-    modalcontainer: {
-        alignItems: 'center',
-        alignContent: 'center'
-    },
-    error: {
-        color: 'red',
-        fontSize: 10,
-        fontFamily: 'Inter',
-        marginBottom: 5,
-      },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#2a2a2a',
+    textAlign: 'center',
+  },
+  input: {
+    marginBottom: 15,
+    backgroundColor: '#fff',
+  },
+  button: {
+    marginTop: 20,
+    paddingVertical: 8,
+    backgroundColor: '#ff69b4',
+  },
 });
- 
+
 export default AddStaff;

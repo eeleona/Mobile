@@ -1,399 +1,360 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, FlatList, Alert } from 'react-native';
-import io from 'socket.io-client/dist/socket.io';
-import axios from 'axios';
-import config from '../../server/config/config';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+} from "react-native";
+import io from "socket.io-client";
+import config from "../../server/config/config";
+import UserPh from "../../assets/Images/user.png";
+import AdminImg from "../../assets/Images/nobglogo.png";
 
-const OneMessage = ({ navigation, route }) => {
+// Modify your socket initialization in OneMessage.js
+const socket = io(`${config.address}`, {
+  transports: ['websocket', 'polling'], // Use both like the web version does
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  forceNew: true,
+  secure: true, // Enable secure connection
+  rejectUnauthorized: false // Important for self-signed certificates in development
+});
+
+if (__DEV__ && Platform.OS === 'android') {
+  // For Android devices in development
+  console.log("Applying development SSL workaround");
+  
+  // This bypasses SSL certificate verification in development only
+  // IMPORTANT: Remove this for production builds!
+  process.nextTick = setImmediate;
+}
+
+const OneMessage = ({ route, navigation }) => {
   const { userId, userName, userImage } = route.params;
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const messagesEndRef = useRef(null);
-  const adminId = '670a04a34f63c22acf3d8c9a';
+  const [isLoading, setIsLoading] = useState(false);
+  const flatListRef = useRef(null);
 
-  // Initialize socket
-  const socket = useRef(null);
+  const adminId = "670a04a34f63c22acf3d8c9a".toString();
+
+  // Add this to your component
+  useEffect(() => {
+    console.log("Attempting to connect to socket at:", config.address);
+    
+    socket.on('connect', () => {
+      console.log('Socket connected successfully with ID:', socket.id);
+    });
+    
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      console.error('Socket connection error details:', error.message);
+    });
+    
+    socket.on('error', (error) => {
+      console.error('Socket general error:', error);
+    });
+    
+    socket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason);
+    });
+    
+    // Your existing socket code...
+    
+    return () => {
+      socket.off('connect');
+      socket.off('connect_error');
+      socket.off('error');
+      socket.off('disconnect');
+      socket.off('receiveMessage');
+    };
+  }, []);
 
   useEffect(() => {
-    // Connect to the socket server
-    socket.current = io(`${config.address}`, {
-      transports: ['websocket'],
-      forceNew: true,
-      jsonp: false,
-    });
-
-    // Join the admin room
-    if (adminId) {
-      socket.current.emit('joinRoom', adminId);
+    if (userId) {
+      fetchMessages(userId);
     }
-
-    // Fetch initial messages
-    fetchMessages();
-
-    // Listen for incoming messages
-    socket.current.on('receiveMessage', (newMessage) => {
-      if (newMessage.senderId === userId || newMessage.receiverId === userId) {
-        setMessages((prev) => [...prev, newMessage]);
-        scrollToBottom();
-      }
-    });
-
-    // Cleanup on component unmount
-    return () => {
-      if (socket.current) {
-        socket.current.off('receiveMessage');
-        socket.current.disconnect();
-      }
-    };
   }, [userId]);
 
-  const fetchMessages = async () => {
+  const scrollToBottom = () => {
+    if (flatListRef.current) {
+      flatListRef.current.scrollToEnd({ animated: true });
+    }
+  };
+
+  const fetchMessages = async (selectedUserId) => {
     try {
-      const response = await axios.get(
-        `${config.address}/api/messages/${adminId}/${userId}`
+      console.log("Fetching messages for users:", adminId, selectedUserId);
+      const response = await fetch(
+        `${config.address}/api/messages/${adminId}/${selectedUserId}`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        }
       );
-      setMessages(response.data);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Messages fetched successfully:", data.length);
+      setMessages(data);
       scrollToBottom();
     } catch (error) {
-      console.error('Failed to fetch messages:', error);
+      console.error("Failed to fetch messages:", error);
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) return;
-
-    const newMessage = {
-      senderId: adminId,
-      receiverId: userId,
-      message: message.trim(),
-    };
-
-    // Create a temporary message for the UI
-    const tempMessage = {
-      ...newMessage,
-      _id: 'temp-' + Date.now(),
-      createdAt: new Date().toISOString(),
-      pending: true,
-    };
-
-    // Optimistically update UI
-    setMessages((prev) => [...prev, tempMessage]);
-    setMessage('');
-    scrollToBottom();
-
+  const handleSendMessage = () => {
+    if (!message.trim() || !userId) return;
+  
+    setIsLoading(true);
+    
     try {
-      // Send the message to the backend
-      const response = await axios.post(
-        `${config.address}/api/messages/send`,
-        newMessage,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.data && response.data.newMessage) {
-        // Replace the temporary message with the server response
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === tempMessage._id ? response.data.newMessage : msg
-          )
-        );
-
-        // Emit the message through socket.io
-        socket.current.emit('sendMessage', response.data.newMessage);
-      } else {
-        throw new Error('Invalid response from server');
-      }
-    } catch (error) {
-      console.error('Failed to send message:', error);
-
-      // Mark the message as error in UI
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg._id === tempMessage._id ? { ...msg, error: true } : msg
-        )
-      );
-
-      // Show error alert to user
-      Alert.alert(
-        'Message Failed',
-        'Could not send message. Please try again.',
-        [
-          {
-            text: 'Retry',
-            onPress: () => handleRetryMessage(tempMessage),
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-        ]
-      );
-    }
-  };
-
-  const handleRetryMessage = async (tempMessage) => {
-    try {
+      // Create message object exactly like the web version
       const newMessage = {
-        senderId: tempMessage.senderId,
-        receiverId: tempMessage.receiverId,
-        message: tempMessage.message,
+        senderId: adminId,
+        receiverId: userId,
+        message: message.trim(),
       };
-
-      const response = await axios.post(
-        `${config.address}/api/messages/send`,
-        newMessage,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.data && response.data.newMessage) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === tempMessage._id ? response.data.newMessage : msg
-          )
-        );
-
-        socket.current.emit('sendMessage', response.data.newMessage);
-      }
+      
+      // Send via socket.io first (like the web version)
+      socket.emit("sendMessage", newMessage);
+      
+      // Update local state with the new message
+      // Add temporary id and timestamp for display
+      const messageWithTimestamp = {
+        ...newMessage,
+        _id: Date.now().toString(), // Temporary ID
+        createdAt: new Date().toISOString(),
+      };
+      
+      setMessages((prevMessages) => [...prevMessages, messageWithTimestamp]);
+      setMessage("");
+      scrollToBottom();
     } catch (error) {
-      console.error('Retry failed:', error);
+      console.error("Error sending message:", error);
+      Alert.alert("Error", "Failed to send message");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollToEnd({ animated: true });
-    }
-  };
-
-  const formatMessageTime = (timestamp) => {
-    if (!timestamp) return '';
-    return new Date(timestamp).toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
-
-  const renderMessage = ({ item }) => {
-    const isAdmin = item.senderId === adminId;
-    const placeholderImage = require('../../assets/Images/user.png');
-    const isPending = item.pending;
-    const hasError = item.error;
-
-    return (
+  const renderMessageItem = ({ item }) => (
+    <View
+      style={[
+        styles.messageWrapper,
+        item.senderId === adminId ? styles.alignRight : styles.alignLeft,
+      ]}
+    >
+      <Image
+        source={item.senderId === adminId ? AdminImg : (userImage ? { uri: userImage } : UserPh)}
+        style={styles.avatar}
+      />
       <View
         style={[
           styles.messageContainer,
-          isAdmin ? styles.adminMessage : styles.userMessage,
+          item.senderId === adminId
+            ? styles.adminMessage
+            : styles.userMessage,
         ]}
       >
-        {!isAdmin && (
-          <Image
-            source={userImage ? { uri: userImage } : placeholderImage}
-            style={styles.messageImage}
-          />
-        )}
-
-        <View
-          style={[
-            styles.messageBubble,
-            isAdmin ? styles.adminBubble : styles.userBubble,
-            isPending && styles.pendingBubble,
-            hasError && styles.errorBubble,
-          ]}
-        >
-          <Text style={isAdmin ? styles.adminText : styles.userText}>
-            {item.message}
-          </Text>
-          <Text
-            style={[
-              styles.messageTime,
-              isAdmin ? {} : { color: '#999' },
-            ]}
-          >
-            {isPending
-              ? 'Sending...'
-              : hasError
-              ? 'Error - Tap to retry'
-              : formatMessageTime(item.createdAt)}
-          </Text>
-        </View>
-
-        {isAdmin && (
-          <Image
-            source={require('../../assets/Images/nobglogo.png')}
-            style={styles.messageImage}
-          />
-        )}
+        <Text style={styles.messageText}>{item.message}</Text>
+        <Text style={styles.timestamp}>
+          {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </Text>
       </View>
-    );
-  };
+    </View>
+  );
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={90}
+    >
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>←</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         <Image
-          source={userImage ? { uri: userImage } : require('../../assets/Images/user.png')}
-          style={styles.headerImage}
+          source={userImage ? { uri: userImage } : UserPh}
+          style={styles.userAvatar}
         />
-        <Text style={styles.headerName}>{userName}</Text>
+        <Text style={styles.headerText}>{userName || "User"}</Text>
       </View>
 
-      {/* Messages */}
       <FlatList
-        ref={messagesEndRef}
+        ref={flatListRef}
         data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item, index) => item._id || index.toString()}
-        contentContainerStyle={styles.messagesContainer}
+        renderItem={renderMessageItem}
+        keyExtractor={(item, index) => index.toString()}
+        contentContainerStyle={styles.messagesContent}
+        style={styles.messagesContainer}
         onContentSizeChange={scrollToBottom}
         onLayout={scrollToBottom}
       />
 
-      {/* Input */}
       <View style={styles.inputContainer}>
         <TextInput
-          style={styles.messageInput}
-          placeholder="Type your message"
+          style={styles.input}
+          placeholder="Type your message..."
+          placeholderTextColor="#888"
           value={message}
           onChangeText={setMessage}
           onSubmitEditing={handleSendMessage}
+          returnKeyType="send"
+          editable={!isLoading}
         />
-        <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
-          <Text style={styles.sendButtonText}>Send</Text>
+        <TouchableOpacity 
+          onPress={handleSendMessage} 
+          style={[styles.sendButton, isLoading && styles.disabledButton]}
+          disabled={isLoading}
+        >
+          <Text style={styles.sendButtonText}>
+            {isLoading ? "Sending..." : "Send"}
+          </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#f5f5f5",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    marginTop: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FF69B4",
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    elevation: 3,
   },
   backButton: {
-    fontSize: 24,
     marginRight: 15,
   },
-  headerImage: {
+  backButtonText: {
+    color: "white",
+    fontSize: 24,
+  },
+  userAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: 15,
+    marginRight: 10,
+    borderWidth: 2,
+    borderColor: "white",
   },
-  headerName: {
-    fontWeight: 'bold',
+  headerText: {
+    color: "white",
     fontSize: 18,
+    fontWeight: "bold",
+    flex: 1,
   },
   messagesContainer: {
-    padding: 15,
-    paddingBottom: 80,
+    flex: 1,
+    paddingHorizontal: 10,
+  },
+  messagesContent: {
+    paddingBottom: 20,
+  },
+  messageWrapper: {
+    flexDirection: "row",
+    marginVertical: 8,
+    alignItems: "flex-end",
+  },
+  alignRight: {
+    justifyContent: "flex-end",
+  },
+  alignLeft: {
+    justifyContent: "flex-start",
   },
   messageContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginBottom: 15,
+    borderRadius: 18,
+    padding: 12,
+    maxWidth: "70%",
   },
   adminMessage: {
-    justifyContent: 'flex-end',
+    backgroundColor: "#FF69B4",
+    borderTopRightRadius: 4,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   userMessage: {
-    justifyContent: 'flex-start',
+    backgroundColor: "#e5e5ea",
+    borderTopLeftRadius: 4,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
-  messageImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginHorizontal: 5,
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 8,
   },
-  messageBubble: {
-    maxWidth: '70%',
-    padding: 12,
-    borderRadius: 15,
-    marginBottom: 5,
-  },
-  adminBubble: {
-    backgroundColor: '#FF66C4',
-    borderTopRightRadius: 0,
-  },
-  userBubble: {
-    backgroundColor: '#f0f0f0',
-    borderTopLeftRadius: 0,
-  },
-  pendingBubble: {
-    opacity: 0.7,
-  },
-  errorBubble: {
-    backgroundColor: '#ffdddd',
-    borderWidth: 1,
-    borderColor: '#ff6666',
+  messageText: {
+    fontSize: 16,
+    color: "#000",
   },
   adminText: {
-    color: 'white',
+    color: "white",
   },
-  userText: {
-    color: '#333',
-  },
-  messageTime: {
-    fontSize: 10,
-    color: 'white',
+  timestamp: {
+    fontSize: 12,
     marginTop: 4,
-    alignSelf: 'flex-end',
+    color: "rgba(0,0,0,0.5)",
+  },
+  adminTimestamp: {
+    color: "rgba(255,255,255,0.7)",
   },
   inputContainer: {
-    height: '10%',
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    padding: 15,
-    marginBottom: 20,
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    backgroundColor: "white",
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: "#eee",
   },
-  messageInput: {
+  input: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    backgroundColor: "#f0f0f0",
     borderRadius: 20,
     paddingHorizontal: 15,
     paddingVertical: 10,
+    fontSize: 16,
     marginRight: 10,
   },
   sendButton: {
-    backgroundColor: '#FF66C4',
+    backgroundColor: "#FF69B4",
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 20,
-    justifyContent: 'center',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   sendButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
   },
 });
 

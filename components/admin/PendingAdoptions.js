@@ -1,161 +1,261 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import {
+  View, Text, Image, StyleSheet, FlatList, TouchableOpacity,
+  RefreshControl, TextInput, ActivityIndicator
+} from 'react-native';
 import axios from 'axios';
 import { PaperProvider } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import config from '../../server/config/config';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const PendingAdoptions = () => {
-    const [pendingAdoptions, setPendingAdoptions] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const navigation = useNavigation();
+  const [pendingAdoptions, setPendingAdoptions] = useState([]);
+  const [filteredAdoptions, setFilteredAdoptions] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const navigation = useNavigation();
 
-    const fetchPendingAdoptions = async () => {
-        try {
-            const response = await axios.get(`${config.address}/api/adoption/pending`);
-            setPendingAdoptions(response.data);
-        } catch (error) {
-            console.error('Error fetching pending adoptions:', error);
-            Alert.alert('Error', 'Failed to fetch pending adoptions.');
-        } finally {
-            setLoading(false);
-        }
-    };
+  const fetchPendingAdoptions = async () => {
+    try {
+      const response = await axios.get(`${config.address}/api/adoption/pending`);
+      setPendingAdoptions(response.data);
+      setFilteredAdoptions(response.data);
+    } catch (error) {
+      console.error('Error fetching pending adoptions:', error);
+      Alert.alert('Error', 'Failed to fetch pending adoptions.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
-    useEffect(() => {
-        fetchPendingAdoptions();
-    }, []);
+  useEffect(() => {
+    fetchPendingAdoptions();
+  }, []);
 
-    const renderItem = ({ item }) => (
-        <TouchableOpacity
-            style={styles.card}
-            onPress={() => navigation.navigate('View Pending Adoption', { adoption: item })}
-        >
-            <Image
-                style={styles.petImage}
-                source={{ uri: `${config.address}${item.p_id?.pet_img?.[0]}` }}
-            />
-            <View style={styles.infoContainer}>
-                <Text style={styles.petName}>{item.p_id?.p_name || 'Unknown Pet'}</Text>
-                <Text style={styles.adopterName}>
-                    Adopter: {item.v_id?.v_fname} {item.v_id?.v_lname}
-                </Text>
-                <View style={styles.statusContainer}>
-                    <Text style={styles.statusText}>Pending</Text>
-                </View>
-            </View>
-        </TouchableOpacity>
-    );
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchPendingAdoptions();
+  };
 
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+    const query = text.toLowerCase();
+    const filtered = pendingAdoptions.filter(adoption => {
+      const petName = adoption.p_id?.p_name?.toLowerCase() || '';
+      const adopterName = `${adoption.v_id?.v_fname || ''} ${adoption.v_id?.v_lname || ''}`.toLowerCase();
+      return petName.includes(query) || adopterName.includes(query);
+    });
+    setFilteredAdoptions(filtered);
+  };
+
+  const renderItem = ({ item }) => (
+    <TouchableOpacity
+      style={[styles.card, styles.pendingBorder]}
+      onPress={() => navigation.navigate('View Pending Adoption', { adoption: item })}
+    >
+      <Image
+        style={styles.petImage}
+        source={{ uri: `${config.address}${item.p_id?.pet_img?.[0]}` }}
+        defaultSource={require('../../assets/Images/pawicon2.png')}
+      />
+      <View style={styles.infoContainer}>
+        <Text style={styles.petName}>{item.p_id?.p_name || 'Unknown Pet'}</Text>
+        <Text style={styles.adopterName}>
+          Adopter: {item.v_id?.v_fname} {item.v_id?.v_lname}
+        </Text>
+      </View>
+      <View style={styles.pendingBadge}>
+        <Text style={styles.pendingText}>PENDING</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  if (loading) {
     return (
-        <PaperProvider>
-            <View style={styles.container}>
-                {loading ? (
-                    <View style={styles.loadingContainer}>
-                        <Text style={styles.loadingText}>Loading...</Text>
-                    </View>
-                ) : pendingAdoptions.length === 0 ? (
-                    <View style={styles.emptyContainer}>
-                        <Image
-                            source={require('../../assets/Images/pawicon2.png')}
-                            style={styles.pawIcon}
-                            resizeMode="contain"
-                        />
-                        <Text style={styles.emptyText}>No Pending Adoptions</Text>
-                    </View>
-                ) : (
-                    <FlatList
-                        data={pendingAdoptions}
-                        renderItem={renderItem}
-                        keyExtractor={(item) => item._id || Math.random().toString()}
-                        contentContainerStyle={styles.listContainer}
-                    />
-                )}
-            </View>
-        </PaperProvider>
+      <PaperProvider>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator
+            animating={true}
+            size="large"
+            color="#ff69b4"
+            style={styles.loadingIndicator}
+          />
+          <Text style={styles.loadingText}>Loading pending adoptions...</Text>
+        </View>
+      </PaperProvider>
     );
+  }
+
+  return (
+    <PaperProvider>
+      <View style={styles.container}>
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchBar}
+            placeholder="Search"
+            placeholderTextColor="#aaa"
+            value={searchQuery}
+            onChangeText={handleSearch}
+          />
+          <MaterialIcons
+            name="search"
+            size={24}
+            color="#ff69b4"
+            style={styles.searchIcon}
+          />
+        </View>
+
+        <FlatList
+          data={filteredAdoptions}
+          renderItem={renderItem}
+          keyExtractor={(item) => item._id || Math.random().toString()}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#ff69b4']}
+              tintColor="#ff69b4"
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Image
+                source={require('../../assets/Images/pawicon2.png')}
+                style={styles.pawIcon}
+                resizeMode="contain"
+              />
+              <Text style={styles.emptyText}>No Pending Adoptions</Text>
+            </View>
+          }
+        />
+      </View>
+    </PaperProvider>
+  );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#FAF9F6',
-    },
-    card: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        padding: 15,
-        marginHorizontal: 16,
-        marginVertical: 8,
-        borderRadius: 10,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-    },
-    petImage: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        marginRight: 15,
-    },
-    infoContainer: {
-        flex: 1,
-    },
-    petName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 4,
-    },
-    adopterName: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 4,
-    },
-    statusContainer: {
-        alignSelf: 'flex-start',
-        backgroundColor: '#FFF3E0',
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 10,
-    },
-    statusText: {
-        fontSize: 12,
-        color: '#E65100',
-        fontWeight: '500',
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    pawIcon: {
-        width: 80,
-        height: 80,
-        opacity: 0.3,
-        marginBottom: 15,
-    },
-    emptyText: {
-        fontSize: 16,
-        color: '#999',
-        textAlign: 'center',
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        fontSize: 16,
-        color: '#999',
-    },
-    listContainer: {
-        paddingVertical: 8,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: '#FAF9F6',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FAF9F6',
+  },
+  loadingIndicator: {
+    marginBottom: 16,
+  },
+  loadingText: {
+    color: '#ff69b4',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 15,
+    
+    borderRadius: 10,
+    borderColor: '#eee',
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  searchBar: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+    color: '#333',
+  },
+  searchIcon: {
+    marginLeft: 8,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
+    marginHorizontal: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  pendingBorder: {
+    borderLeftWidth: 6,
+    borderLeftColor: '#ffe261',
+  },
+  petImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    marginRight: 15,
+    borderWidth: 2,
+    borderColor: '#ffe261',
+  },
+  infoContainer: {
+    flex: 1,
+  },
+  petName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2a2a2a',
+    marginBottom: 8,
+  },
+  adopterName: {
+    fontSize: 14,
+    color: '#666',
+    marginVertical: 2,
+  },
+  pendingBadge: {
+    position: 'absolute',
+    right: 15,
+    top: 15,
+    backgroundColor: '#FFFACD',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  pendingText: {
+    color: '#FF8C00',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  listContainer: {
+    flexGrow: 1,
+    paddingVertical: 10,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 60,
+  },
+  pawIcon: {
+    width: 80,
+    height: 80,
+    marginBottom: 15,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
+  },
 });
 
 export default PendingAdoptions;

@@ -1,63 +1,78 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  Image, 
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import AppBar from '../design/AppBar';
 import config from '../../server/config/config';
-const jwt_decode = require('jwt-decode').default;
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { format, parseISO } from 'date-fns';
 
 const EditEvent = ({ route, navigation }) => {
-  const { eventId, onEventUpdated } = route.params;
-  const [eventDetails, setEventDetails] = useState(null);
+  // Safely destructure with defaults
+  const { 
+    event: initialEvent = {}, 
+    onGoBack = null 
+  } = route.params || {};
+  
   const [formData, setFormData] = useState({
-    e_title: '',
-    e_location: '',
-    e_date: '',
-    e_description: '',
+    e_title: initialEvent.e_title || '',
+    e_location: initialEvent.e_location || '',
+    e_date: initialEvent.e_date ? format(parseISO(initialEvent.e_date), 'yyyy-MM-dd') : '',
+    e_description: initialEvent.e_description || '',
   });
-  const [image, setImage] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  const [imageUri, setImageUri] = useState(
+    initialEvent.e_image ? `${config.address}${initialEvent.e_image}` : null
+  );
+  const [originalImage] = useState(
+    initialEvent.e_image ? `${config.address}${initialEvent.e_image}` : null
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Fetch event details with cache busting
-  const fetchEventDetails = async () => {
-    try {
-      const response = await axios.get(`${config.address}/api/events/all?t=${Date.now()}`);
-      const event = response.data.theEvent.find(e => e._id === eventId);
-      if (event) {
-        setEventDetails(event);
-        setFormData({
-          e_title: event.e_title,
-          e_location: event.e_location,
-          e_date: event.e_date.split('T')[0],
-          e_description: event.e_description,
-        });
-        setImage(`${config.address}${event.e_image}?t=${Date.now()}`);
-      }
-    } catch (error) {
-      console.error('Fetch error:', error);
-      Alert.alert('Error', 'Failed to load event details');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [token, setToken] = useState(null);
 
   useEffect(() => {
-    fetchEventDetails();
-  }, [eventId]);
+    const loadToken = async () => {
+      try {
+        const storedToken = await AsyncStorage.getItem('authToken');
+        if (!storedToken) {
+          Alert.alert('Error', 'Authentication required');
+          navigation.goBack();
+          return;
+        }
+        setToken(storedToken);
+      } catch (error) {
+        console.error('Token error:', error);
+        Alert.alert('Error', 'Failed to load authentication token');
+      }
+    };
+    loadToken();
+  }, []);
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
 
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      if (!result.canceled && result.assets[0].uri) {
+        setImageUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to select image');
     }
   };
 
@@ -66,75 +81,45 @@ const EditEvent = ({ route, navigation }) => {
   };
 
   const validateForm = () => {
-    return (
-      formData.e_title.trim() &&
-      formData.e_location.trim() &&
-      formData.e_date.trim() &&
-      formData.e_description.trim()
-    );
-  };
-
-  // Function to validate the token
-  const validateToken = (token) => {
-    try {
-      const decodedToken = jwt_decode(token);  // Use jwt_decode properly here
-      const currentTime = Date.now() / 1000;  // Get current timestamp in seconds
-      if (decodedToken.exp < currentTime) {
-        Alert.alert('Error', 'Your session has expired. Please log in again.');
-        return false;
-      }
-      return true;
-    } catch (error) {
-      console.error('Error decoding token:', error);
-      Alert.alert('Error', 'Invalid token');
+    if (!formData.e_title.trim()) {
+      Alert.alert('Error', 'Event title is required');
       return false;
     }
+    if (!formData.e_date.trim()) {
+      Alert.alert('Error', 'Event date is required');
+      return false;
+    }
+    return true;
   };
-  
 
   const handleSaveEvent = async () => {
-    if (!validateForm()) {
-      Alert.alert('Error', 'Please fill all required fields');
+    if (!validateForm()) return;
+    if (!token) {
+      Alert.alert('Error', 'Authentication required');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      if (!token) {
-        Alert.alert('Error', 'Authentication required');
-        return;
-      }
-
-      if (!validateToken(token)) {
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Proceed with the API call if the token is valid
       const data = new FormData();
       data.append('e_title', formData.e_title);
       data.append('e_location', formData.e_location);
       data.append('e_date', `${formData.e_date}T00:00:00`);
       data.append('e_description', formData.e_description);
 
-      if (image && image.startsWith('file://')) {
-        const filename = image.split('/').pop();
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-
+      if (imageUri && imageUri.startsWith('file://')) {
         data.append('e_image', {
-          uri: image,
-          name: filename,
-          type,
+          uri: imageUri,
+          type: 'image/jpeg',
+          name: 'event_image.jpg'
         });
-      } else if (eventDetails?.e_image) {
-        data.append('e_image', eventDetails.e_image);
+      } else if (!imageUri && originalImage) {
+        data.append('e_image', '');
       }
 
       const response = await axios.put(
-        `${config.address}/api/events/update/${eventId}`,
+        `${config.address}/api/events/update/${initialEvent._id}`,
         data,
         {
           headers: {
@@ -144,78 +129,55 @@ const EditEvent = ({ route, navigation }) => {
         }
       );
 
-      if (response.data?.theUpdateEvent) {
-        const updatedEvent = response.data.theUpdateEvent;
-        setEventDetails(updatedEvent);
-        setFormData({
-          e_title: updatedEvent.e_title,
-          e_location: updatedEvent.e_location,
-          e_date: updatedEvent.e_date.split('T')[0],
-          e_description: updatedEvent.e_description,
-        });
-
-        if (updatedEvent.e_image) {
-          setImage(`${config.address}${updatedEvent.e_image}?t=${Date.now()}`);
-        }
-
-        if (onEventUpdated) {
-          onEventUpdated(updatedEvent);
-        }
-
-        navigation.navigate({
-          name: 'View Event',
-          params: { event: updatedEvent, refresh: Date.now() },
-          merge: true,
-        });
-
-        Alert.alert('Success', 'Event updated successfully!');
+      const updatedEvent = response.data.theUpdateEvent || response.data.event;
+      if (!updatedEvent) {
+        throw new Error('Invalid response from server');
       }
+
+      Alert.alert('Success', 'Event updated successfully');
+      
+      // Call the callback if it exists
+      if (typeof onGoBack === 'function') {
+        onGoBack(updatedEvent);
+      }
+      
+      navigation.goBack();
     } catch (error) {
-      console.error('Update error:', error.response?.data || error.message);
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Failed to update event'
-      );
+      console.error('Update error:', error);
+      let errorMessage = 'Failed to update event';
+      if (error.response) {
+        errorMessage = error.response.data?.message || 
+                      error.response.statusText || 
+                      `Server error: ${error.response.status}`;
+      }
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading event details...</Text>
-      </View>
-    );
-  }
-
-  if (!eventDetails) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text>Event not found</Text>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <AppBar />
+    <ScrollView style={styles.container}>
+      <AppBar title="Edit Event" onBackPress={() => navigation.goBack()} />
+      
       <View style={styles.formContainer}>
-        <Text style={styles.label}>Event Name:</Text>
+        <Text style={styles.label}>Event Title *</Text>
         <TextInput
           style={styles.input}
           value={formData.e_title}
           onChangeText={(text) => handleInputChange('e_title', text)}
+          placeholder="Enter event title"
         />
 
-        <Text style={styles.label}>Location:</Text>
+        <Text style={styles.label}>Location</Text>
         <TextInput
           style={styles.input}
           value={formData.e_location}
           onChangeText={(text) => handleInputChange('e_location', text)}
+          placeholder="Enter location"
         />
 
-        <Text style={styles.label}>Date:</Text>
+        <Text style={styles.label}>Date *</Text>
         <TextInput
           style={styles.input}
           value={formData.e_date}
@@ -223,34 +185,47 @@ const EditEvent = ({ route, navigation }) => {
           placeholder="YYYY-MM-DD"
         />
 
-        <Text style={styles.label}>Description:</Text>
+        <Text style={styles.label}>Description</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
           value={formData.e_description}
           onChangeText={(text) => handleInputChange('e_description', text)}
+          placeholder="Enter description"
           multiline
+          numberOfLines={4}
         />
 
-        <Text style={styles.label}>Event Image:</Text>
+        <Text style={styles.label}>Event Image</Text>
         <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
-          {image ? (
-            <Image source={{ uri: image }} style={styles.imagePreview} />
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.imagePreview} />
           ) : (
             <Text style={styles.imagePickerText}>Select Image</Text>
           )}
         </TouchableOpacity>
 
+        {imageUri && (
+          <TouchableOpacity 
+            style={styles.removeImageButton}
+            onPress={() => setImageUri(null)}
+          >
+            <Text style={styles.removeImageText}>Remove Image</Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity 
-          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]} 
+          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
           onPress={handleSaveEvent}
           disabled={isSubmitting}
         >
-          <Text style={styles.submitButtonText}>
-            {isSubmitting ? 'Saving...' : 'Save Changes'}
-          </Text>
+          {isSubmitting ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.submitButtonText}>Save Changes</Text>
+          )}
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
@@ -295,7 +270,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f0f0f0',
     borderRadius: 6,
-    marginBottom: 20,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#ddd',
   },
@@ -308,24 +283,27 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 16,
   },
+  removeImageButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 16,
+  },
+  removeImageText: {
+    color: '#F44336',
+    fontSize: 14,
+  },
   submitButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FF66C4',
     padding: 15,
     borderRadius: 6,
     alignItems: 'center',
   },
   submitButtonDisabled: {
-    backgroundColor: '#81C784',
+    backgroundColor: '#ff99d6',
   },
   submitButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });
 

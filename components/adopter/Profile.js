@@ -346,7 +346,7 @@ const styles = {
   header: {
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#FAF9F6',
+    
   },
   profileImage: {
     width: 120,

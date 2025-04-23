@@ -38,8 +38,12 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 10,
     marginHorizontal: 10,
-    marginTop: 10,
-    marginBottom: 10,
+    marginTop: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   tabIndicator: {
     backgroundColor: '#ff69b4', // Pink background for selected tab
@@ -48,7 +52,7 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontWeight: 'bold',
-    fontSize: 15,
+    fontSize: 18,
     textTransform: 'none',
   },
 });

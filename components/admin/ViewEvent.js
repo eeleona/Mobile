@@ -1,16 +1,87 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  Image, 
+  TouchableOpacity, 
+  ScrollView,
+  Alert,
+  ActivityIndicator
+} from 'react-native';
 import { Divider } from 'react-native-paper';
 import config from '../../server/config/config';
 import AppBar from '../design/AppBar';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ViewEvent = ({ route, navigation }) => {
   const [event] = useState(route.params.event);
+  const [eventData, setEventData] = useState(route.params.event);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [token, setToken] = useState(null);
 
+  // Load token from AsyncStorage when component mounts
+  useEffect(() => {
+    const getToken = async () => {
+      try {
+        const storedToken = await AsyncStorage.getItem('authToken');
+        setToken(storedToken);
+      } catch (error) {
+        console.error('Error getting token:', error);
+        Alert.alert('Error', 'Failed to load authentication token');
+      }
+    };
+    
+    getToken();
+  }, []);
+
+  // In ViewEvent.js, modify the handleEdit function:
   const handleEdit = () => {
     navigation.navigate('Edit Event', { 
-      eventId: event._id,
+      event: eventData,
+      onGoBack: (updatedEvent) => {
+        if (updatedEvent) {
+          setEventData(updatedEvent);
+          Alert.alert('Success', 'Event updated successfully');
+        }
+      }
     });
+  };
+
+  const handleDelete = async () => {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this event?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', onPress: confirmDelete, style: 'destructive' }
+      ]
+    );
+  };
+
+  const confirmDelete = async () => {
+    if (!token) {
+      Alert.alert('Error', 'Authentication required');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await axios.delete(`${config.address}/api/events/delete/${event._id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+      Alert.alert('Success', 'Event deleted successfully');
+      navigation.goBack();
+    } catch (error) {
+      console.error('Delete error:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to delete event');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -32,7 +103,11 @@ const ViewEvent = ({ route, navigation }) => {
           <Text style={styles.eventTitle}>{event.e_title}</Text>
           
           <DetailItem icon="📍" label="Location" value={event.e_location} />
-          <DetailItem icon="📅" label="Date" value={new Date(event.e_date).toDateString()} />
+          <DetailItem 
+            icon="📅" 
+            label="Date" 
+            value={new Date(event.e_date).toLocaleString()} 
+          />
           
           <Divider style={styles.divider} />
           
@@ -40,8 +115,29 @@ const ViewEvent = ({ route, navigation }) => {
             <Text style={styles.descriptionLabel}>Description</Text>
             <Text style={styles.descriptionText}>{event.e_description}</Text>
           </View>
-        </View>
 
+          {/* Action Buttons */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={[styles.button, styles.editButton]}
+              onPress={handleEdit}
+            >
+              <Text style={styles.buttonText}>Edit Event</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.button, styles.deleteButton]}
+              onPress={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.buttonText}>Delete Event</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -144,30 +240,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: 8,
   },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
   button: {
     flex: 1,
-    paddingVertical: 14,
+    padding: 15,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    marginHorizontal: 5,
   },
   editButton: {
-    backgroundColor: '#4CAF50',
-    marginRight: 8,
+    backgroundColor: '#FF66C4',
   },
   deleteButton: {
     backgroundColor: '#F44336',
-    marginLeft: 8,
   },
   buttonText: {
     color: 'white',
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontWeight: 'bold',
   },
 });
 

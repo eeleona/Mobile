@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator, Platform, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Checkbox, Modal, Portal, Button, PaperProvider, RadioButton } from 'react-native-paper';
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import AppBar from '../design/AppBar';
 import config from '../../server/config/config';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const Signup = () => {
     const navigation = useNavigation();
@@ -29,11 +31,14 @@ const Signup = () => {
     const [errors, setErrors] = useState({});
     const [imageError, setImageError] = useState(null);
     const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+    const [showErrorModal, setShowErrorModal] = useState(false);
     const [privacyAccepted, setPrivacyAccepted] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [datePickerVisible, setDatePickerVisible] = useState(false);
+    const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [modalLoading, setModalLoading] = useState(false);
 
-    // Validate form
     const validate = () => {
         const newErrors = {};
         if (!formData.username || formData.username.length < 3) 
@@ -60,7 +65,12 @@ const Signup = () => {
             newErrors.birthDate = "Valid birthdate is required";
         
         setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        
+        if (Object.keys(newErrors).length > 0) {
+            setShowErrorModal(true);
+            return false;
+        }
+        return true;
     };
 
     const handleSubmit = () => {
@@ -68,26 +78,29 @@ const Signup = () => {
         setShowPrivacyModal(true);
     };
 
-    // Image picker with compression
     const pickImage = async (type) => {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission required', 'Please allow access to your photos to upload images');
+                Alert.alert(
+                    'Permission Required',
+                    'We need access to your photos to upload images',
+                    [{ text: 'OK', onPress: () => console.log('Permission denied') }]
+                );
                 return;
             }
 
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaType.Images,
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.7,
+                aspect: type === 'profile' ? [1, 1] : [4, 3],
+                quality: 0.8,
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const compressedImage = await ImageManipulator.manipulateAsync(
                     result.assets[0].uri,
-                    [{ resize: { width: 800 } }],
+                    [{ resize: { width: type === 'profile' ? 500 : 800 } }],
                     { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
                 );
 
@@ -104,19 +117,30 @@ const Signup = () => {
         }
     };
 
-    // Final submission with privacy policy check
+    const showDatePicker = () => {
+        setDatePickerVisibility(true);
+    };
+
+    const hideDatePicker = () => {
+        setDatePickerVisibility(false);
+    };
+
+    const handleDateConfirm = (date) => {
+        setFormData({...formData, birthDate: date});
+        hideDatePicker();
+    };
+
     const handleFinalSubmit = async () => {
         if (!privacyAccepted) {
             Alert.alert('Error', 'You must accept the privacy policy');
             return;
         }
         
-        setLoading(true);
+        setModalLoading(true);
 
         try {
             const formDataToSend = new FormData();
             
-            // Append all text fields
             formDataToSend.append('p_username', formData.username);
             formDataToSend.append('p_emailadd', formData.email);
             formDataToSend.append('p_fname', formData.firstName);
@@ -128,11 +152,9 @@ const Signup = () => {
             formDataToSend.append('p_contactnumber', formData.contactNumber);
             formDataToSend.append('p_gender', formData.gender);
             
-            // Format date to DD/MM/YYYY
             const formattedDate = `${formData.birthDate.getDate()}/${formData.birthDate.getMonth() + 1}/${formData.birthDate.getFullYear()}`;
             formDataToSend.append('p_birthdate', formattedDate);
             
-            // Append profile image if exists
             if (formData.profileImage) {
                 const profileImageUriParts = formData.profileImage.split('.');
                 const profileImageFileType = profileImageUriParts[profileImageUriParts.length - 1];
@@ -144,7 +166,6 @@ const Signup = () => {
                 });
             }
             
-            // Append valid ID if exists
             if (formData.validId) {
                 const validIdUriParts = formData.validId.split('.');
                 const validIdFileType = validIdUriParts[validIdUriParts.length - 1];
@@ -156,7 +177,6 @@ const Signup = () => {
                 });
             }
 
-            // Submit data
             const response = await axios.post(`${config.address}/api/user/new`, formDataToSend, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
@@ -164,7 +184,6 @@ const Signup = () => {
                 timeout: 30000,
             });
 
-            // Send welcome email
             const emailData = {
                 to: formData.email,
                 subject: 'Account Application Status',
@@ -193,196 +212,234 @@ const Signup = () => {
                                "Registration failed. Please try again.";
             Alert.alert("Error", errorMessage);
         } finally {
+            setModalLoading(false);
             setLoading(false);
             setShowPrivacyModal(false);
         }
     };
 
-    const showDatepicker = () => {
-        setDatePickerVisible(true);
-    };
-
-    const hideDatepicker = () => {
-        setDatePickerVisible(false);
-    };
-
-    const handleDateConfirm = (event, selectedDate) => {
-        hideDatepicker();
-        if (selectedDate) {
-            setFormData({...formData, birthDate: selectedDate});
-        }
-    };
-
     return (
         <PaperProvider>
+            <StatusBar barStyle="default" />
             <AppBar />
             <ScrollView style={styles.container}>
-                <LinearGradient
-                    colors={['rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.7)']}
-                    style={styles.gradientOverlay}
-                >
+                <View style={styles.whitebg}>
                     <Text style={styles.header}>Account Information</Text>
                     
-                    {/* Profile Image */}
-                    <TouchableOpacity onPress={() => pickImage('profile')}>
-                        <View style={styles.profileImageContainer}>
+                    <View style={styles.profileImageContainer}>
+                        <TouchableOpacity onPress={() => pickImage('profile')} style={styles.profileImageWrapper}>
                             {formData.profileImage ? (
                                 <Image source={{ uri: formData.profileImage }} style={styles.profileImage} />
                             ) : (
                                 <View style={styles.profileImagePlaceholder}>
-                                    <Text style={styles.placeholderText}>+</Text>
+                                    <MaterialIcons name="add-a-photo" size={32} color="#ff69b4" />
+                                    <Text style={styles.placeholderText}>Add Profile Photo</Text>
                                 </View>
                             )}
-                        </View>
-                    </TouchableOpacity>
+                        </TouchableOpacity>
+                    </View>
                     {imageError && <Text style={styles.error}>{imageError}</Text>}
 
-                    {/* Username */}
                     <Text style={styles.label}>Username</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter username"
-                        value={formData.username}
-                        onChangeText={(text) => setFormData({...formData, username: text})}
-                    />
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter username"
+                            value={formData.username}
+                            onChangeText={(text) => setFormData({...formData, username: text})}
+                        />
+                        <MaterialIcons name="person" size={20} color="#888" style={styles.inputIcon} />
+                    </View>
                     {errors.username && <Text style={styles.error}>{errors.username}</Text>}
 
-                    {/* Email */}
                     <Text style={styles.label}>Email Address</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter email"
-                        keyboardType="email-address"
-                        value={formData.email}
-                        onChangeText={(text) => setFormData({...formData, email: text})}
-                    />
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter email"
+                            keyboardType="email-address"
+                            value={formData.email}
+                            onChangeText={(text) => setFormData({...formData, email: text})}
+                        />
+                        <MaterialIcons name="email" size={20} color="#888" style={styles.inputIcon} />
+                    </View>
                     {errors.email && <Text style={styles.error}>{errors.email}</Text>}
 
-                    {/* Password Fields */}
                     <View style={styles.row}>
-                        <View style={styles.passwordInput}>
+                        <View style={[styles.passwordInput]}>
                             <Text style={styles.label}>Password</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Password"
-                                secureTextEntry
-                                value={formData.password}
-                                onChangeText={(text) => setFormData({...formData, password: text})}
-                            />
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Password"
+                                    secureTextEntry={!showPassword}
+                                    value={formData.password}
+                                    onChangeText={(text) => setFormData({...formData, password: text})}
+                                />
+                                <MaterialIcons name="lock" size={20} color="#888" style={styles.inputIcon} />
+                                <TouchableOpacity 
+                                    style={styles.passwordToggle}
+                                    onPress={() => setShowPassword(!showPassword)}
+                                >
+                                    <MaterialIcons 
+                                        name={showPassword ? "visibility" : "visibility-off"} 
+                                        size={20} 
+                                        color="#888" 
+                                    />
+                                </TouchableOpacity>
+                            </View>
                             {errors.password && <Text style={styles.error}>{errors.password}</Text>}
                         </View>
                         <View style={styles.passwordInput}>
                             <Text style={styles.label}>Confirm Password</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Confirm password"
-                                secureTextEntry
-                                value={formData.confirmPassword}
-                                onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
-                            />
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Password"
+                                    secureTextEntry={!showConfirmPassword}
+                                    value={formData.confirmPassword}
+                                    onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
+                                />
+                                <MaterialIcons name="lock" size={20} color="#888" style={styles.inputIcon} />
+                                <TouchableOpacity 
+                                    style={styles.passwordToggle}
+                                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                >
+                                    <MaterialIcons 
+                                        name={showConfirmPassword ? "visibility" : "visibility-off"} 
+                                        size={20} 
+                                        color="#888" 
+                                    />
+                                </TouchableOpacity>
+                            </View>
                             {errors.confirmPassword && <Text style={styles.error}>{errors.confirmPassword}</Text>}
                         </View>
                     </View>
 
                     <Text style={styles.header2}>Personal Information</Text>
                     
-                    {/* Name Fields */}
                     <View style={styles.row}>
-                        <View style={styles.firstNameInput}>
+                        <View style={[styles.firstNameInput]}>
                             <Text style={styles.label}>First Name</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="First name"
-                                value={formData.firstName}
-                                onChangeText={(text) => setFormData({...formData, firstName: text})}
-                            />
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="First name"
+                                    value={formData.firstName}
+                                    onChangeText={(text) => setFormData({...formData, firstName: text})}
+                                />
+                                <MaterialIcons name="person" size={20} color="#888" style={styles.inputIcon} />
+                            </View>
                             {errors.firstName && <Text style={styles.error}>{errors.firstName}</Text>}
                         </View>
                         <View style={styles.middleNameInput}>
                             <Text style={styles.label}>M.I.</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="M.I."
-                                value={formData.middleName}
-                                onChangeText={(text) => setFormData({...formData, middleName: text})}
-                                maxLength={1}
-                            />
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="M.I."
+                                    value={formData.middleName}
+                                    onChangeText={(text) => {
+                                        const formattedText = text.slice(0, 2).toUpperCase();
+                                        setFormData({...formData, middleName: formattedText});
+                                    }}
+                                    maxLength={2}
+                                />
+                                <MaterialIcons name="person" size={20} color="#888" style={styles.inputIcon} />
+                            </View>
                         </View>
                     </View>
                     <View style={styles.lastNameInput}>
                         <Text style={styles.label}>Last Name</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Last name"
-                            value={formData.lastName}
-                            onChangeText={(text) => setFormData({...formData, lastName: text})}
-                        />
+                        <View style={styles.inputContainer}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Last name"
+                                value={formData.lastName}
+                                onChangeText={(text) => setFormData({...formData, lastName: text})}
+                            />
+                            <MaterialIcons name="person" size={20} color="#888" style={styles.inputIcon} />
+                        </View>
                         {errors.lastName && <Text style={styles.error}>{errors.lastName}</Text>}
                     </View>
 
-                    {/* Address */}
                     <Text style={styles.label}>Address</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Complete address"
-                        value={formData.address}
-                        onChangeText={(text) => setFormData({...formData, address: text})}
-                    />
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Complete address"
+                            value={formData.address}
+                            onChangeText={(text) => setFormData({...formData, address: text})}
+                        />
+                        <MaterialIcons name="home" size={20} color="#888" style={styles.inputIcon} />
+                    </View>
                     {errors.address && <Text style={styles.error}>{errors.address}</Text>}
 
-                    {/* Contact and Birthdate */}
                     <View style={styles.row}>
-                        <View style={styles.halfInput}>
+                        <View style={[styles.halfInput, {marginRight: 10}]}>
                             <Text style={styles.label}>Contact Number</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="+63"
-                                keyboardType="phone-pad"
-                                value={formData.contactNumber}
-                                onChangeText={(text) => setFormData({...formData, contactNumber: text})}
-                            />
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="+63"
+                                    keyboardType="phone-pad"
+                                    value={formData.contactNumber}
+                                    onChangeText={(text) => setFormData({...formData, contactNumber: text})}
+                                />
+                                <MaterialIcons name="phone" size={20} color="#888" style={styles.inputIcon} />
+                            </View>
                             {errors.contactNumber && <Text style={styles.error}>{errors.contactNumber}</Text>}
                         </View>
                         <View style={styles.halfInput}>
                             <Text style={styles.label}>Birthdate</Text>
                             <TouchableOpacity 
-                                style={styles.input} 
-                                onPress={showDatepicker}
+                                style={[styles.input, styles.dateInput]} 
+                                onPress={showDatePicker}
                             >
-                                <Text>{formData.birthDate.toLocaleDateString()}</Text>
+                                <Text style={styles.dateText}>{formData.birthDate.toLocaleDateString()}</Text>
+                                <MaterialIcons name="calendar-today" size={20} color="#888" style={styles.inputIcon} />
                             </TouchableOpacity>
                             {errors.birthDate && <Text style={styles.error}>{errors.birthDate}</Text>}
                         </View>
                     </View>
 
-                    {/* Gender */}
+                    <DateTimePickerModal
+                        isVisible={isDatePickerVisible}
+                        mode="date"
+                        onConfirm={handleDateConfirm}
+                        onCancel={hideDatePicker}
+                        date={formData.birthDate}
+                        maximumDate={new Date()}
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        textColor="#ff69b4"
+                        themeVariant="light"
+                    />
+
                     <Text style={styles.label}>Gender</Text>
                     <View style={styles.radioGroup}>
-                        <View style={styles.radioButton}>
-                            <RadioButton
-                                value="Male"
-                                status={formData.gender === 'Male' ? 'checked' : 'unchecked'}
-                                onPress={() => setFormData({...formData, gender: 'Male'})}
-                            />
+                        <TouchableOpacity 
+                            style={[styles.radioOption, formData.gender === 'Male' && styles.radioOptionSelected]}
+                            onPress={() => setFormData({...formData, gender: 'Male'})}
+                        >
+                            
                             <Text style={styles.radioLabel}>Male</Text>
-                        </View>
-                        <View style={styles.radioButton}>
-                            <RadioButton
-                                value="Female"
-                                status={formData.gender === 'Female' ? 'checked' : 'unchecked'}
-                                onPress={() => setFormData({...formData, gender: 'Female'})}
-                            />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.radioOption, formData.gender === 'Female' && styles.radioOptionSelected]}
+                            onPress={() => setFormData({...formData, gender: 'Female'})}
+                        >
+                            
                             <Text style={styles.radioLabel}>Female</Text>
-                        </View>
+                        </TouchableOpacity>
                     </View>
                     {errors.gender && <Text style={styles.error}>{errors.gender}</Text>}
 
-                    {/* Valid ID Upload */}
                     <Text style={styles.label}>Valid ID</Text>
                     <TouchableOpacity 
                         style={styles.uploadButton}
                         onPress={() => pickImage('id')}
                     >
+                        <MaterialIcons name="upload" size={20} color="white" style={styles.uploadIcon} />
                         <Text style={styles.uploadButtonText}>
                             {formData.validId ? 'Change Valid ID' : 'Upload Valid ID'}
                         </Text>
@@ -397,19 +454,51 @@ const Signup = () => {
                         </View>
                     )}
                     {errors.validId && <Text style={styles.error}>{errors.validId}</Text>}
-
-                    {/* Submit Button */}
+                    </View>
+                    
                     <TouchableOpacity 
-                        style={styles.submitButton}
+                        style={[styles.submitButton, loading && styles.submitButtonDisabled]}
                         onPress={handleSubmit}
                         disabled={loading}
                     >
                         {loading ? (
                             <ActivityIndicator color="white" />
                         ) : (
-                            <Text style={styles.submitButtonText}>Sign Up</Text>
+                            <View style={styles.buttonContent}>
+                                <MaterialIcons name="how-to-reg" size={24} color="white" />
+                                <Text style={styles.submitButtonText}>Sign Up</Text>
+                            </View>
                         )}
                     </TouchableOpacity>
+
+                    {/* Error Modal */}
+                    <Portal>
+                        <Modal 
+                            visible={showErrorModal} 
+                            onDismiss={() => setShowErrorModal(false)}
+                            contentContainerStyle={styles.errorModalContainer}
+                        >
+                            <View style={styles.errorModalContent}>
+                                <MaterialIcons name="error-outline" size={50} color="#ff4444" style={styles.errorIcon} />
+                                <Text style={styles.errorModalTitle}>Form Errors</Text>
+                                <ScrollView style={styles.errorList}>
+                                    {Object.values(errors).map((error, index) => (
+                                        <Text key={index} style={styles.errorItem}>
+                                            • {error}
+                                        </Text>
+                                    ))}
+                                </ScrollView>
+                                <Button 
+                                    mode="contained" 
+                                    onPress={() => setShowErrorModal(false)}
+                                    style={styles.errorModalButton}
+                                    labelStyle={styles.errorModalButtonLabel}
+                                >
+                                    OK
+                                </Button>
+                            </View>
+                        </Modal>
+                    </Portal>
 
                     {/* Privacy Modal */}
                     <Portal>
@@ -418,51 +507,57 @@ const Signup = () => {
                             onDismiss={() => setShowPrivacyModal(false)}
                             contentContainerStyle={styles.modalContainer}
                         >
-                            <ScrollView style={styles.modalContent}>
-                                <Text style={styles.modalTitle}>Data Privacy</Text>
-                                <Text style={styles.modalText}>
-                                    Your privacy is important to us. This statement outlines how we collect, use, and protect your information when you sign up for our service.
-                                </Text>
-                                <Text style={styles.modalSubtitle}>What We Collect:</Text>
-                                <Text style={styles.modalText}>
-                                    - Basic info like name, email, phone, and address.
-                                    {"\n"}- Additional details about your preferences and usage of our app.
-                                </Text>
-                                <Text style={styles.modalSubtitle}>How We Use It:</Text>
-                                <Text style={styles.modalText}>
-                                    - To manage your account and deliver our services.
-                                    {"\n"}- To personalize your experience and send relevant updates.
-                                    {"\n"}- To analyze trends and improve our app.
-                                </Text>
-                                <Text style={styles.modalSubtitle}>Security & Sharing:</Text>
-                                <Text style={styles.modalText}>
-                                    - We keep your data secure and don't sell it to third parties.
-                                    {"\n"}- Trusted partners may access your info to support our services.
-                                </Text>
-                                <Text style={styles.modalSubtitle}>Your Rights:</Text>
-                                <Text style={styles.modalText}>
-                                    - You can access, correct, or delete your data anytime.
-                                </Text>
-                                <View style={styles.checkboxContainer}>
-                                    <Checkbox
-                                        status={privacyAccepted ? 'checked' : 'unchecked'}
-                                        onPress={() => setPrivacyAccepted(!privacyAccepted)}
-                                    />
-                                    <Text style={styles.checkboxLabel}>I accept the Data Privacy Policy</Text>
-                                </View>
+                            <View style={styles.modalContent}>
+                                <ScrollView>
+                                    <Text style={styles.modalTitle}>Data Privacy</Text>
+                                    <Text style={styles.modalText}>
+                                        Your privacy is important to us. This statement outlines how we collect, use, and protect your information when you sign up for our service.
+                                    </Text>
+                                    <Text style={styles.modalSubtitle}>What We Collect:</Text>
+                                    <Text style={styles.modalText}>
+                                        - Basic info like name, email, phone, and address.
+                                        {"\n"}- Additional details about your preferences and usage of our app.
+                                    </Text>
+                                    <Text style={styles.modalSubtitle}>How We Use It:</Text>
+                                    <Text style={styles.modalText}>
+                                        - To manage your account and deliver our services.
+                                        {"\n"}- To personalize your experience and send relevant updates.
+                                        {"\n"}- To analyze trends and improve our app.
+                                    </Text>
+                                    <Text style={styles.modalSubtitle}>Security & Sharing:</Text>
+                                    <Text style={styles.modalText}>
+                                        - We keep your data secure and don't sell it to third parties.
+                                        {"\n"}- Trusted partners may access your info to support our services.
+                                    </Text>
+                                    <Text style={styles.modalSubtitle}>Your Rights:</Text>
+                                    <Text style={styles.modalText}>
+                                        - You can access, correct, or delete your data anytime.
+                                    </Text>
+                                    <View style={styles.checkboxContainer}>
+                                        <View style={styles.checkboxWrapper}>
+                                            <Checkbox
+                                                status={privacyAccepted ? 'checked' : 'unchecked'}
+                                                onPress={() => setPrivacyAccepted(!privacyAccepted)}
+                                                
+                                            />
+                                        </View>
+                                        <Text style={styles.checkboxLabel}>I accept the Data Privacy Policy</Text>
+                                    </View>
+                                </ScrollView>
                                 <Button 
                                     mode="contained" 
                                     onPress={handleFinalSubmit}
-                                    loading={loading}
-                                    disabled={!privacyAccepted || loading}
+                                    disabled={!privacyAccepted || modalLoading}
                                     style={styles.modalButton}
+                                    labelStyle={styles.modalButtonLabel}
                                 >
-                                    {loading ? 'Processing...' : 'Submit'}
+                                    {modalLoading ? (
+                                        <ActivityIndicator color="white" />
+                                    ) : 'Submit'}
                                 </Button>
-                            </ScrollView>
+                            </View>
                         </Modal>
                     </Portal>
-                </LinearGradient>
             </ScrollView>
         </PaperProvider>
     );
@@ -473,11 +568,20 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#FAF9F6',
     },
-    gradientOverlay: {
-        flex: 1,
-        padding: 20,
-        marginHorizontal: 20,
+    whitebg: {
+        backgroundColor: '#fff',
+        marginHorizontal: 16,
+        marginBottom: 16,
         borderRadius: 10,
+        borderColor: '#eee',
+        borderWidth: 1,
+        paddingHorizontal: 15,
+        paddingVertical: 15,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
     },
     header: {
         fontSize: 28,
@@ -498,82 +602,136 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         marginBottom: 20,
     },
+    profileImageWrapper: {
+        alignItems: 'center',
+    },
     profileImage: {
         width: 120,
         height: 120,
         borderRadius: 60,
+        borderWidth: 2,
+        borderColor: '#ff69b4',
     },
     profileImagePlaceholder: {
         width: 120,
         height: 120,
         borderRadius: 60,
-        backgroundColor: '#ddd',
+        backgroundColor: '#f8f8f8',
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#ff69b4',
+        borderStyle: 'dashed',
     },
     placeholderText: {
-        fontSize: 30,
-        color: '#666',
+        marginTop: 5,
+        color: '#ff69b4',
+        fontSize: 12,
     },
     label: {
         marginTop: 10,
         marginBottom: 5,
         fontWeight: '600',
+        color: '#555',
+    },
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        position: 'relative',
     },
     input: {
+        flex: 1,
         borderWidth: 1,
         borderColor: '#ddd',
-        borderRadius: 5,
-        padding: 10,
+        borderRadius: 10,
+        padding: 12,
+        paddingLeft: 40,
         marginBottom: 5,
         backgroundColor: '#fff',
+        fontSize: 16,
+    },
+    inputIcon: {
+        position: 'absolute',
+        left: 12,
+        zIndex: 1,
+    },
+    passwordToggle: {
+        position: 'absolute',
+        right: 12,
+        zIndex: 1,
+    },
+    dateInput: {
+        justifyContent: 'center',
+    },
+    dateText: {
+        paddingLeft: 28,
     },
     error: {
         color: 'red',
         fontSize: 12,
         marginBottom: 10,
+        marginLeft: 5,
     },
     row: {
         flexDirection: 'row',
         justifyContent: 'space-between',
     },
     firstNameInput: {
-        width: '68%',
+        flex: 0.68,
     },
     middleNameInput: {
-        width: '25%',
+        flex: 0.25,
     },
     lastNameInput: {
         width: '100%',
     },
     passwordInput: {
-        width: '48%',
+        flex: 0.48,
     },
     halfInput: {
-        width: '48%',
+        flex: 0.48,
     },
     radioGroup: {
         flexDirection: 'row',
         marginBottom: 15,
+        justifyContent: 'space-between',
     },
-    radioButton: {
+    radioOption: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginRight: 20,
+        padding: 10,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        flex: 0.48,
+    },
+    radioOptionSelected: {
+        borderColor: '#ff69b4',
+        backgroundColor: 'rgba(255, 105, 180, 0.1)',
+    },
+    radioButtonContainer: {
+        marginLeft: -8,
     },
     radioLabel: {
         marginLeft: 8,
+        color: '#555',
     },
     uploadButton: {
-        backgroundColor: '#cad47c',
+        backgroundColor: '#ff69b4',
         padding: 15,
-        borderRadius: 5,
+        borderRadius: 10,
         alignItems: 'center',
         marginBottom: 15,
+        flexDirection: 'row',
+        justifyContent: 'center',
+    },
+    uploadIcon: {
+        marginRight: 10,
     },
     uploadButtonText: {
         color: '#fff',
         fontWeight: 'bold',
+        fontSize: 16,
     },
     validIdPreview: {
         marginTop: 10,
@@ -583,59 +741,132 @@ const styles = StyleSheet.create({
     validIdImage: {
         width: '100%',
         height: 200,
-        borderRadius: 5,
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: '#ddd',
     },
     submitButton: {
         backgroundColor: '#ff69b4',
         padding: 15,
-        borderRadius: 5,
+        borderRadius: 10,
         alignItems: 'center',
-        marginTop: 10,
-        marginBottom: 30,
+        marginBottom: 70,
+        elevation: 3,
+        marginHorizontal: 16,
+    },
+    submitButtonDisabled: {
+        backgroundColor: '#ccc',
     },
     submitButtonText: {
         color: '#fff',
         fontWeight: 'bold',
         fontSize: 16,
+        marginLeft: 10,
+    },
+    buttonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     modalContainer: {
         backgroundColor: 'white',
         padding: 20,
         margin: 20,
-        borderRadius: 5,
+        borderRadius: 10,
+        
     },
-    modalContent: {
-        maxHeight: '80%',
-    },
+    
     modalTitle: {
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: 'bold',
         marginBottom: 15,
         textAlign: 'center',
+        color: '#ff69b4',
     },
     modalSubtitle: {
-        fontSize: 16,
+        fontSize: 20,
         fontWeight: 'bold',
         marginTop: 10,
         marginBottom: 5,
+        color: '#555',
     },
     modalText: {
         marginBottom: 10,
+        color: '#555',
+        lineHeight: 22,
+        fontSize: 16,
+    },
+    checkboxWrapper: {
+        
+        // width: 20,
+        // height: 20,
+        
+        borderRadius: 4,
+        marginLeft: -4, // To compensate for the default padding
     },
     checkboxContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         marginTop: 15,
         marginBottom: 15,
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: '#fff',
+        
     },
     checkboxLabel: {
         marginLeft: 10,
+        color: '#555',
+        
     },
     modalButton: {
         marginTop: 10,
         backgroundColor: '#ff69b4',
+        borderRadius: 10,
+        paddingVertical: 5,
+    },
+    modalButtonLabel: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    errorModalContainer: {
+        backgroundColor: 'white',
+        padding: 20,
+        margin: 20,
+        borderRadius: 10,
+    },
+    errorModalContent: {
+        alignItems: 'center',
+    },
+    errorIcon: {
+        marginBottom: 15,
+    },
+    errorModalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#ff4444',
+        marginBottom: 15,
+    },
+    errorList: {
+        maxHeight: 200,
+        width: '100%',
+        marginBottom: 20,
+    },
+    errorItem: {
+        color: '#555',
+        marginBottom: 5,
+        fontSize: 14,
+    },
+    errorModalButton: {
+        backgroundColor: '#ff4444',
+        borderRadius: 10,
+        paddingVertical: 5,
+        width: '100%',
+    },
+    errorModalButtonLabel: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });
 

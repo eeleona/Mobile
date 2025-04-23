@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -9,10 +9,13 @@ import {
   RefreshControl,
   Modal,
   TouchableOpacity,
-  ScrollView
+  ScrollView,
+  Animated,
+  Easing,
+  TextInput
 } from 'react-native';
 import axios from 'axios';
-import { Card, Avatar } from 'react-native-paper';
+import { Avatar } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import config from '../../server/config/config';
@@ -21,11 +24,16 @@ import AppBar from '../design/AppBar';
 
 const Feedbacks = () => {
   const [feedbacks, setFeedbacks] = useState([]);
+  const [filteredFeedbacks, setFilteredFeedbacks] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+
+  const modalOpacity = useRef(new Animated.Value(0)).current;
+  const modalTranslateY = useRef(new Animated.Value(50)).current;
 
   const [fontsLoaded] = useFonts({
     Inter_700Bold,
@@ -40,7 +48,11 @@ const Feedbacks = () => {
   const fetchFeedbacks = async () => {
     try {
       const response = await axios.get(`${config.address}/api/feedback`);
-      setFeedbacks(response.data);
+      const sortedFeedbacks = response.data.sort(
+        (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)
+      );
+      setFeedbacks(sortedFeedbacks);
+      setFilteredFeedbacks(sortedFeedbacks);
       setError(null);
     } catch (err) {
       console.error('Error fetching feedbacks:', err);
@@ -56,18 +68,55 @@ const Feedbacks = () => {
     fetchFeedbacks();
   };
 
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+    const query = text.toLowerCase();
+    const filtered = feedbacks.filter(feedback => {
+      const adopterName = feedback.adopterUsername?.toLowerCase() || '';
+      const petName = feedback.petName?.toLowerCase() || '';
+      return adopterName.includes(query) || petName.includes(query);
+    });
+    setFilteredFeedbacks(filtered);
+  };
+
   const openFeedbackModal = (feedback) => {
     setSelectedFeedback(feedback);
     setModalVisible(true);
+    Animated.parallel([
+      Animated.timing(modalOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalTranslateY, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.back(1)),
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
 
   const closeFeedbackModal = () => {
-    setModalVisible(false);
-    setSelectedFeedback(null);
+    Animated.parallel([
+      Animated.timing(modalOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalTranslateY, {
+        toValue: 50,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setModalVisible(false);
+      setSelectedFeedback(null);
+    });
   };
 
   const renderFeedbackItem = ({ item }) => (
-    <TouchableOpacity onPress={() => openFeedbackModal(item)}>
+    <TouchableOpacity onPress={() => openFeedbackModal(item)} activeOpacity={0.8}>
       <LinearGradient
         colors={['#FFFFFF', '#FFF5F9']}
         start={{ x: 0, y: 0 }}
@@ -77,18 +126,20 @@ const Feedbacks = () => {
         <View style={styles.feedbackHeader}>
           {item.userAvatar ? (
             <Image 
-              source={{ uri: `${config.address}${item.p_img}` }} 
+              source={{ uri: `${config.address}${item.userAvatar}` }} 
               style={styles.avatarImage}
+              resizeMode="cover"
             />
           ) : (
             <Avatar.Text 
-              size={40} 
+              size={50} 
               label={item.adopterUsername ? item.adopterUsername.charAt(0).toUpperCase() : 'A'} 
               style={styles.avatar}
             />
           )}
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{item.adopterUsername || 'Anonymous User'}</Text>
+            <Text style={styles.petName}>Pet: {item.petName || 'N/A'}</Text>
             <Text style={styles.dateText}>
               {new Date(item.submittedAt).toLocaleDateString('en-US', {
                 month: 'short',
@@ -98,9 +149,6 @@ const Feedbacks = () => {
             </Text>
           </View>
         </View>
-        <Text style={styles.feedbackText} numberOfLines={2}>
-          {item.feedbackText || 'No feedback text provided'}
-        </Text>
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -140,8 +188,25 @@ const Feedbacks = () => {
   return (
     <View style={styles.container}>
       <AppBar />
-      
-      {feedbacks.length === 0 ? (
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchBar}
+          placeholder="Search by adopter or pet name"
+          placeholderTextColor="#aaa"
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+        <MaterialIcons
+          name="search"
+          size={24}
+          color="#FF66C4"
+          style={styles.searchIcon}
+        />
+      </View>
+
+      {filteredFeedbacks.length === 0 ? (
         <View style={styles.centerContainer}>
           <Image 
             source={require('../../assets/Images/pawicon2.png')} 
@@ -152,7 +217,7 @@ const Feedbacks = () => {
         </View>
       ) : (
         <FlatList
-          data={feedbacks}
+          data={filteredFeedbacks}
           renderItem={renderFeedbackItem}
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.listContainer}
@@ -170,122 +235,126 @@ const Feedbacks = () => {
 
       {/* Feedback Details Modal */}
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={modalVisible}
         onRequestClose={closeFeedbackModal}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <TouchableOpacity 
-              style={styles.closeButton}
-              onPress={closeFeedbackModal}
+        <Animated.View style={[styles.modalBackdrop, { opacity: modalOpacity }]}>
+          <TouchableOpacity 
+            style={styles.modalBackdropTouchable}
+            activeOpacity={1}
+            onPress={closeFeedbackModal}
+          >
+            <Animated.View 
+              style={[
+                styles.modalContent,
+                { transform: [{ translateY: modalTranslateY }] }
+              ]}
             >
-              <MaterialIcons name="close" size={24} color="#666" />
-            </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={closeFeedbackModal}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons name="close" size={28} color="#666" />
+              </TouchableOpacity>
 
-            {selectedFeedback && (
-              <ScrollView contentContainerStyle={styles.modalScrollContent}>
-                <View style={styles.modalHeader}>
-                  {selectedFeedback.userAvatar ? (
-                    <Image 
-                      source={{ uri: `${config.address}/${selectedFeedback.userAvatar}` }} 
-                      style={styles.modalAvatar}
-                    />
-                  ) : (
-                    <Avatar.Text 
-                      size={60} 
-                      label={selectedFeedback.adopterUsername ? selectedFeedback.adopterUsername.charAt(0).toUpperCase() : 'A'} 
-                      style={[styles.avatar, styles.modalAvatar]}
-                    />
-                  )}
-                  <View style={styles.modalUserInfo}>
-                    <Text style={styles.modalUserName}>{selectedFeedback.adopterUsername || 'Anonymous User'}</Text>
-                    <Text style={styles.modalPetName}>Pet: {selectedFeedback.petName || 'N/A'}</Text>
-                    <Text style={styles.modalDate}>
-                      Submitted: {new Date(selectedFeedback.submittedAt).toLocaleDateString()}
-                    </Text>
+              {selectedFeedback && (
+                <ScrollView 
+                  contentContainerStyle={styles.modalScrollContent}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={styles.modalHeader}>
+                    {selectedFeedback.userAvatar ? (
+                      <Image 
+                        source={{ uri: `${config.address}${selectedFeedback.userAvatar}` }} 
+                        style={styles.modalAvatar}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Avatar.Text 
+                        size={80} 
+                        label={selectedFeedback.adopterUsername ? selectedFeedback.adopterUsername.charAt(0).toUpperCase() : 'A'} 
+                        style={[styles.avatar, styles.modalAvatar]}
+                      />
+                    )}
+                    <View style={styles.modalUserInfo}>
+                      <Text style={styles.modalUserName}>{selectedFeedback.adopterUsername || 'Anonymous User'}</Text>
+                      <Text style={styles.modalPetName}>Pet: {selectedFeedback.petName || 'N/A'}</Text>
+                      <Text style={styles.modalDate}>
+                        Submitted: {new Date(selectedFeedback.submittedAt).toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </Text>
+                    </View>
                   </View>
-                </View>
 
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Adoption Ratings</Text>
-                  <View style={styles.ratingItem}>
-                    <Text style={styles.ratingLabel}>Requirements clarity:</Text>
-                    <Text style={styles.ratingValue}>
-                      {selectedFeedback.adoptionRatings?.requirementsClear ?? "N/A"}
-                    </Text>
+                  <View style={styles.section}>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>The adoption requirements and eligibility criteria were easy to understand.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.requirementsClear ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>The pet’s history, and behavior information were clearly provided.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.petInfoClear ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>The adoption team was responsive and helpful throughout the process.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>The pet matched the description and details provided on the website.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>Navigating the website and finding available pets was easy.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>The search and filtering options helped in finding suitable pets.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>The adoption application form was clear and user-friendly.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>The website functioned well on my device, with good loading speed and responsiveness.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingItem}>
+                      <Text style={styles.ratingLabel}>I would recommend this website to others looking to adopt a pet.</Text>
+                      <Text style={styles.ratingValue}>
+                        {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.ratingItem}>
-                    <Text style={styles.ratingLabel}>Pet information:</Text>
-                    <Text style={styles.ratingValue}>
-                      {selectedFeedback.adoptionRatings?.petInfoClear ?? "N/A"}
-                    </Text>
-                  </View>
-                  <View style={styles.ratingItem}>
-                    <Text style={styles.ratingLabel}>Team helpfulness:</Text>
-                    <Text style={styles.ratingValue}>
-                      {selectedFeedback.adoptionRatings?.teamHelpfulness ?? "N/A"}
-                    </Text>
-                  </View>
-                  <View style={styles.ratingItem}>
-                    <Text style={styles.ratingLabel}>Process smoothness:</Text>
-                    <Text style={styles.ratingValue}>
-                      {selectedFeedback.adoptionRatings?.processSmoothness ?? "N/A"}
-                    </Text>
-                  </View>
-                  <View style={styles.ratingItem}>
-                    <Text style={styles.ratingLabel}>Pet matched description:</Text>
-                    <Text style={styles.ratingValue}>
-                      {selectedFeedback.adoptionRatings?.petMatchedDescription ?? "N/A"}
-                    </Text>
-                  </View>
-                </View>
 
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Website Ratings</Text>
-                  <View style={styles.ratingItem}>
-                    <Text style={styles.ratingLabel}>Easy navigation:</Text>
-                    <Text style={styles.ratingValue}>
-                      {selectedFeedback.websiteRatings?.easyNavigation ?? "N/A"}
-                    </Text>
-                  </View>
-                  <View style={styles.ratingItem}>
-                    <Text style={styles.ratingLabel}>Search helpfulness:</Text>
-                    <Text style={styles.ratingValue}>
-                      {selectedFeedback.websiteRatings?.searchHelpful ?? "N/A"}
-                    </Text>
-                  </View>
-                  <View style={styles.ratingItem}>
-                    <Text style={styles.ratingLabel}>Form user-friendly:</Text>
-                    <Text style={styles.ratingValue}>
-                      {selectedFeedback.websiteRatings?.formUserFriendly ?? "N/A"}
-                    </Text>
-                  </View>
-                  <View style={styles.ratingItem}>
-                    <Text style={styles.ratingLabel}>Website performance:</Text>
-                    <Text style={styles.ratingValue}>
-                      {selectedFeedback.websiteRatings?.goodPerformance ?? "N/A"}
-                    </Text>
-                  </View>
-                  <View style={styles.ratingItem}>
-                    <Text style={styles.ratingLabel}>Would recommend:</Text>
-                    <Text style={styles.ratingValue}>
-                      {selectedFeedback.websiteRatings?.recommend ?? "N/A"}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Additional Comments</Text>
-                  <Text style={styles.commentsText}>
-                    {selectedFeedback.feedbackText || "No additional comments provided"}
-                  </Text>
-                </View>
-              </ScrollView>
-            )}
-          </View>
-        </View>
+                  
+                </ScrollView>
+              )}
+            </Animated.View>
+          </TouchableOpacity>
+        </Animated.View>
       </Modal>
     </View>
   );
@@ -295,26 +364,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAF9F6',
-    
-  },
-  screenTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter_700Bold',
-    color: '#2D3748',
-    marginBottom: 20,
-    textAlign: 'center',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    
   },
   emptyImage: {
     width: 120,
     height: 120,
     marginBottom: 20,
-    opacity: 0.7,
+    tintColor: '#FF66C4',
   },
   emptyTitle: {
     fontSize: 22,
@@ -355,163 +417,193 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
   },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 15,
+    borderRadius: 10,
+    borderColor: '#eee',
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  searchBar: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+    color: '#333',
+  },
+  searchIcon: {
+    marginLeft: 8,
+  },
   listContainer: {
-    paddingBottom: 30,
+    padding: 16,
+    paddingBottom: 20,
+    elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
   },
   feedbackCard: {
     marginBottom: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-    marginHorizontal: 20,
+    elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
   },
   feedbackHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
   avatar: {
     backgroundColor: '#FF66C4',
-    marginRight: 12,
+    marginRight: 16,
+  },
+  avatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 16,
+    borderWidth: 2,
+    borderColor: '#FF66C4',
   },
   userInfo: {
     flex: 1,
   },
   userName: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Inter_600SemiBold',
     color: '#2D3748',
+  },
+  petName: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    color: '#FF66C4',
+    marginTop: 4,
   },
   dateText: {
     fontSize: 12,
     fontFamily: 'Inter_500Medium',
     color: '#718096',
-    marginTop: 2,
+    marginTop: 4,
   },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 214, 0, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  ratingText: {
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#D69E2E',
-    marginLeft: 4,
-  },
-  feedbackText: {
-    fontSize: 15,
-    fontFamily: 'Inter_500Medium',
-    color: '#4A5568',
-    lineHeight: 22,
-  },
-  modalContainer: {
+  modalBackdrop: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  modalBackdropTouchable: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContent: {
     width: '90%',
     maxHeight: '80%',
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-    elevation: 5,
+    borderRadius: 20,
+    padding: 24,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
   },
   modalScrollContent: {
     paddingBottom: 20,
   },
   closeButton: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 16,
+    right: 16,
     zIndex: 1,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    padding: 4,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingBottom: 15,
+    marginBottom: 24,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
   },
   modalAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 15,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginRight: 16,
+    borderWidth: 2,
+    borderColor: '#FF66C4',
   },
   modalUserInfo: {
     flex: 1,
   },
   modalUserName: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: 'Inter_600SemiBold',
     color: '#2D3748',
   },
   modalPetName: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Inter_500Medium',
-    color: '#4A5568',
-    marginTop: 2,
+    color: '#FF66C4',
+    marginTop: 4,
   },
   modalDate: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: 'Inter_500Medium',
     color: '#718096',
-    marginTop: 2,
+    marginTop: 4,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 30,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Inter_600SemiBold',
     color: '#FF66C4',
-    marginBottom: 10,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   ratingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingVertical: 12,
   },
   ratingLabel: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Inter_500Medium',
     color: '#4A5568',
     flex: 1,
   },
   ratingValue: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
     color: '#2D3748',
-    width: 40,
+    width: 60,
     textAlign: 'right',
   },
-  commentsText: {
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-    color: '#4A5568',
-    lineHeight: 20,
-    marginTop: 5,
-  },
-  avatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-
 });
 
 export default Feedbacks;

@@ -1,23 +1,23 @@
-import React, { useState, useContext } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ScrollView, 
-  Image, 
-  ActivityIndicator, 
-  Alert,
-  Modal
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Image,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import config from '../../server/config/config';
-import { useAuth } from '../context/AuthContext';
+import AppBar from '../design/AppBar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const AddEvent = ({ navigation }) => {
-  const { token } = useAuth();
   const [formData, setFormData] = useState({
     e_title: '',
     e_location: '',
@@ -26,7 +26,15 @@ const AddEvent = ({ navigation }) => {
     e_image: null,
   });
   const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [token, setToken] = useState(null);
+
+  useEffect(() => {
+    const loadToken = async () => {
+      const storedToken = await AsyncStorage.getItem('authToken');
+      setToken(storedToken);
+    };
+    loadToken();
+  }, []);
 
   const handleInputChange = (name, value) => {
     setFormData({ ...formData, [name]: value });
@@ -58,10 +66,6 @@ const AddEvent = ({ navigation }) => {
       Alert.alert('Error', 'Event date is required');
       return false;
     }
-    if (!formData.e_description.trim()) {
-      Alert.alert('Error', 'Event description is required');
-      return false;
-    }
     return true;
   };
 
@@ -77,14 +81,14 @@ const AddEvent = ({ navigation }) => {
     const formDataToSend = new FormData();
     formDataToSend.append('e_title', formData.e_title);
     formDataToSend.append('e_location', formData.e_location);
-    formDataToSend.append('e_date', formData.e_date);
+    formDataToSend.append('e_date', `${formData.e_date}T00:00:00`);
     formDataToSend.append('e_description', formData.e_description);
-    
+
     if (formData.e_image) {
       formDataToSend.append('e_image', {
         uri: formData.e_image.uri,
         type: 'image/jpeg',
-        name: 'event_image.jpg'
+        name: 'event_image.jpg',
       });
     }
 
@@ -95,95 +99,79 @@ const AddEvent = ({ navigation }) => {
         {
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          }
+            'Content-Type': 'multipart/form-data',
+          },
         }
       );
 
-      if (response.data) {
-        Alert.alert('Success', 'Event created successfully');
-        setFormData({
-          e_title: '',
-          e_location: '',
-          e_date: '',
-          e_description: '',
-          e_image: null,
-        });
-        setShowModal(false);
-        navigation.goBack();
-      }
+      Alert.alert('Success', 'Event created successfully');
+      navigation.goBack();
     } catch (error) {
-      let errorMessage = 'Failed to create event';
-      if (error.response?.status === 401) {
-        errorMessage = 'Session expired. Please login again.';
-      }
-      Alert.alert('Error', errorMessage);
+      console.error('Create error:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to create event');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.formContainer}>
-        <Text style={styles.header}>Create New Event</Text>
+    <ScrollView style={styles.container}>
+      <AppBar title="Add New Event" onBackPress={() => navigation.goBack()} />
 
+      <View style={styles.formContainer}>
+        <Text style={styles.label}>Event Title *</Text>
         <TextInput
-          placeholder="Event Title *"
+          style={styles.input}
           value={formData.e_title}
           onChangeText={(text) => handleInputChange('e_title', text)}
-          style={styles.input}
+          placeholder="Enter event title"
         />
 
+        <Text style={styles.label}>Location</Text>
         <TextInput
-          placeholder="Location"
+          style={styles.input}
           value={formData.e_location}
           onChangeText={(text) => handleInputChange('e_location', text)}
-          style={styles.input}
+          placeholder="Enter location"
         />
 
+        <Text style={styles.label}>Date *</Text>
         <TextInput
-          placeholder="Date (YYYY-MM-DD) *"
+          style={styles.input}
           value={formData.e_date}
           onChangeText={(text) => handleInputChange('e_date', text)}
-          style={styles.input}
+          placeholder="YYYY-MM-DD"
         />
 
+        <Text style={styles.label}>Description</Text>
         <TextInput
-          placeholder="Description *"
+          style={[styles.input, styles.textArea]}
           value={formData.e_description}
           onChangeText={(text) => handleInputChange('e_description', text)}
-          style={[styles.input, styles.textArea]}
+          placeholder="Enter description"
           multiline
           numberOfLines={4}
         />
 
-        <TouchableOpacity 
-          onPress={pickImage} 
-          style={styles.imageButton}
-        >
-          <Text style={styles.imageButtonText}>
-            {formData.e_image ? 'Change Image' : 'Select Image'}
-          </Text>
+        <Text style={styles.label}>Event Image</Text>
+        <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
+          <MaterialIcons name="add-a-photo" size={28} color="#ff69b4" />
+          <Text style={styles.imageButtonText}>Select Image</Text>
         </TouchableOpacity>
 
         {formData.e_image && (
-          <Image 
-            source={{ uri: formData.e_image.uri }} 
-            style={styles.previewImage} 
-            resizeMode="cover"
-          />
+          <Image source={{ uri: formData.e_image.uri }} style={styles.imagePreview} />
         )}
 
-        <TouchableOpacity 
-          onPress={handleSubmit} 
-          style={[styles.submitButton, loading && styles.disabledButton]}
+        <TouchableOpacity
+          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+          onPress={handleSubmit}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text style={styles.buttonText}>Create Event</Text>
+            <Text style={styles.submitButtonText}>Create Event</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -192,74 +180,58 @@ const AddEvent = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 20,
-  },
-  formContainer: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  header: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#333',
-    textAlign: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#FAF9F6' },
+  formContainer: { padding: 20, margin: 20, backgroundColor: 'white', elevation: 3,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,borderRadius: 12, },
+  label: { fontSize: 16, fontWeight: 'bold', marginBottom: 5, color: '#333' },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
+    borderColor: '#ccc',
+    padding: 10,
+    borderRadius: 10,
     marginBottom: 15,
-    fontSize: 16,
-    backgroundColor: '#f9f9f9',
   },
-  textArea: {
-    height: 120,
-    textAlignVertical: 'top',
-  },
+  textArea: { height: 100, textAlignVertical: 'top' },
   imageButton: {
-    backgroundColor: '#f0f0f0',
-    padding: 15,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    gap: 10,
+    padding: 10,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#ff69b4',
+    borderRadius: 10,
+    marginBottom: 15,
+    backgroundColor: 'white',
   },
   imageButtonText: {
-    color: '#333',
+    color: 'black',
+    fontWeight: 'bold',
     fontSize: 16,
-    fontWeight: '500',
   },
-  previewImage: {
+  imagePreview: {
     width: '100%',
     height: 200,
-    borderRadius: 8,
+    borderRadius: 15,
     marginBottom: 20,
+    borderColor: 'gray',
+    borderWidth: 2,
   },
   submitButton: {
-    backgroundColor: '#FF66C4',
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: '#ff69b4',
+    padding: 15,
+    borderRadius: 10,
     alignItems: 'center',
   },
-  disabledButton: {
-    backgroundColor: '#ccc',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
+  submitButtonText: {
+    color: '#fff',
     fontWeight: 'bold',
+    fontSize: 16,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#ff69b4',
   },
 });
 

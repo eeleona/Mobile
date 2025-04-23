@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { Divider } from 'react-native-paper';
 import AppBar from '../design/AppBar';
 import axios from 'axios';
 import config from '../../server/config/config';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import * as Animatable from 'react-native-animatable';
 
 const PendingUserDetails = ({ route, navigation }) => {
   const { user } = route.params;
@@ -11,14 +13,13 @@ const PendingUserDetails = ({ route, navigation }) => {
   const [declineReason, setDeclineReason] = useState('');
   const [otherReason, setOtherReason] = useState('');
   const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [showValidId, setShowValidId] = useState(false);
 
   const handleVerify = async () => {
     setLoading(true);
     try {
-      // Transfer user from pending to verified collection
       await axios.delete(`${config.address}/api/user/delete/transfer/${user._id}`);
       
-      // Send verification email
       const emailData = {
         to: user.p_emailadd,
         subject: 'Your Account Has Been Verified',
@@ -44,10 +45,8 @@ const PendingUserDetails = ({ route, navigation }) => {
 
     setLoading(true);
     try {
-      // Delete the pending user
       await axios.delete(`${config.address}/api/user/delete/${user._id}`);
       
-      // Send rejection email
       const reasonText = declineReason === 'Other' ? otherReason : declineReason;
       const emailData = {
         to: user.p_emailadd,
@@ -76,7 +75,7 @@ const PendingUserDetails = ({ route, navigation }) => {
         <View style={styles.card}>
           <View style={styles.imageContainer}>
             <Image
-              style={styles.profileImage}
+              style={[styles.profileImage, { borderColor: '#ffe261' }]}
               source={{ uri: `${config.address}${user.p_img}` }}
               defaultSource={require('../../assets/Images/user.png')}
               resizeMode="cover"
@@ -84,52 +83,98 @@ const PendingUserDetails = ({ route, navigation }) => {
           </View>
 
           <Text style={styles.name}>{user.p_fname} {user.p_mname} {user.p_lname}</Text>
-          <Text style={styles.role}>{user.p_role}</Text>
+          <View style={styles.statusContainer}>
+            <Text style={styles.statusText}>PENDING</Text>
+          </View>
           
           <Divider style={styles.divider} />
 
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Username:</Text>
-            <Text style={styles.detailValue}>{user.p_username}</Text>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Email:</Text>
-            <Text style={styles.detailValue}>{user.p_emailadd}</Text>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Contact:</Text>
-            <Text style={styles.detailValue}>{user.p_contactnumber}</Text>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Address:</Text>
-            <Text style={styles.detailValue}>{user.p_add}</Text>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Gender:</Text>
-            <Text style={styles.detailValue}>{user.p_gender}</Text>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Birthday:</Text>
-            <Text style={styles.detailValue}>
-              {new Date(user.p_birthdate).toLocaleDateString()}
-            </Text>
+          <View style={styles.detailsSection}>
+            <Text style={styles.sectionTitle}>Account Details</Text>
+            
+            <View style={styles.detailContainer}>
+              <View style={styles.detailLabelContainer}>
+                <Icon name="person" size={20} color="#ff69b4" />
+                <Text style={styles.detailLabel}>Username</Text>
+              </View>
+              <Text style={styles.detailValue}>{user.p_username}</Text>
+            </View>
+            
+            <View style={styles.detailContainer}>
+              <View style={styles.detailLabelContainer}>
+                <Icon name="email" size={20} color="#ff69b4" />
+                <Text style={styles.detailLabel}>Email</Text>
+              </View>
+              <Text style={styles.detailValue}>{user.p_emailadd}</Text>
+            </View>
+            
+            <View style={styles.detailContainer}>
+              <View style={styles.detailLabelContainer}>
+                <Icon name="phone" size={20} color="#ff69b4" />
+                <Text style={styles.detailLabel}>Contact</Text>
+              </View>
+              <Text style={styles.detailValue}>{user.p_contactnumber}</Text>
+            </View>
+            
+            <View style={styles.detailContainer}>
+              <View style={styles.detailLabelContainer}>
+                <Icon name="home" size={20} color="#ff69b4" />
+                <Text style={styles.detailLabel}>Address</Text>
+              </View>
+              <Text style={styles.detailValue}>{user.p_add}</Text>
+            </View>
+            
+            <View style={styles.detailContainer}>
+              <View style={styles.detailLabelContainer}>
+                <Icon name="wc" size={20} color="#ff69b4" />
+                <Text style={styles.detailLabel}>Gender</Text>
+              </View>
+              <Text style={styles.detailValue}>{user.p_gender}</Text>
+            </View>
+            
+            <View style={[styles.detailContainer, styles.birthdayContainer]}>
+              <View style={styles.detailLabelContainer}>
+                <Icon name="cake" size={20} color="#ff69b4" />
+                <Text style={styles.detailLabel}>Birthday</Text>
+              </View>
+              <Text style={styles.detailValue}>
+                {new Date(user.p_birthdate).toLocaleDateString()}
+              </Text>
+            </View>
           </View>
         </View>
 
         {/* Valid ID Section */}
         <View style={[styles.card, { marginTop: 16 }]}>
-          <Text style={styles.sectionTitle}>Valid ID</Text>
-          <Divider style={styles.divider} />
-          <Image
-            style={styles.validIdImage}
-            source={{ uri: `${config.address}${user.p_validID}` }}
-            resizeMode="contain"
-          />
+          <TouchableOpacity 
+            style={styles.validIdHeader} 
+            onPress={() => setShowValidId(!showValidId)}
+          >
+            <View style={styles.validIdTitleContainer}>
+              <Icon name="verified-user" size={24} color="#ff69b4" />
+              <Text style={styles.validIdTitle}>Valid ID</Text>
+            </View>
+            <Icon 
+              name={showValidId ? 'keyboard-arrow-down' : 'keyboard-arrow-right'} 
+              size={28} 
+              color="#ff69b4" 
+            />
+          </TouchableOpacity>
+          
+          {showValidId && (
+            <Animatable.View 
+              animation="fadeIn"
+              duration={300}
+              style={styles.validIdContent}
+            >
+              <Image
+                style={styles.validIdImage}
+                source={{ uri: `${config.address}${user.p_validID}` }}
+                resizeMode="contain"
+                onError={(e) => console.log('Failed to load image:', e.nativeEvent.error)}
+              />
+            </Animatable.View>
+          )}
         </View>
 
         {/* Action Buttons */}
@@ -154,69 +199,80 @@ const PendingUserDetails = ({ route, navigation }) => {
             {loading && !showDeclineModal ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.buttonText}>Verify</Text>
+              <Text style={styles.buttonText}>Accept</Text>
             )}
           </TouchableOpacity>
         </View>
-
-        {/* Decline Reason Modal */}
-        {showDeclineModal && (
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Reason for Rejection</Text>
-              
-              <View style={styles.reasonContainer}>
-                <TouchableOpacity 
-                  style={[styles.reasonButton, declineReason === 'Invalid details' && styles.selectedReason]}
-                  onPress={() => setDeclineReason('Invalid details')}
-                >
-                  <Text>Invalid details</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.reasonButton, declineReason === 'Not qualified' && styles.selectedReason]}
-                  onPress={() => setDeclineReason('Not qualified')}
-                >
-                  <Text>Not qualified</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.reasonButton, declineReason === 'Other' && styles.selectedReason]}
-                  onPress={() => setDeclineReason('Other')}
-                >
-                  <Text>Other</Text>
-                </TouchableOpacity>
-                
-                {declineReason === 'Other' && (
-                  <TextInput
-                    style={styles.reasonInput}
-                    placeholder="Please specify"
-                    value={otherReason}
-                    onChangeText={setOtherReason}
-                  />
-                )}
-              </View>
-              
-              <View style={styles.modalButtonContainer}>
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={() => setShowDeclineModal(false)}
-                >
-                  <Text style={styles.modalButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.confirmButton]}
-                  onPress={handleReject}
-                  disabled={!declineReason || (declineReason === 'Other' && !otherReason)}
-                >
-                  <Text style={styles.modalButtonText}>Confirm</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
       </ScrollView>
+
+      {/* Decline Reason Modal */}
+      <Modal
+        visible={showDeclineModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowDeclineModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Animatable.View 
+            animation="fadeInUp"
+            duration={300}
+            style={styles.modalContainer}
+          >
+            <Text style={styles.modalTitle}>Reason for Rejection</Text>
+            
+            <View style={styles.reasonContainer}>
+              {['Invalid details', 'Not qualified', 'Other'].map((reason) => (
+                <TouchableOpacity 
+                  key={reason}
+                  style={[
+                    styles.reasonButton, 
+                    declineReason === reason && styles.selectedReason
+                  ]}
+                  onPress={() => setDeclineReason(reason)}
+                >
+                  <Text style={styles.reasonText}>{reason}</Text>
+                </TouchableOpacity>
+              ))}
+              
+              {declineReason === 'Other' && (
+                <TextInput
+                  style={styles.reasonInput}
+                  placeholder="Please specify reason..."
+                  value={otherReason}
+                  onChangeText={setOtherReason}
+                  multiline
+                  numberOfLines={3}
+                />
+              )}
+            </View>
+            
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setShowDeclineModal(false);
+                  setDeclineReason('');
+                  setOtherReason('');
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.modalButton, 
+                  styles.confirmButton,
+                  (!declineReason || (declineReason === 'Other' && !otherReason)) && styles.disabledButton
+                ]}
+                onPress={handleReject}
+                disabled={!declineReason || (declineReason === 'Other' && !otherReason)}
+              >
+                <Text style={styles.confirmButtonText}>Submit</Text>
+              </TouchableOpacity>
+            </View>
+          </Animatable.View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -228,7 +284,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 48,
   },
   card: {
     backgroundColor: 'white',
@@ -248,56 +304,99 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 75,
-    borderWidth: 3,
-    borderColor: '#ff69b4',
+    borderWidth: 4,
   },
   name: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#2a2a2a',
     textAlign: 'center',
     marginBottom: 4,
   },
-  role: {
-    fontSize: 16,
-    color: '#ff69b4',
+  statusContainer: {
+    backgroundColor: '#FFFACD',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    alignSelf: 'center',
+    marginTop: 10,
+  },
+  statusText: {
+    color: '#FF8C00',
+    fontSize: 14,
+    fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 16,
   },
   divider: {
     marginVertical: 12,
     backgroundColor: '#e0e0e0',
     height: 1,
   },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  detailLabel: {
-    fontSize: 15,
-    color: '#666',
-    fontWeight: '500',
-    flex: 1,
-  },
-  detailValue: {
-    fontSize: 15,
-    color: '#333',
-    fontWeight: '600',
-    flex: 2,
-    textAlign: 'right',
+  detailsSection: {
+    marginTop: 8,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2a2a2a',
+    color: '#ff69b4',
     marginBottom: 12,
+  },
+  detailContainer: {
+    marginBottom: 12,
+  },
+  birthdayContainer: {
+    marginBottom: 8,
+  },
+  detailLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  detailValue: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '600',
+    paddingLeft: 28,
+  },
+  validIdHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  validIdTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    flex: 1,
+  },
+  validIdTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ff69b4',
+    marginLeft: 10,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+  },
+  validIdContent: {
+    marginTop: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   validIdImage: {
     width: '100%',
-    height: 200,
+    minHeight: 200,
+    maxHeight: 300,
     borderRadius: 8,
-    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#f5f5f5',
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -311,54 +410,62 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   verifyButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#66BB6A',
   },
   rejectButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: '#E53935',
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
   },
-  // Modal styles
   modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 20,
   },
   modalContainer: {
     backgroundColor: 'white',
     borderRadius: 12,
     padding: 20,
-    width: '80%',
+    width: '100%',
+    maxWidth: 400,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 20,
     textAlign: 'center',
+    color: '#333',
   },
   reasonContainer: {
     marginBottom: 20,
   },
   reasonButton: {
-    padding: 12,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    marginBottom: 8,
+    marginBottom: 10,
+    backgroundColor: '#f9f9f9',
   },
   selectedReason: {
-    backgroundColor: '#f0f0f0',
-    borderColor: '#ff69b4',
+    backgroundColor: '#FFF3E0',
+    borderColor: '#FFA500',
+  },
+  reasonText: {
+    fontSize: 15,
+    color: '#333',
   },
   reasonInput: {
     borderWidth: 1,
@@ -366,27 +473,40 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
+    backgroundColor: '#f9f9f9',
+    textAlignVertical: 'top',
   },
   modalButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 10,
   },
   modalButton: {
     flex: 1,
-    padding: 12,
+    padding: 14,
     borderRadius: 8,
     alignItems: 'center',
-    marginHorizontal: 4,
+    marginHorizontal: 5,
+    elevation: 2,
   },
   cancelButton: {
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#f5f5f5',
   },
   confirmButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: '#E53935',
   },
-  modalButtonText: {
+  disabledButton: {
+    opacity: 0.6,
+  },
+  cancelButtonText: {
+    color: '#333',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  confirmButtonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 16,
   },
 });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, Image, TextInput, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import axios from 'axios';
 import { PaperProvider, ActivityIndicator } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -11,12 +11,20 @@ const VerifiedUsers = () => {
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredUsers, setFilteredUsers] = useState([]);
+
   const navigation = useNavigation();
 
   const fetchUsers = async () => {
     try {
       const response = await axios.get(`${config.address}/api/verified/all`);
-      setAllUsers(response.data.users);
+      // Sort users by verification date (newest first)
+      const sortedUsers = response.data.users.sort((a, b) => {
+        return new Date(b.verifiedAt || b.createdAt) - new Date(a.verifiedAt || a.createdAt);
+      });
+      setAllUsers(sortedUsers);
+      setFilteredUsers(sortedUsers);
     } catch (error) {
       console.error('Error fetching verified users:', error);
     } finally {
@@ -33,6 +41,18 @@ const VerifiedUsers = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+    const query = text.toLowerCase();
+  
+    const filtered = allUsers.filter(user =>
+      `${user.v_fname} ${user.v_mname} ${user.v_lname}`.toLowerCase().includes(query)
+    );
+  
+    setFilteredUsers(filtered);
+  };
+  
 
   const renderItem = ({ item }) => {
     const imageSource = item.v_img
@@ -79,9 +99,24 @@ const VerifiedUsers = () => {
   return (
     <PaperProvider>
       <View style={styles.container}>
-        
+        <View style={styles.searchContainer}>
+                <TextInput
+                  style={styles.searchBar}
+                  placeholder="Search name or username"
+                  placeholderTextColor="#aaa"
+                  value={searchQuery}
+                  onChangeText={handleSearch}
+                />
+                <MaterialIcons
+                  name="search"
+                  size={24}
+                  color="#ff69b4"
+                  style={styles.searchIcon}
+                />
+              </View>
         <FlatList
-          data={allUsers}
+          data={filteredUsers}
+
           renderItem={renderItem}
           keyExtractor={(item) => item._id || Math.random().toString()}
           contentContainerStyle={styles.listContainer}
@@ -124,13 +159,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 15,
+    
+    borderRadius: 10,
+    borderColor: '#eee',
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  
+  searchBar: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+    color: '#333',
+  },
+  
+  searchIcon: {
+    marginLeft: 8,
+  },
   userContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
     padding: 15,
     borderRadius: 12,
-    marginVertical: 6,
+    marginBottom: 10,
     marginHorizontal: 16,
     elevation: 2,
     shadowColor: '#000',

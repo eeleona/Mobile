@@ -1,305 +1,267 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView, ImageBackground, Image, Alert } from 'react-native';
-import { List, PaperProvider, Modal, Portal } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import {
+  StyleSheet,
+  View,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Text,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { Divider } from 'react-native-paper';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import jwt_decode from 'jwt-decode';
+import config from '../../server/config/config';
 import AppBar from '../design/AppBar';
-import { ApplicationProvider, Datepicker, DatepickerProps, Radio, IndexPath, Select, SelectItem, Input, Text } from '@ui-kitten/components';
-import {  useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
-import * as eva from '@eva-design/eva';
- 
-const EditNearby = ({ navigation }) => {
-    const [dateOfBirth, setDateOfBirth] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [expanded, setExpanded] = React.useState(true);
-    const [visible, setVisible] = React.useState(false);
-    const showModal = () => setVisible(true);
-    const hideModal = () => setVisible(false);
-    const containerStyle = {backgroundColor: 'white', padding: 20};
-    const [activeChecked, setActiveChecked] = React.useState(false);
-    const handlePress = () => setExpanded(!expanded);
-    
-    let [fontsLoaded] = useFonts({
-        Inter_700Bold,
-        Inter_500Medium,
-      });
-    
-      if (!fontsLoaded) {
-        return null;
+
+const EditNearby = ({ route, navigation }) => {
+  const { serviceId } = route.params;
+  const [serviceDetails, setServiceDetails] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({
+    ns_name: '',
+    ns_address: '',
+    ns_pin: '',
+    ns_type: '',
+  });
+
+  useEffect(() => {
+    fetchServiceDetails();
+  }, []);
+
+  const fetchServiceDetails = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Alert.alert('Error', 'Not authenticated. Please login.');
+        navigation.navigate('Login');
+        return;
       }
 
-      const handleBack = () => {
-        navigation.navigate('Events');
-      };
+      const decodedToken = jwt_decode(token);
+      const currentTime = Date.now() / 1000;
+      if (decodedToken.exp < currentTime) {
+        Alert.alert('Error', 'Session expired. Please login again.');
+        await AsyncStorage.removeItem('authToken');
+        navigation.navigate('Login');
+        return;
+      }
+
+      const response = await axios.get(`${config.address}/api/service/${serviceId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setServiceDetails(response.data);
+      setFormData({
+        ns_name: response.data.ns_name,
+        ns_address: response.data.ns_address,
+        ns_pin: response.data.ns_pin,
+        ns_type: response.data.ns_type,
+      });
+    } catch (error) {
+      console.error('Error fetching service details:', error);
+      Alert.alert('Error', 'Failed to fetch service details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditToggle = () => {
+    setIsEditing(!isEditing);
+  };
+
+  const handleSaveChanges = async () => {
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Alert.alert('Error', 'Not authenticated. Please login.');
+        navigation.navigate('Login');
+        return;
+      }
+
+      const decodedToken = jwt_decode(token);
+      const currentTime = Date.now() / 1000;
+      if (decodedToken.exp < currentTime) {
+        Alert.alert('Error', 'Session expired. Please login again.');
+        await AsyncStorage.removeItem('authToken');
+        navigation.navigate('Login');
+        return;
+      }
+
+      const formDataToSend = new FormData();
+      formDataToSend.append('ns_name', formData.ns_name);
+      formDataToSend.append('ns_address', formData.ns_address);
+      formDataToSend.append('ns_pin', formData.ns_pin);
+      formDataToSend.append('ns_type', formData.ns_type);
+
+      await axios.put(`${config.address}/api/service/update/${serviceId}`, formDataToSend, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      Alert.alert('Success', 'Service details updated successfully.');
+      setIsEditing(false);
+      fetchServiceDetails();
+    } catch (error) {
+      console.error('Error updating service:', error);
+      Alert.alert('Error', 'Failed to update service details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
-        <ApplicationProvider {...eva} theme={eva.light}>
-        <PaperProvider>
-                <ScrollView style={styles.container}>
-                    <AppBar></AppBar>
-                    <Text style={styles.formHeader}>Edit Nearby Service</Text>
-                    <View style={styles.formContainer}>
-                        <View style={styles.addiconContainer}>
-                        <Image style={styles.addicon} source={require('../../assets/Images/addicon.png')}></Image>
-                        </View>
-                        <View style={styles.info}>
-                        <Text style={styles.label}>Type of Service:</Text>
-                        <Input style={styles.input}/>
-                        <Text style={styles.label}>Name of Establishment/Event:</Text>
-                        <Input style={styles.input}/>
-                        <Text style={styles.label}>Address:</Text>
-                        <Input style={styles.input}/>
-                        <Text style={styles.label}>Contact Information:</Text>
-                        <Input style={styles.input}/>
-                        
-                        <TouchableOpacity style={styles.IDButton} onPress={showModal}>
-                            <Text style={styles.submitButtonText}>Update Nearby Service</Text>
-                        </TouchableOpacity>
-            
-                        </View>
-                    </View>
-                        
-                        <Portal>
-                            <Modal style={styles.mContainer} visible={visible} onDismiss={hideModal} contentContainerStyle={containerStyle}>
-                                <View style={styles.modalcontainer}>
-                                <Text style={styles.successtext}>Nearby Service Updated!</Text>
-                                
-                                <TouchableOpacity style={styles.submitButton2}>
-                                    <Text style={styles.submitButtonText} onPress={handleBack}>Go back</Text>
-                                </TouchableOpacity>
-                                </View>
-                            </Modal>
-                        </Portal>
-                        
-                    
-                </ScrollView>
-            
-        </PaperProvider>
-        </ApplicationProvider>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FF69C4" />
+      </View>
     );
+  }
+
+  return (
+    <ScrollView style={styles.container}>
+      <AppBar />
+      
+      <View style={styles.formContainer}>
+        <Text style={styles.header}>Edit Nearby Service</Text>
+        <Divider style={styles.sectionDivider} />
+
+        {/* Service Name */}
+        <Text style={styles.label}>Service Name:</Text>
+        {isEditing ? (
+          <TextInput
+            style={styles.input}
+            value={formData.ns_name}
+            onChangeText={(text) => setFormData({ ...formData, ns_name: text })}
+          />
+        ) : (
+          <Text style={styles.text}>{formData.ns_name}</Text>
+        )}
+
+        {/* Address */}
+        <Text style={styles.label}>Address:</Text>
+        {isEditing ? (
+          <TextInput
+            style={styles.input}
+            value={formData.ns_address}
+            onChangeText={(text) => setFormData({ ...formData, ns_address: text })}
+          />
+        ) : (
+          <Text style={styles.text}>{formData.ns_address}</Text>
+        )}
+
+        {/* Google Maps Link */}
+        <Text style={styles.label}>Google Maps Link:</Text>
+        {isEditing ? (
+          <TextInput
+            style={styles.input}
+            value={formData.ns_pin}
+            onChangeText={(text) => setFormData({ ...formData, ns_pin: text })}
+          />
+        ) : (
+          <Text style={styles.text}>{formData.ns_pin}</Text>
+        )}
+
+        {/* Service Type */}
+        <Text style={styles.label}>Service Type:</Text>
+        {isEditing ? (
+          <TextInput
+            style={styles.input}
+            value={formData.ns_type}
+            onChangeText={(text) => setFormData({ ...formData, ns_type: text })}
+          />
+        ) : (
+          <Text style={styles.text}>{formData.ns_type}</Text>
+        )}
+
+        {/* Edit/Save Button */}
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={isEditing ? handleSaveChanges : handleEditToggle}
+        >
+          <Text style={styles.editButtonText}>
+            {isEditing ? 'Save Changes' : 'Edit'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
 };
- 
+
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        
-    },
-    containers: {
-        minHeight: 128,
-        alignItems: 'center',
-      },
-      addiconContainer: {
-        alignItems: 'center',
-    },
-    addicon: {
-        marginTop: 20,
-        marginBottom: 10,
-        width: 120,
-        height: 120,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    formContainer: {
-        padding: 5,
-        backgroundColor: '#fff',
-        margin: 15,
-        marginTop: 20,
-        height:600,
-        borderRadius: 5,
-        shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-        shadowOffset: { width: 0, height: 2 },
-        alignItems: 'center',
-        alignContent: 'center',
-        elevation: 5,
-    },
-    radio: {
-        fontFamily: 'Inter_500Medium',
-        marginTop: 5,
-        fonstSize: 15,
-    },
-    gender: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    genderContainer: {
-        width: '114%',
-        flexDirection: 'row',
-    },
-    formHeader: {
-        fontSize: 40,
-        marginTop: 20,
-        width: '100%',
-        color: '#ff69b4',
-        textAlign: 'center',
-        fontFamily: 'Inter_700Bold',
-    },
-    formsubHeader: {
-        fontSize: 27,
-        marginTop: 10,
-        marginBottom: 5,
-        width: '100%',
-        color: '#ff69b4',
-        textAlign: 'left',
-        marginLeft: 35,
-        fontFamily: 'Inter_700Bold',
-    },
-    labelcontainer: {
-        width: '100%',
-        alignItems: 'flex-start',
-        flexDirection: 'row',
-        justifyContent: 'flex-start',
-    },
-    info: {
-      marginTop: 10,
-    },
-    label: {
-        marginTop: 5,
-        fontSize: 15,
-        fontWeight: '600',
-        alignItems: 'flex-start',
-        fontFamily: 'Inter_500Medium',
-    },
-    mlnamelabel: {
-        flexDirection: 'row',
-    },
-    mlabel: {
-        marginTop: 5,
-        fontSize: 15,
-        fontWeight: '600',
-        alignItems: 'flex-start',
-        fontFamily: 'Inter_500Medium',
-    },
-    llabel: {
-        marginTop: 5,
-        fontSize: 15,
-        fontWeight: '600',
-        alignItems: 'flex-start',
-        fontFamily: 'Inter_500Medium',
-        marginLeft: 28,
-    },
-    bdaylabel:{
-        marginTop: 5,
-        fontSize: 15,
-        fontWeight: '600',
-        alignItems: 'flex-start',
-        fontFamily: 'Inter_500Medium',
-        marginLeft: 103,
-    },
-    input: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '90%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 2,
-    },
-    mlname: {
-        width: '106%',
-        flexDirection: 'row',
-    },
-    minput: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '25%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 2,
-    },
-    linput: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '60%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        elevation: 2,
-        paddingLeft: 5,
-    },
-    binput: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '45%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 2,
-    },
-    dateInput: {
-        backgroundColor: '#f5f5f5',
-        padding: 15,
-        marginBottom: 15,
-        borderRadius: 5,
-        fontSize: 16,
-        borderColor: '#ddd',
-        borderWidth: 1,
-        textAlign: 'center',
-    },
-    IDButton: {
-        backgroundColor: '#cad47c',
-        paddingVertical: 15,
-        borderRadius: 5,
-        marginTop: 40,
-    },
-    id: {
-        marginTop: 5,
-        marginBottom: 10,
-        width: '90%',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 2,
-    },
-    submitButton2: {
-        backgroundColor: '#ff69b4',
-        paddingVertical: 15,
-        borderRadius: 5,
-        marginTop: 10,
-        width: '60%',
-        height: 50,
-    },
-    submitButton: {
-        backgroundColor: '#ff69b4',
-        paddingVertical: 15,
-        borderRadius: 5,
-        
-    },
-    submitButtonText: {
-        textAlign: 'center',
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-    label2: {
-        marginTop: 8,
-        marginBottom: 3,
-        fontSize: 15,
-        fontFamily: 'Inter',
-    },
-    successtext:{
-        fontSize: 25,
-        color: '#cad47c',
-        fontFamily: 'Inter_700Bold',
-    },
-    mContainer: {
-        width: '95%',
-        alignContent: 'center',
-        alignItems: 'center',
-        marginLeft: 10,
-    },
-    modalcontainer: {
-        alignItems: 'center',
-        alignContent: 'center'
-    },
-    error: {
-        color: 'red',
-        fontSize: 10,
-        fontFamily: 'Inter',
-        marginBottom: 5,
-      },
+  container: {
+    flex: 1,
+    backgroundColor: '#FAF9F6',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FF69C4',
+    marginBottom: 12,
+  },
+  formContainer: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    margin: 15,
+  },
+  sectionDivider: {
+    marginBottom: 18,
+    backgroundColor: '#eee',
+    height: 1,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  text: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 16,
+    backgroundColor: '#f9f9f9',
+    padding: 10,
+    borderRadius: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 16,
+    fontSize: 16,
+    backgroundColor: '#fff',
+  },
+  editButton: {
+    backgroundColor: '#FF69C4',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
- 
+
 export default EditNearby;

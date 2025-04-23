@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
 import * as React from 'react';
+import { useAuth } from './components/context/AuthContext';
 
 // Importing all components
 import AdminHomepage from './components/admin/AdminHomepage';
@@ -57,15 +58,21 @@ import EventDetails from './components/adopter/EventDetails';
 import Profile from './components/adopter/Profile';
 import MessageShelter from './components/adopter/MessageShelter';
 import AdoptionTracker from './components/adopter/AdoptionTracker';
+import ForgetPassword from './components/adopter/ForgetPassword';
+import EditNearby from './components/admin/EditNearby';
+import FeedbackForm from './components/adopter/FeedbackForm';
+
 
 export default function App() {
   const Stack = createNativeStackNavigator();
 
   return (
+    
     <NavigationContainer>
       <Stack.Navigator initialRouteName='Login'>
 
         <Stack.Screen name='Login' component={LogIn} options={{ headerShown: false }} />
+        <Stack.Screen name='Forget Password' component={ForgetPassword} options={{ headerShown: false }} />
         {/* Super Admin Pages */}
         <Stack.Screen name='Admin Page' component={AdminPage} options={{ headerShown: false }} />
         <Stack.Screen name='Admin Homepage' component={AdminHomepage} options={{ headerShown: false }} />
@@ -84,6 +91,7 @@ export default function App() {
         <Stack.Screen name='Feedback' component={Feedbacks} options={{ headerShown: false }} />
         <Stack.Screen name='Admin Logs' component={AdminLogs} options={{ headerShown: false }} />
         <Stack.Screen name='Manage Nearby Services' component={ManageNearby} options={{ headerShown: false }} />
+        <Stack.Screen name='Edit Nearby' component={EditNearby} options={{ headerShown: false }} />
         
         <Stack.Screen name='Manage User' component={ManageUser} options={{ headerShown: false }} />
         <Stack.Screen name='Verified Users' component={VerifiedUsers} options={{ headerShown: false }} />
@@ -123,8 +131,8 @@ export default function App() {
         <Stack.Screen name='User Nearby Services' component={UserNearby} options={{ headerShown: false }} />
         <Stack.Screen name='Account' component={Account} options={{ headerShown: false }} />
         <Stack.Screen name='My Profile' component={Profile} options={{ headerShown: false }} />
-        <Stack.Screen name='MyAdoptions' component={MyAdoptions} options={{ headerShown: false }} />
-        <Stack.Screen name='Adoption Tracker' component={AdoptionTracker} options={{ headerShown: false }} />
+        <Stack.Screen name='Adoption Tracker' component={MyAdoptions} options={{ headerShown: false }} />
+        <Stack.Screen name='View Adoption' component={AdoptionTracker} options={{ headerShown: false }} />
 
         {/* ADOPTER SUB-MODULES */}
         <Stack.Screen name='Data Privacy' component={DataPrivacy} options={{ headerShown: false }} />
@@ -134,7 +142,9 @@ export default function App() {
         <Stack.Screen name='Message Shelter' component={MessageShelter} options={{ headerShown: false }} />
         <Stack.Screen name='User Notif' component={UserNotif} options={{ headerShown: false }} />
         <Stack.Screen name='Adoption Form' component={AdoptionForm} options={{ headerShown: false }} />
+        <Stack.Screen name='Submit Feedback' component={FeedbackForm} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
+    
   );
 }

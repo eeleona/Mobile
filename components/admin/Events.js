@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, Image, FlatList, Text, RefreshControl } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Image, FlatList, Text, RefreshControl, TextInput } from 'react-native';
 import { PaperProvider, Card, Title, Paragraph, ActivityIndicator, FAB } from 'react-native-paper';
 import axios from 'axios';
 import config from '../../server/config/config';
@@ -10,6 +10,8 @@ import AppBar from '../design/AppBar';
 
 const Events = ({ navigation }) => {
     const [allEvents, setAllEvents] = useState([]);
+    const [filteredEvents, setFilteredEvents] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -17,6 +19,7 @@ const Events = ({ navigation }) => {
         try {
             const response = await axios.get(`${config.address}/api/events/all`);
             setAllEvents(response.data.theEvent);
+            setFilteredEvents(response.data.theEvent);
         } catch (err) {
             console.error('Error fetching events:', err);
         } finally {
@@ -34,6 +37,18 @@ const Events = ({ navigation }) => {
         fetchEvents();
     }, []);
 
+    useEffect(() => {
+        if (searchQuery.trim() === '') {
+            setFilteredEvents(allEvents);
+        } else {
+            const filtered = allEvents.filter(event => 
+                event.e_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                event.e_location.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+            setFilteredEvents(filtered);
+        }
+    }, [searchQuery, allEvents]);
+
     const renderEventItem = ({ item }) => (
         <Card style={styles.card}>
             <TouchableOpacity onPress={() => navigation.navigate('View Event', { event: item })}>
@@ -46,11 +61,11 @@ const Events = ({ navigation }) => {
                     <View style={styles.eventDetails}>
                         <Title style={styles.eventTitle}>{item.e_title}</Title>
                         <View style={styles.locationContainer}>
-                            <MaterialIcons name="location-on" size={16} color="#666" />
+                            <MaterialIcons name="location-on" size={18} color="#ff69b4" />
                             <Paragraph style={styles.eventLocation}>{item.e_location}</Paragraph>
                         </View>
                         <View style={styles.dateContainer}>
-                            <MaterialIcons name="date-range" size={16} color="#666" />
+                            <MaterialIcons name="date-range" size={18} color="#ff69b4" />
                             <Paragraph style={styles.eventDate}>
                                 {format(new Date(item.e_date), 'MMM dd, yyyy - hh:mm a')}
                             </Paragraph>
@@ -82,8 +97,30 @@ const Events = ({ navigation }) => {
             <View style={styles.container}>
                 <AppBar />
 
+                {/* Search Bar - Updated design */}
+                <View style={styles.searchContainer}>
+                    <View style={styles.searchInnerContainer}>
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search events by name or location..."
+                            placeholderTextColor="#999"
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
+                        <View style={styles.searchIconContainer}>
+                            {searchQuery !== '' ? (
+                                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                    <MaterialIcons name="close" size={24} color="#ff69b4" />
+                                </TouchableOpacity>
+                            ) : (
+                                <MaterialIcons name="search" size={24} color="#ff69b4" />
+                            )}
+                        </View>
+                    </View>
+                </View>
+
                 <FlatList
-                    data={allEvents}
+                    data={filteredEvents}
                     renderItem={renderEventItem}
                     keyExtractor={(item) => item._id}
                     contentContainerStyle={styles.listContent}
@@ -97,8 +134,15 @@ const Events = ({ navigation }) => {
                     }
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <MaterialIcons name="event-busy" size={50} color="#ccc" />
-                            <Text style={styles.emptyText}>No events available</Text>
+                            <Image 
+                                source={require('../../assets/Images/pawicon2.png')} 
+                                style={styles.emptyIcon}
+                            />
+                            <Text style={styles.emptyText}>
+                                {searchQuery.trim() === '' 
+                                    ? 'No events available' 
+                                    : 'No events match your search'}
+                            </Text>
                         </View>
                     }
                 />
@@ -117,13 +161,13 @@ const Events = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FAF9F6',
+        backgroundColor: '#F6F6F6',
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F6F6F6',
     },
     loadingIndicator: {
         marginBottom: 16,
@@ -134,53 +178,59 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     listContent: {
-        padding: 16,
-        paddingBottom: 32,
+        padding: 10,
+        paddingBottom: 20,
     },
     card: {
-        marginBottom: 16,
-        borderRadius: 12,
+        marginBottom: 15,
+        borderRadius: 10,
         overflow: 'hidden',
-        backgroundColor: 'white', // Explicit white background
+        backgroundColor: '#fff',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        marginHorizontal: 8,
     },
     cardContent: {
         flexDirection: 'row',
-        height: 120, // Fixed height for all cards
+        height: 140, // Increased height
     },
     eventImage: {
-        width: 120,
-        height: '100%', // Will now fill the card height
+        width: 140, // Increased width to match height
+        height: '100%',
     },
     eventDetails: {
         flex: 1,
-        padding: 16,
-        justifyContent: 'center', // Vertically center content
+        padding: 15,
+        justifyContent: 'center',
     },
     eventTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        marginBottom: 8,
-        color: '#333',
+        marginBottom: 10,
+        color: '#2a2a2a',
     },
     locationContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 6,
+        marginBottom: 8,
     },
     eventLocation: {
         fontSize: 14,
-        color: '#666',
-        marginLeft: 4,
+        color: 'gray',
+        marginLeft: 6,
     },
     dateContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 8,
     },
     eventDate: {
         fontSize: 14,
-        color: '#666',
-        marginLeft: 4,
+        color: 'gray',
+        marginLeft: 6,
     },
     emptyContainer: {
         flex: 1,
@@ -188,10 +238,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 40,
     },
+    emptyIcon: {
+        width: 80,
+        height: 80,
+        
+        marginBottom: 20,
+    },
     emptyText: {
         fontSize: 16,
-        color: '#999',
-        marginTop: 16,
+        color: 'gray',
         textAlign: 'center',
     },
     fab: {
@@ -199,7 +254,40 @@ const styles = StyleSheet.create({
         margin: 20,
         right: 10,
         bottom: 10,
-        backgroundColor: '#a6cb7e',
+        backgroundColor: '#ff69b4',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+    },
+    // Search bar styles
+    searchContainer: {
+        backgroundColor: '#F6F6F6',
+        padding: 15,
+        paddingBottom: 10,
+    },
+    searchInnerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        paddingHorizontal: 15,
+        height: 50, // Increased height
+        borderRadius: 10,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 16,
+        color: '#2a2a2a',
+        height: '100%',
+    },
+    searchIconContainer: {
+        marginLeft: 10,
     },
 });
 

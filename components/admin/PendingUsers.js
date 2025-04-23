@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import {
+  View, Text, Image, StyleSheet, FlatList, TouchableOpacity,
+  RefreshControl, TextInput
+} from 'react-native';
 import axios from 'axios';
 import { PaperProvider, ActivityIndicator } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import config from '../../server/config/config';
-import AppBar from '../design/AppBar';
+import { MaterialIcons } from '@expo/vector-icons'; // Add this to your imports
+
 
 const PendingUsers = () => {
   const [pendingUsers, setPendingUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
@@ -15,7 +21,9 @@ const PendingUsers = () => {
   const fetchPendingUsers = async () => {
     try {
       const response = await axios.get(`${config.address}/api/user/all`);
-      setPendingUsers(response.data.users.filter(user => user.p_role === 'pending'));
+      const pending = response.data.users.filter(user => user.p_role === 'pending');
+      setPendingUsers(pending);
+      setFilteredUsers(pending);
     } catch (error) {
       console.error('Error fetching pending users:', error);
     } finally {
@@ -24,18 +32,27 @@ const PendingUsers = () => {
     }
   };
 
+  useEffect(() => {
+    fetchPendingUsers();
+  }, []);
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchPendingUsers();
   };
 
-  useEffect(() => {
-    fetchPendingUsers();
-  }, []);
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+    const query = text.toLowerCase();
+    const filtered = pendingUsers.filter(user =>
+      `${user.p_fname} ${user.p_mname} ${user.p_lname}`.toLowerCase().includes(query)
+    );
+    setFilteredUsers(filtered);
+  };
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
-      style={styles.userContainer}
+      style={[styles.userContainer, styles.pendingBorder]}
       onPress={() => navigation.navigate('View Pending User', { user: item })}
     >
       <Image
@@ -53,6 +70,9 @@ const PendingUsers = () => {
             Address: {item.p_add}
           </Text>
         </View>
+        <View style={styles.pendingBadge}>
+          <Text style={styles.pendingText}>PENDING</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -61,9 +81,9 @@ const PendingUsers = () => {
     return (
       <PaperProvider>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator 
-            animating={true} 
-            size="large" 
+          <ActivityIndicator
+            animating={true}
+            size="large"
             color="#ff69b4"
             style={styles.loadingIndicator}
           />
@@ -76,8 +96,25 @@ const PendingUsers = () => {
   return (
     <PaperProvider>
       <View style={styles.container}>
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchBar}
+          placeholder="Search"
+          placeholderTextColor="#aaa"
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+        <MaterialIcons
+          name="search"
+          size={24}
+          color="#ff69b4"
+          style={styles.searchIcon}
+        />
+      </View>
+
+
         <FlatList
-          data={pendingUsers}
+          data={filteredUsers}
           renderItem={renderItem}
           keyExtractor={(item) => item._id || Math.random().toString()}
           contentContainerStyle={styles.listContainer}
@@ -114,7 +151,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#FAF9F6',
   },
   loadingIndicator: {
     marginBottom: 16,
@@ -124,13 +161,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 15,
+    borderRadius: 10,
+    borderColor: '#eee',
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  searchBar: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+    color: '#333',
+  },
+  
+  searchIcon: {
+    marginLeft: 8,
+  },
+  
   userContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
     padding: 15,
     borderRadius: 12,
-    marginVertical: 6,
+    marginBottom: 10,
     marginHorizontal: 16,
     elevation: 2,
     shadowColor: '#000',
@@ -138,13 +202,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
   },
+  pendingBorder: {
+    borderLeftWidth: 6,
+    borderLeftColor: '#ffe261',
+  },
   userThumbnail: {
     width: 70,
     height: 70,
     borderRadius: 35,
     marginRight: 15,
     borderWidth: 2,
-    borderColor: '#ff69b4',
+    borderColor: '#ffe261',
   },
   userInfo: {
     flex: 1,
@@ -163,20 +231,33 @@ const styles = StyleSheet.create({
     color: '#666',
     marginVertical: 2,
   },
+  pendingBadge: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    backgroundColor: '#FFFACD',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  pendingText: {
+    color: '#FF8C00',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   listContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 10,
   },
   emptyContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 60,
   },
   pawIcon: {
     width: 80,
     height: 80,
-    opacity: 0.3,
     marginBottom: 15,
   },
   emptyText: {

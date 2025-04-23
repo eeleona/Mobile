@@ -8,13 +8,18 @@ import {
   Image, 
   TouchableOpacity, 
   ScrollView, 
-  FlatList 
+  FlatList,
+  RefreshControl,
+  StatusBar
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
 import axios from 'axios';
 import config from '../../server/config/config';
 import { MaterialIcons } from '@expo/vector-icons';
+import { PaperProvider, ActivityIndicator } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import jwt_decode from 'jwt-decode';
 
 const UserHomepage = ({ navigation }) => {
   const [fontsLoaded] = useFonts({
@@ -29,15 +34,15 @@ const UserHomepage = ({ navigation }) => {
     events: true,
     services: true
   });
+  const [refreshing, setRefreshing] = useState(false);
+  const [username, setUsername] = useState('');
 
   const fetchRandomPets = async () => {
     try {
       const response = await axios.get(`${config.address}/api/pet/all`);
-  
       const petsArray = response.data?.thePet || [];
       const petsWithImages = petsArray.filter(pet => pet.pet_img?.[0]);
       const shuffled = [...petsWithImages].sort(() => 0.5 - Math.random());
-  
       setPets(shuffled.slice(0, 3));
       setLoading(prev => ({ ...prev, pets: false }));
     } catch (error) {
@@ -46,16 +51,11 @@ const UserHomepage = ({ navigation }) => {
       setLoading(prev => ({ ...prev, pets: false }));
     }
   };
-  
 
   const fetchRandomEvents = async () => {
     try {
       const response = await axios.get(`${config.address}/api/events/all`);
-      
-      // Check if response.data.theEvent exists and is an array
       const eventsArray = response.data?.theEvent || [];
-      
-      // Filter out events without images and shuffle
       const eventsWithImages = eventsArray.filter(event => event.e_image);
       const shuffled = [...eventsWithImages].sort(() => 0.5 - Math.random());
       setEvents(shuffled.slice(0, 3));
@@ -70,14 +70,9 @@ const UserHomepage = ({ navigation }) => {
   const fetchRandomServices = async () => {
     try {
       const response = await axios.get(`${config.address}/api/service/all`);
-      
-      // Change from response.data?.theService to just response.data
       const servicesArray = Array.isArray(response.data) ? response.data : [];
-      
-      // Change from service.service_image to item.ns_image
       const servicesWithImages = servicesArray.filter(service => service.ns_image);
       const shuffled = [...servicesWithImages].sort(() => 0.5 - Math.random());
-      
       setServices(shuffled.slice(0, 3));
       setLoading(prev => ({ ...prev, services: false }));
     } catch (error) {
@@ -86,300 +81,294 @@ const UserHomepage = ({ navigation }) => {
       setLoading(prev => ({ ...prev, services: false }));
     }
   };
-  
+
+  const fetchUsername = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        const decoded = jwt_decode(token);
+        setUsername(decoded.username || 'User');
+      }
+    } catch (error) {
+      console.error('Error fetching username:', error);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchRandomPets();
+    fetchRandomEvents();
+    fetchRandomServices();
+    fetchUsername();
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     fetchRandomPets();
     fetchRandomEvents();
     fetchRandomServices();
+    fetchUsername();
   }, []);
 
   if (!fontsLoaded) return null;
 
   const renderPetItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.eventCard}  // Match card style
-      onPress={() => navigation.navigate('Pet Details', { petId: item._id })}
-    >
-      <Image 
-        source={{ uri: `${config.address}${item.pet_img[0]}` }} 
-        style={styles.eventImage} // Match image style
-      />
-      <View style={styles.eventInfo}>
-        <Text style={styles.eventTitle}>{item.p_name}</Text>
-        <Text style={styles.eventDate}>{item.p_breed}</Text>
-      </View>
-    </TouchableOpacity>
+    <View style={[styles.cardContainer, styles.shadowContainer]}>
+      <TouchableOpacity 
+        style={styles.card}
+        onPress={() => navigation.navigate('Adopt The Pet', { pet: item })}
+      >
+        <Image 
+          source={{ uri: `${config.address}${item.pet_img[0]}` }} 
+          style={styles.cardImage}
+        />
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardTitle}>{item.p_name}</Text>
+          <Text style={styles.cardSubtitle}>{item.p_breed}</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
   );
-  
 
   const renderEventItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.eventCard}
-      onPress={() => navigation.navigate('Event Details', { eventId: item._id })}
-    >
-      <Image 
-        source={{ uri: `${config.address}${item.e_image}` }}
-        style={styles.eventImage}
-        onError={(e) => console.log('Failed to load event image:', e.nativeEvent.error)}
-      />
-      <View style={styles.eventInfo}>
-        <Text style={styles.eventTitle}>{item.e_title}</Text>
-        <Text style={styles.eventDate}>{new Date(item.e_date).toLocaleDateString()}</Text>
-      </View>
-    </TouchableOpacity>
+    <View style={[styles.cardContainer, styles.shadowContainer]}>
+      <TouchableOpacity 
+        style={styles.card}
+        onPress={() => navigation.navigate('Event Details', { event: item })}
+      >
+        <Image 
+          source={{ uri: `${config.address}${item.e_image}` }}
+          style={styles.cardImage}
+          onError={(e) => console.log('Failed to load event image:', e.nativeEvent.error)}
+        />
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardTitle}>{item.e_title}</Text>
+          <Text style={styles.cardSubtitle}>{new Date(item.e_date).toLocaleDateString()}</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
   );
 
   const renderServiceItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.eventCard}
-      onPress={() => navigation.navigate('User Nearby', { serviceId: item._id })}
-    >
-      <Image 
-        source={{ uri: `${config.address}${item.ns_image}` }} 
-        style={styles.eventImage}
-      />
-      <View style={styles.eventInfo}>
-        <Text style={styles.eventTitle}>{item.ns_name}</Text>
-        <Text style={styles.eventDate}>{item.ns_type}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-  
-
-  return (
-    <ScrollView style={styles.container}>
-      {/* HEADER SECTION */}
-      
-      <LinearGradient
-        colors={['#FF66C4', '#FF8E53']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.header}
-      >
-        {/* Search Bar */}
-              <View style={styles.searchContainer}>
-                <Image 
-                  source={require('../../assets/Images/nobglogo.png')} 
-                  style={styles.logo} 
-                  accessibilityLabel="App logo"
-                />
-                <View style={styles.searchBox}>
-                  <MaterialIcons 
-                    name="search" 
-                    size={20} 
-                    color="#ff69b4" 
-                    style={styles.searchIcon} 
-                    accessibilityRole="imagebutton"
-                  />
-                  <TextInput 
-                    placeholder="Search..." 
-                    placeholderTextColor="#ff69b4" 
-                    style={styles.input}
-                    accessibilityLabel="Search input"
-                  />
-                </View>
-              </View>
-        <Text style={styles.headerTitle}>Find your perfect companion with E-Pet Adopt</Text>
-        <Text style={styles.headerSubtitle}>Adopt, Connect, and Discover</Text>
-      </LinearGradient>
-      {/* MAIN BUTTONS SECTION */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity 
-          style={styles.mainButton}
-          onPress={() => navigation.navigate('Adopt A Pet')}
-        >
-          <Image 
-            source={require('../../assets/Images/userpet.png')} 
-            style={styles.buttonImage}
-          />
-          <Text style={styles.mainButtonText}>Adopt A Pet</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.mainButton}
-          onPress={() => navigation.navigate('User Events')}
-        >
-          <Image 
-            source={require('../../assets/Images/userevent.png')} 
-            style={styles.buttonImage}
-          />
-          <Text style={styles.mainButtonText}>View Events</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.mainButton}
-          onPress={() => navigation.navigate('User Nearby Services')}
-        >
-          <Image 
-            source={require('../../assets/Images/usernearby.png')} 
-            style={styles.buttonImage}
-          />
-          <Text style={styles.mainButtonText}>Nearby Services</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ADOPT A PET CAROUSEL */}
-      <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Pets to Adopt</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Adopt A Pet')}>
-            <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
-        </View>
-        {loading.pets ? (
-          <Text style={styles.loadingText}>Loading pets...</Text>
-        ) : pets.length > 0 ? (
-          <FlatList
-            horizontal
-            data={pets}
-            renderItem={renderPetItem}
-            keyExtractor={item => item._id}
-            contentContainerStyle={styles.listContainer}
-            showsHorizontalScrollIndicator={false}
-          />
-        ) : (
-          <Text style={styles.loadingText}>No pets available</Text>
-        )}
-      </View>
-      <View style={[styles.section, styles.whyAdoptSection]}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: '#fff' }]}>Why Adopt?</Text>
-          
-        </View>
-        <Image 
-          source={require('../../assets/Images/catdog.jpg')} 
-          style={styles.whyAdoptImage}
-        />
-        <Text style={styles.whyAdoptText}>
-          By adopting, you're opening your heart and home to a wonderful pet who's ready to shower you with love. Each adoption creates space for more animals to be rescued, giving you the chance to make a meaningful difference.
-        </Text>
-      </View>
+    <View style={[styles.cardContainer, styles.shadowContainer]}>
       <TouchableOpacity 
-        style={styles.aboutContainer}
-        onPress={() => navigation.navigate('About Us')}
+        style={styles.card}
+        onPress={() => navigation.navigate('User Nearby Services', { service: item })}
       >
         <Image 
-          source={require('../../assets/Images/nobglogo.png')} 
-          style={styles.aboutLogo} 
+          source={{ uri: `${config.address}${item.ns_image}` }} 
+          style={styles.cardImage}
         />
-        <View style={styles.aboutTextContainer}>
-          <Text style={styles.aboutTitle}>Know more about us</Text>
-          <Text style={styles.aboutDetails}>📞 (02) 1234 5678</Text>
-          <Text style={styles.aboutDetails}>📍 Pasay City Animal Shelter</Text>
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardTitle}>{item.ns_name}</Text>
+          <Text style={styles.cardSubtitle}>{item.ns_type}</Text>
         </View>
       </TouchableOpacity>
+    </View>
+  );
 
+  return (
+    <PaperProvider>
+      <View style={styles.container}>
+        <StatusBar barStyle="default" />
+        {/* Fixed Header Section */}
+        <LinearGradient
+          colors={['#FF66C4', '#FF8E53']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <Image 
+              source={require('../../assets/Images/nobglogo.png')} 
+              style={styles.logo} 
+            />
+            <Text style={styles.greeting}>Hello, {username}</Text>
+          </View>
+          <Text style={styles.headerTitle}>Find your perfect companion with E-Pet Adopt</Text>
+          <Text style={styles.headerSubtitle}>Adopt, Connect, and Discover</Text>
+        </LinearGradient>
 
+        {/* Scrollable Content */}
+        <ScrollView 
+          style={styles.scrollContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#ff69b4']}
+              tintColor="#ff69b4"
+            />
+          }
+        >
+          {/* Main Buttons Section */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={[styles.mainButton, styles.shadowContainer]}
+              onPress={() => navigation.navigate('Adopt A Pet')}
+            >
+              <Image 
+                source={require('../../assets/Images/userpet.png')} 
+                style={styles.buttonImage}
+              />
+              <Text style={styles.mainButtonText}>Adopt A Pet</Text>
+            </TouchableOpacity>
 
-      {/* EVENTS CAROUSEL */}
-      <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Upcoming Events</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('User Events')}>
-            <Text style={styles.seeAll}>See All</Text>
+            <TouchableOpacity 
+              style={[styles.mainButton, styles.shadowContainer]}
+              onPress={() => navigation.navigate('User Events')}
+            >
+              <Image 
+                source={require('../../assets/Images/userevent.png')} 
+                style={styles.buttonImage}
+              />
+              <Text style={styles.mainButtonText}>View Events</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.mainButton, styles.shadowContainer]}
+              onPress={() => navigation.navigate('User Nearby Services')}
+            >
+              <Image 
+                source={require('../../assets/Images/usernearby.png')} 
+                style={styles.buttonImage}
+              />
+              <Text style={styles.mainButtonText}>Nearby Services</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ADOPT A PET CAROUSEL */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Pets to Adopt</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Adopt A Pet')}>
+                <Text style={styles.seeAll}>See All</Text>
+              </TouchableOpacity>
+            </View>
+            {loading.pets ? (
+              <ActivityIndicator size="large" color="#ff69b4" />
+            ) : pets.length > 0 ? (
+              <FlatList
+                horizontal
+                data={pets}
+                renderItem={renderPetItem}
+                keyExtractor={item => item._id}
+                contentContainerStyle={styles.listContainer}
+                showsHorizontalScrollIndicator={false}
+              />
+            ) : (
+              <Text style={styles.loadingText}>No pets available</Text>
+            )}
+          </View>
+
+          {/* Why Adopt Section */}
+          <View style={[styles.section, styles.whyAdoptSection]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: '#fff' }]}>Why Adopt?</Text>
+            </View>
+            <Image 
+              source={require('../../assets/Images/catdog.jpg')} 
+              style={styles.whyAdoptImage}
+            />
+            <Text style={styles.whyAdoptText}>
+              By adopting, you're opening your heart and home to a wonderful pet who's ready to shower you with love. Each adoption creates space for more animals to be rescued, giving you the chance to make a meaningful difference.
+            </Text>
+          </View>
+
+          {/* About Us Section */}
+          <TouchableOpacity 
+            style={[styles.aboutContainer, styles.shadowContainer]}
+            onPress={() => navigation.navigate('About Us')}
+          >
+            <Image 
+              source={require('../../assets/Images/nobglogo.png')} 
+              style={styles.aboutLogo} 
+            />
+            <View style={styles.aboutTextContainer}>
+              <Text style={styles.aboutTitle}>Know more about us</Text>
+              <Text style={styles.aboutDetails}>📞 (02) 1234 5678</Text>
+              <Text style={styles.aboutDetails}>📍 Pasay City Animal Shelter</Text>
+            </View>
           </TouchableOpacity>
-        </View>
-        
-        {loading.events ? (
-          <Text style={styles.loadingText}>Loading events...</Text>
-        ) : events.length > 0 ? (
-          <FlatList
-            horizontal
-            data={events}
-            renderItem={renderEventItem}
-            keyExtractor={item => item._id}
-            contentContainerStyle={styles.listContainer}
-            showsHorizontalScrollIndicator={false}
-          />
-        ) : (
-          <Text style={styles.loadingText}>No events available</Text>
-        )}
-      </View>
 
-      {/* SERVICES CAROUSEL */}
-      <View style={styles.sectionNearby}>
-      <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Nearby Services</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('User Nearby')}>
-            <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
-        </View>
-        {loading.services ? (
-          <Text style={styles.loadingText}>Loading services...</Text>
-        ) : services.length > 0 ? (
-          <FlatList
-            horizontal
-            data={services}
-            renderItem={renderServiceItem}
-            keyExtractor={item => item._id}
-            contentContainerStyle={styles.listContainer}
-            showsHorizontalScrollIndicator={false}
-          />
-        ) : (
-          <Text style={styles.loadingText}>No services available</Text>
-        )}
-      </View>
+          {/* EVENTS CAROUSEL */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Upcoming Events</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('User Events')}>
+                <Text style={styles.seeAll}>See All</Text>
+              </TouchableOpacity>
+            </View>
+            {loading.events ? (
+              <ActivityIndicator size="large" color="#ff69b4" />
+            ) : events.length > 0 ? (
+              <FlatList
+                horizontal
+                data={events}
+                renderItem={renderEventItem}
+                keyExtractor={item => item._id}
+                contentContainerStyle={styles.listContainer}
+                showsHorizontalScrollIndicator={false}
+              />
+            ) : (
+              <Text style={styles.loadingText}>No events available</Text>
+            )}
+          </View>
 
-      {/* WHY ADOPT SECTION */}
-    </ScrollView>
+          {/* SERVICES CAROUSEL */}
+          <View style={styles.sectionNearby}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Nearby Services</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('User Nearby Services')}>
+                <Text style={styles.seeAll}>See All</Text>
+              </TouchableOpacity>
+            </View>
+            {loading.services ? (
+              <ActivityIndicator size="large" color="#ff69b4" />
+            ) : services.length > 0 ? (
+              <FlatList
+                horizontal
+                data={services}
+                renderItem={renderServiceItem}
+                keyExtractor={item => item._id}
+                contentContainerStyle={styles.listContainer}
+                showsHorizontalScrollIndicator={false}
+              />
+            ) : (
+              <Text style={styles.loadingText}>No services available</Text>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    </PaperProvider>
   );
 };
-
-// ... (keep your existing styles unchanged)
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAF9F6',
   },
-  searchContainer: {
-    position: 'absolute',
-    top: 40,
-    left: 10,
-    right: 10,
+  header: {
+    padding: 25,
+    paddingTop: 15,
+    paddingBottom: 50,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 30,
-    paddingVertical: 5,
-    paddingHorizontal: 15,
-    elevation: 3,
-    zIndex: 10,
-    marginVertical: 5,
+    marginBottom: 15,
   },
   logo: {
     width: 60,
     height: 60,
     resizeMode: 'contain',
-    marginRight: 10,
+    marginRight: 15,
   },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ff69b4',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    backgroundColor: 'white',
-  },
-  searchIcon: {
-    marginRight: 5,
-  },
-  input: {
-    flex: 1,
-    height: 40,
-    fontSize: 14,
-    color: '#ff69b4',
-  },
-  header: {
-    padding: 25,
-    paddingTop: 140,
-    paddingBottom: 30,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    marginBottom: 25,
+  greeting: {
+    fontSize: 20,
+    fontFamily: 'Inter_700Bold',
+    color: 'white',
   },
   headerTitle: {
     fontSize: 24,
@@ -392,39 +381,72 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     color: 'white',
     opacity: 0.9,
-    marginTop: 18,
+  },
+  scrollContainer: {
+    flex: 1,
+    marginTop: -20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor: '#FAF9F6',
+    paddingTop: 30,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 10,
+    paddingHorizontal: 20,
     marginBottom: 25,
   },
   mainButton: {
     alignItems: 'center',
-    width: '32%',
-    padding: 15,
+    width: '30%',
+    padding: 10,
     borderRadius: 10,
     backgroundColor: 'white',
-    elevation: 3,
+  },
+  buttonImage: {
+    width: 60,
+    height: 60,
+    marginBottom: 10,
+  },
+  mainButtonText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: '#2a2a2a',
+    textAlign: 'center',
+  },
+  section: {
+    marginBottom: 30,
+    paddingHorizontal: 20,
+  },
+  sectionNearby: {
+    marginBottom: 140,
+    paddingHorizontal: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    width: '100%',
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter_700Bold',
+    color: '#2a2a2a',
+  },
+  seeAll: {
+    fontFamily: 'Inter_500Medium',
+    color: '#FF66C4',
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
   aboutContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderWidth: 2,
     borderRadius: 14,
-    borderColor: '#ff69b4',
     padding: 14,
     marginHorizontal: 20,
     marginBottom: 30,
-    elevation: 3,
   },
   aboutLogo: {
     width: 60,
@@ -446,68 +468,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#444',
   },
-  
-  seeAll: {
-    fontFamily: 'Inter_500Medium',
-    color: '#FF66C4',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  buttonImage: {
-    width: 80,
-    height: 80,
-    marginBottom: 10,
-  },
-  mainButtonText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 15,
-    color: '#2a2a2a',
-    textAlign: 'center',
-  },
-  section: {
-    marginBottom: 30,
-    paddingHorizontal: 20,
-  },
-
-  sectionNearby: {
-    marginBottom: 110,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter_700Bold',
-    color: '#2a2a2a',
-    marginBottom: 15,
-  },
-  listContainer: {
-    paddingRight: 20,
-  },
-  petCard: {
-    width: 150,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 10,
-    marginRight: 15,
-    elevation: 2,
-  },
-  petImage: {
-    width: '100%',
-    height: 120,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  petName: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 16,
-    color: '#2a2a2a',
-  },
-  petBreed: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 14,
-    color: '#666',
-  },
   whyAdoptSection: {
-    backgroundColor: '#ff69b4', // Changed to pink background
+    backgroundColor: '#ff69b4',
     paddingVertical: 25,
     paddingHorizontal: 20,
     marginHorizontal: 15,
@@ -517,7 +479,7 @@ const styles = StyleSheet.create({
   whyAdoptText: {
     fontFamily: 'Inter_500Medium',
     fontSize: 16,
-    color: '#fff', // Changed text color to white for better contrast
+    color: '#fff',
     lineHeight: 24,
     textAlign: 'center',
     marginTop: 10,
@@ -528,61 +490,51 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 15,
   },
-  eventCard: {
+  cardContainer: {
     width: 200,
+    marginRight: 15,
+    marginBottom: 15,
+    overflow: 'visible',
+  },
+  shadowContainer: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  card: {
+    width: '100%',
     backgroundColor: 'white',
     borderRadius: 10,
     overflow: 'hidden',
-    marginRight: 15,
-    elevation: 2,
+    height: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  eventImage: {
+  cardImage: {
     width: '100%',
     height: 120,
   },
-  eventInfo: {
+  cardInfo: {
     padding: 10,
   },
-  eventTitle: {
+  cardTitle: {
     fontFamily: 'Inter_700Bold',
     fontSize: 16,
     color: '#2a2a2a',
     marginBottom: 5,
   },
-  eventDate: {
+  cardSubtitle: {
     fontFamily: 'Inter_500Medium',
     fontSize: 14,
     color: '#666',
   },
-  serviceItem: {
-    width: 200,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 10,
-    marginRight: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    elevation: 2,
-  },
-  serviceImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 10,
-  },
-  serviceInfo: {
-    flex: 1,
-  },
-  serviceName: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 16,
-    color: '#2a2a2a',
-    marginBottom: 3,
-  },
-  serviceLocation: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 14,
-    color: '#666',
+  listContainer: {
+    paddingRight: 20,
   },
   loadingText: {
     fontFamily: 'Inter_500Medium',

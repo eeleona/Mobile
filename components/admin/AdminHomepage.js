@@ -44,7 +44,7 @@ const AdminHomepage = ({ navigation }) => {
     { name: 'Pending Users', action: handlePendingUsers },
     { name: 'Verified Users', action: handleVerifiedUsers },
     { name: 'Staff', action: handleStaff },
-    { name: 'Admin', action: () => {} }, // Add appropriate navigation if needed
+    { name: 'Admin', action: () => { navigation.navigate('Manage Staff') } }, // Add appropriate navigation if needed
     { name: 'Admin Logs', action: handleAdminlogs },
   ];
 
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     position: 'absolute',
-    top: 40,
+    top: 10,
     left: 10,
     right: 10,
     flexDirection: 'row',
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderColor: '#ff69b4',
-    borderRadius: 20,
+    borderRadius: 15,
     paddingHorizontal: 10,
     backgroundColor: 'white',
   },
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     fontSize: 14,
-    color: '#ff69b4',
+    color: 'black',
   },
   searchResultsContainer: {
     position: 'absolute',
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
   },
   welcomecontainer: {
     marginLeft: 1,
-    marginTop: 130,
+    marginTop: 100,
     flexDirection: 'row',
     alignItems: 'center',
     height: 60,
@@ -450,6 +450,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     width: 80,
     height: 80,
+  },
+  welcome1: {
+    fontFamily: 'Inter_700Bold',
+    color: 'black',
+    fontSize: 25,
+  },
+  welcome2: {
+    fontFamily: 'Inter_700Bold',
+    color: '#ff69b4',
+    fontSize: 25,
   },
   welcome: {
     fontFamily: 'Inter_700Bold',
@@ -513,7 +523,12 @@ const styles = StyleSheet.create({
     height: 80,
     backgroundColor: 'white',
     elevation: 2,
-    borderRadius: 8
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   iconcontainer: {
     alignItems: 'center', // Center horizontally

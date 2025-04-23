@@ -6,27 +6,23 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
-  ScrollView,
   Animated,
   Dimensions,
   RefreshControl,
   ImageBackground,
+  TextInput,
+  Alert,
 } from 'react-native';
 import axios from 'axios';
-import {
-  TextInput,
-  PaperProvider,
-  ActivityIndicator,
-} from 'react-native-paper';
+import { PaperProvider, ActivityIndicator } from 'react-native-paper';
 import AppBar from '../design/AppBar';
 import config from '../../server/config/config';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
-
 const CARD_MARGIN = 10;
-const CARD_WIDTH = (width - CARD_MARGIN * 3) / 2; // 2 columns with margin
+const CARD_WIDTH = (width - CARD_MARGIN * 3) / 2;
 
 const AdoptAPet = ({ navigation }) => {
   const [pets, setPets] = useState([]);
@@ -41,13 +37,14 @@ const AdoptAPet = ({ navigation }) => {
     try {
       setLoading(true);
       const response = await axios.get(`${config.address}/api/pet/all`);
-      const sortedPets = response.data.thePet.sort((a, b) =>
-        a.p_name.localeCompare(b.p_name)
-      );
-      setPets(sortedPets);
-      setFilteredPets(sortedPets);
+      const availablePets = response.data.thePet
+        .filter(pet => pet.p_status === 'For Adoption')
+        .sort((a, b) => a.p_name.localeCompare(b.p_name));
+      setPets(availablePets);
+      setFilteredPets(availablePets);
     } catch (err) {
       console.log(err);
+      Alert.alert('Error', 'Failed to fetch pets');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -72,8 +69,6 @@ const AdoptAPet = ({ navigation }) => {
     const filtered = pets.filter((pet) => {
       const matchesSearch =
         pet.p_name.toLowerCase().includes(lowerText) ||
-        pet.p_breed.toLowerCase().includes(lowerText) ||
-        pet.p_type.toLowerCase().includes(lowerText) ||
         pet.p_gender.toLowerCase().includes(lowerText);
 
       const matchesFilter =
@@ -112,7 +107,7 @@ const AdoptAPet = ({ navigation }) => {
           >
             <View style={styles.petBadge}>
               <MaterialIcons
-                name={item.p_type === 'Dog' ? 'pets' : 'cat'}
+                name={item.p_type === 'Dog' ? 'pets' : 'pets'}
                 size={16}
                 color="#fff"
               />
@@ -159,33 +154,27 @@ const AdoptAPet = ({ navigation }) => {
         style={styles.container}
         resizeMode="cover"
       >
-        <AppBar title="Manage Pets" onBackPress={() => navigation.goBack()} />
+        <AppBar title="Adopt a Pet" onBackPress={() => navigation.goBack()} />
 
         <View style={styles.searchContainer}>
-          <TextInput
-            label="Search by name, type, or gender..."
-            value={searchText}
-            onChangeText={setSearchText}
-            mode="outlined"
-            style={styles.searchInput}
-            left={<TextInput.Icon name="magnify" color="#FF66C4" />}
-            theme={{
-              colors: {
-                primary: '#FF66C4',
-                background: '#FFFFFF',
-                text: '#333333',
-                placeholder: '#A0AEC0',
-              },
-            }}
-            outlineColor="#E2E8F0"
-            activeOutlineColor="#FF66C4"
-          />
+          <View style={styles.searchBox}>
+            <MaterialIcons 
+              name="search" 
+              size={20} 
+              color="#ff69b4" 
+              style={styles.searchIcon} 
+            />
+            <TextInput 
+              placeholder="Search by name or gender..." 
+              placeholderTextColor="#A0AEC0"
+              value={searchText}
+              onChangeText={setSearchText}
+              style={styles.searchInput}
+              clearButtonMode="while-editing"
+            />
+          </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterContainer}
-          >
+          <View style={styles.filterButtonsContainer}>
             {['All', 'Dog', 'Cat'].map((type) => (
               <TouchableOpacity
                 key={type}
@@ -195,6 +184,12 @@ const AdoptAPet = ({ navigation }) => {
                   filter === type && styles.activeFilterButton,
                 ]}
               >
+                <MaterialIcons
+                  name={type === 'Dog' ? 'pets' : type === 'Cat' ? 'pets' : 'all-inclusive'}
+                  size={20}
+                  color={filter === type ? '#FFF' : '#FF66C4'}
+                  style={styles.filterIcon}
+                />
                 <Text
                   style={[
                     styles.filterText,
@@ -205,7 +200,7 @@ const AdoptAPet = ({ navigation }) => {
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
         </View>
 
         <FlatList
@@ -226,7 +221,7 @@ const AdoptAPet = ({ navigation }) => {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <MaterialIcons name="pets" size={60} color="#CBD5E0" />
-              <Text style={styles.emptyText}>No pets found</Text>
+              <Text style={styles.emptyText}>No pets available for adoption</Text>
               <Text style={styles.emptySubText}>
                 Try adjusting your search or filters
               </Text>
@@ -254,41 +249,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   searchContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 10,
     backgroundColor: 'transparent',
   },
-  searchInput: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 10,
-    height: 48,
-    fontSize: 14,
-  },
-  filterContainer: {
+  searchBox: {
     flexDirection: 'row',
-    paddingVertical: 4,
-    paddingHorizontal: 4,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    height: 50,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 14,
+    color: '#333333',
+  },
+  filterButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 10,
   },
   filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#FF66C4',
-    marginRight: 8,
-    backgroundColor: '#FFF',
-    justifyContent: 'center',
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 25,
+    borderWidth: 1.5,
+    borderColor: '#FF66C4',
+    marginHorizontal: 5,
+    backgroundColor: '#FFF',
   },
   activeFilterButton: {
     backgroundColor: '#FF66C4',
     borderColor: '#FF66C4',
   },
+  filterIcon: {
+    marginRight: 5,
+  },
   filterText: {
     color: '#FF66C4',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   activeFilterText: {
