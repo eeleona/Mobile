@@ -60,6 +60,7 @@ import MessageShelter from './components/adopter/MessageShelter';
 import AdoptionTracker from './components/adopter/AdoptionTracker';
 import ForgetPassword from './components/adopter/ForgetPassword';
 import EditNearby from './components/admin/EditNearby';
+import FeedbackForm from './components/adopter/FeedbackForm';
 
 
 export default function App() {
@@ -141,6 +142,7 @@ export default function App() {
         <Stack.Screen name='Message Shelter' component={MessageShelter} options={{ headerShown: false }} />
         <Stack.Screen name='User Notif' component={UserNotif} options={{ headerShown: false }} />
         <Stack.Screen name='Adoption Form' component={AdoptionForm} options={{ headerShown: false }} />
+        <Stack.Screen name='Submit Feedback' component={FeedbackForm} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
     

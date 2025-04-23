@@ -21,7 +21,10 @@ const AdoptionTracker = () => {
   
   const [petDetails] = useState(petData || null);
   const [feedbackExists, setFeedbackExists] = useState(false);
-  const adoptionStatus = adoptionData?.status?.toLowerCase() || 'pending';
+  
+  // Fix: Handle both "complete" and "completed" values from the API
+  const rawStatus = adoptionData?.status?.toLowerCase() || 'pending';
+  const adoptionStatus = rawStatus === 'complete' ? 'completed' : rawStatus;
 
   // Status Stepper Component
   const StatusStepper = ({ status }) => {
@@ -30,7 +33,6 @@ const AdoptionTracker = () => {
     const getActiveStep = () => {
       switch (status) {
         case 'pending':
-        case 'submitted':
           return 1;
         case 'accepted':
           return 2;
@@ -39,10 +41,16 @@ const AdoptionTracker = () => {
         case 'rejected':
           return 1; // Only first step completed
         case 'failed':
-          return 1; // Only first step completed
+          return 2; // First and second step with X
         default:
           return 1;
       }
+    };
+
+    const isStepFailed = (index) => {
+      if (status === 'rejected' && index === 1) return true;
+      if (status === 'failed' && index === 2) return true;
+      return false;
     };
 
     const activeStep = getActiveStep();
@@ -54,10 +62,14 @@ const AdoptionTracker = () => {
             <View style={styles.stepContainer}>
               <View style={[
                 styles.stepCircle,
-                index < activeStep && styles.completedStep,
-                index === activeStep - 1 && styles.activeStep,
+                // If status is completed, mark all steps as completed
+                (status === 'completed' || index < activeStep) && !isStepFailed(index) && styles.completedStep,
+                isStepFailed(index) && styles.failedStep,
+                index === activeStep - 1 && !isStepFailed(index) && status !== 'completed' && styles.activeStep,
               ]}>
-                {index < activeStep ? (
+                {isStepFailed(index) ? (
+                  <MaterialIcons name="close" size={16} color="#FFF" />
+                ) : (status === 'completed' || index < activeStep) ? (
                   <MaterialIcons name="check" size={16} color="#FFF" />
                 ) : (
                   <Text style={styles.stepNumber}>{index + 1}</Text>
@@ -65,8 +77,9 @@ const AdoptionTracker = () => {
               </View>
               <Text style={[
                 styles.stepLabel,
-                index < activeStep && styles.completedLabel,
-                index === activeStep - 1 && styles.activeLabel,
+                (status === 'completed' || index < activeStep) && !isStepFailed(index) && styles.completedLabel,
+                isStepFailed(index) && styles.failedLabel,
+                index === activeStep - 1 && !isStepFailed(index) && status !== 'completed' && styles.activeLabel,
               ]}>
                 {step}
               </Text>
@@ -74,7 +87,9 @@ const AdoptionTracker = () => {
             {index < steps.length - 1 && (
               <View style={[
                 styles.stepLine,
-                index < activeStep - 1 && styles.completedLine,
+                // If status is completed, mark all step lines as completed
+                (status === 'completed' || index < activeStep - 1) && !isStepFailed(index) && !isStepFailed(index + 1) && styles.completedLine,
+                isStepFailed(index) && styles.failedLine
               ]} />
             )}
           </React.Fragment>
@@ -96,7 +111,7 @@ const AdoptionTracker = () => {
       case 'rejected':
         return `We regret to inform you that your adoption request was not approved. Reason: ${adoptionData.rejection_reason || 'Not specified'}`;
       case 'failed':
-        return 'There was an issue processing your adoption request. Please try again later.';
+        return `There was an issue with the adoption process. Reason: ${adoptionData.failedReason || 'Not specified'}`;
       default:
         return 'Your adoption status is being processed.';
     }
@@ -111,9 +126,30 @@ const AdoptionTracker = () => {
   );
 
   const handleSubmitFeedback = () => {
-    Alert.alert('Submit Feedback', 'Thank you for your feedback!');
-    setFeedbackExists(true);
+    navigation.navigate('Submit Feedback', { 
+      adoptionId: adoptionData._id,
+      petId: petDetails?._id
+    });
   };
+
+  const getStatusDate = () => {
+    switch (adoptionStatus) {
+      case 'completed':
+        return adoptionData.completed_at ? new Date(adoptionData.completed_at).toLocaleDateString() : 'Not recorded';
+      case 'rejected':
+        return adoptionData.declined_at ? new Date(adoptionData.declined_at).toLocaleDateString() : 'Not recorded';
+      case 'failed':
+        return adoptionData.failed_at ? new Date(adoptionData.failed_at).toLocaleDateString() : 'Not recorded';
+      case 'accepted':
+        return adoptionData.approved_at ? new Date(adoptionData.approved_at).toLocaleDateString() : 'Not recorded';
+      default:
+        return new Date(adoptionData.a_submitted_at).toLocaleDateString();
+    }
+  };
+
+  // For debugging
+  console.log('Raw status:', rawStatus);
+  console.log('Processed status:', adoptionStatus);
 
   return (
     <View style={styles.container}>
@@ -126,6 +162,7 @@ const AdoptionTracker = () => {
             <Image
               source={{ uri: `${config.address}${petDetails.pet_img[0]}` }}
               style={styles.petImage}
+              resizeMode="cover"
             />
           ) : (
             <View style={styles.imagePlaceholder}>
@@ -165,6 +202,14 @@ const AdoptionTracker = () => {
           <Divider style={styles.rowDivider} />
           
           <View style={styles.detailRow}>
+            <MaterialIcons name="event" size={20} color="#FF66C4" />
+            <Text style={styles.detailLabel}>Status Date:</Text>
+            <Text style={styles.detailValue}>{getStatusDate()}</Text>
+          </View>
+          
+          <Divider style={styles.rowDivider} />
+          
+          <View style={styles.detailRow}>
             <MaterialIcons name="info" size={20} color="#FF66C4" />
             <Text style={styles.detailLabel}>Status:</Text>
             <View style={[
@@ -173,12 +218,15 @@ const AdoptionTracker = () => {
                 backgroundColor: 
                   adoptionStatus === 'pending' ? '#FFA500' :
                   adoptionStatus === 'accepted' ? '#4CAF50' :
-                  adoptionStatus === 'completed' ? '#2196F3' : 
+                  adoptionStatus === 'completed' ? '#FF66C4' : // Pink for completed
                   adoptionStatus === 'rejected' ? '#F44336' :
                   '#F44336' // failed
               }
             ]}>
-              <Text style={styles.statusText}>{adoptionStatus.toUpperCase()}</Text>
+              <Text style={styles.statusText}>
+                {/* Show "COMPLETED" even if database has "COMPLETE" */}
+                {adoptionStatus === 'completed' ? 'COMPLETED' : adoptionStatus.toUpperCase()}
+              </Text>
             </View>
           </View>
           
@@ -188,8 +236,12 @@ const AdoptionTracker = () => {
           
           <View style={styles.statusMessageBox}>
             <Text style={styles.statusMessage}>{getStatusMessage()}</Text>
-            {(adoptionStatus === 'rejected' || adoptionStatus === 'failed') && adoptionData.rejection_reason && (
-              <Text style={styles.reasonText}>Reason: {adoptionData.rejection_reason}</Text>
+            {(adoptionStatus === 'rejected' || adoptionStatus === 'failed') && (
+              <Text style={styles.reasonText}>
+                Reason: {adoptionStatus === 'rejected' 
+                  ? adoptionData.rejection_reason || 'Not specified'
+                  : adoptionData.failedReason || 'Not specified'}
+              </Text>
             )}
           </View>
         </View>
@@ -208,7 +260,8 @@ const AdoptionTracker = () => {
             </TouchableOpacity>
           )}
           
-          {adoptionStatus === 'completed' && !feedbackExists && (
+          {/* Show feedback button for "completed" status (which comes from "complete" in the database) */}
+          {adoptionStatus === 'completed' && (
             <TouchableOpacity 
               style={[styles.button, styles.feedbackButton]}
               onPress={handleSubmitFeedback}
@@ -259,7 +312,6 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 12,
     marginBottom: 16,
-    resizeMode: 'cover',
   },
   imagePlaceholder: {
     width: '100%',
@@ -341,6 +393,9 @@ const styles = StyleSheet.create({
   activeStep: {
     backgroundColor: '#FF66C4',
   },
+  failedStep: {
+    backgroundColor: '#F44336',
+  },
   stepNumber: {
     color: '#757575',
     fontWeight: 'bold',
@@ -359,6 +414,10 @@ const styles = StyleSheet.create({
     color: '#FF66C4',
     fontWeight: 'bold',
   },
+  failedLabel: {
+    color: '#F44336',
+    fontWeight: 'bold',
+  },
   stepLine: {
     flex: 1,
     height: 2,
@@ -367,6 +426,9 @@ const styles = StyleSheet.create({
   },
   completedLine: {
     backgroundColor: '#4CAF50',
+  },
+  failedLine: {
+    backgroundColor: '#F44336',
   },
   statusMessageBox: {
     backgroundColor: '#F8F8F8',
@@ -413,7 +475,7 @@ const styles = StyleSheet.create({
     borderColor: '#FF66C4',
   },
   feedbackButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#FF66C4',
   },
   buttonText: {
     fontSize: 16,
