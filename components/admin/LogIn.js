@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   appName: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 30,
+    fontSize: 25,
   },
   inputs: {
     alignItems: 'center',

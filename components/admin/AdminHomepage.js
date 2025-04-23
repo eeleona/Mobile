@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, TextInput, Dimensions, ImageBackground, FlatList, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, TextInput, Dimensions, ImageBackground, FlatList, Modal, ScrollView } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
 import Carousel from "react-native-reanimated-carousel";
@@ -86,180 +86,185 @@ const AdminHomepage = ({ navigation }) => {
 
   return (
     <PaperProvider>
-      <View style={styles.container}>
-        <ImageBackground
-          source={require('../../assets/Images/pasayshelter.jpg')}
-          style={styles.mainSection}
-        >
-          <LinearGradient
-            colors={['rgb(216, 17, 133)', 'rgb(224, 118, 184)', 'rgba(248, 190, 222, 0.36)']}
-            style={styles.gradient}
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.container}>
+          <ImageBackground
+            source={require('../../assets/Images/pasayshelter.jpg')}
+            style={styles.mainSection}
           >
-            <View style={styles.searchContainer}>
-              <Image 
-                source={require('../../assets/Images/nobglogo.png')} 
-                style={styles.logo} 
-                accessibilityLabel="App logo"
-              />
-              <View style={styles.searchBox}>
-                <MaterialIcons 
-                  name="search" 
-                  size={20} 
-                  color="#ff69b4" 
-                  style={styles.searchIcon} 
-                  accessibilityRole="imagebutton"
+            <LinearGradient
+              colors={['rgb(216, 17, 133)', 'rgb(224, 118, 184)', 'rgba(248, 190, 222, 0.36)']}
+              style={styles.gradient}
+            >
+              <View style={styles.searchContainer}>
+                <Image 
+                  source={require('../../assets/Images/nobglogo.png')} 
+                  style={styles.logo} 
+                  accessibilityLabel="App logo"
                 />
-                <TextInput 
-                  placeholder="Search..." 
-                  placeholderTextColor="#ff69b4" 
-                  style={styles.input}
-                  accessibilityLabel="Search input"
-                  value={searchQuery}
-                  onChangeText={handleSearch}
-                  onFocus={() => searchQuery.length > 0 && setShowSearchResults(true)}
-                  onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
-                />
-              </View>
-            </View> 
-            
-            {/* Search Results Modal */}
-            {showSearchResults && (
-              <View style={styles.searchResultsContainer}>
-                <FlatList
-                  data={searchResults}
-                  keyExtractor={(item) => item.name}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.searchResultItem}
-                      onPress={() => handleSearchItemPress(item.action)}
-                    >
-                      <Text style={styles.searchResultText}>{item.name}</Text>
-                    </TouchableOpacity>
-                  )}
-                  style={styles.searchResultsList}
-                />
-              </View>
-            )}
+                <View style={styles.searchBox}>
+                  <MaterialIcons 
+                    name="search" 
+                    size={20} 
+                    color="#ff69b4" 
+                    style={styles.searchIcon} 
+                    accessibilityRole="imagebutton"
+                  />
+                  <TextInput 
+                    placeholder="Search..." 
+                    placeholderTextColor="#ff69b4" 
+                    style={styles.input}
+                    accessibilityLabel="Search input"
+                    value={searchQuery}
+                    onChangeText={handleSearch}
+                    onFocus={() => searchQuery.length > 0 && setShowSearchResults(true)}
+                    onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
+                  />
+                </View>
+              </View> 
+              
+              {/* Search Results Modal */}
+              {showSearchResults && (
+                <View style={styles.searchResultsContainer}>
+                  <FlatList
+                    data={searchResults}
+                    keyExtractor={(item) => item.name}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.searchResultItem}
+                        onPress={() => handleSearchItemPress(item.action)}
+                      >
+                        <Text style={styles.searchResultText}>{item.name}</Text>
+                      </TouchableOpacity>
+                    )}
+                    style={styles.searchResultsList}
+                  />
+                </View>
+              )}
 
-            <View style={styles.welcomecontainer}>
-              <Image style={styles.pawicon} source={require('../../assets/Images/pawicon.png')}></Image>
-              <Text style={styles.welcome}>Kumusta, Ka-Paw?</Text>
-            </View>
-            
-            <View style={styles.carouselContainer}>
-              <Carousel
-                ref={carouselRef}
-                loop
-                width={width}
-                height={230}
-                data={slides}
-                autoPlay
-                autoPlayInterval={4000}
-                scrollAnimationDuration={900}
-                pagingEnabled
-                onSnapToItem={(index) => setActiveIndex(index)}
-                renderItem={({ item, index, animationValue }) => {
-                  const animatedStyle = useAnimatedStyle(() => {
-                    const scale = interpolate(
-                      animationValue.value,
-                      [-1, 0, 1],
-                      [0.1, 1, 0.1],
-                      Extrapolate.CLAMP
-                    );
-                    return { transform: [{ scale }] };
-                  });
+              <View style={styles.welcomecontainer}>
+                <Image style={styles.pawicon} source={require('../../assets/Images/pawicon.png')}></Image>
+                <Text style={styles.welcome}>Kumusta, Ka-Paw?</Text>
+              </View>
+              
+              <View style={styles.carouselContainer}>
+                <Carousel
+                  ref={carouselRef}
+                  loop
+                  width={width}
+                  height={230}
+                  data={slides}
+                  autoPlay
+                  autoPlayInterval={4000}
+                  scrollAnimationDuration={900}
+                  pagingEnabled
+                  onSnapToItem={(index) => setActiveIndex(index)}
+                  renderItem={({ item, index, animationValue }) => {
+                    const animatedStyle = useAnimatedStyle(() => {
+                      const scale = interpolate(
+                        animationValue.value,
+                        [-1, 0, 1],
+                        [0.1, 1, 0.1],
+                        Extrapolate.CLAMP
+                      );
+                      return { transform: [{ scale }] };
+                    });
 
-                  return (
-                    <Animated.View style={[styles.card, animatedStyle]}>
-                      <View style={styles.cardTextContainer}>
-                        <View style={styles.cardRow}>
-                          <Text style={styles.cardCount}>{item.count}</Text>
-                          <Text style={styles.cardLabel}>{item.label}</Text>
+                    return (
+                      <Animated.View style={[styles.card, animatedStyle]}>
+                        <View style={styles.cardTextContainer}>
+                          <View style={styles.cardRow}>
+                            <Text style={styles.cardCount}>{item.count}</Text>
+                            <Text style={styles.cardLabel}>{item.label}</Text>
+                          </View>
+                          <Text style={styles.cardDescription}>
+                            Total number of {item.label.toLowerCase()} in E-Pet Adopt.
+                          </Text>
                         </View>
-                        <Text style={styles.cardDescription}>
-                          Total number of {item.label.toLowerCase()} in E-Pet Adopt.
-                        </Text>
-                      </View>
-                      <Image source={item.image} style={styles.cardImage} />
-                    </Animated.View>
-                  );
-                }}
-              />
+                        <Image source={item.image} style={styles.cardImage} />
+                      </Animated.View>
+                    );
+                  }}
+                />
 
-              <View style={styles.paginationContainer}>
-                {slides.map((_, index) => (
-                  <View key={index} style={[styles.paginationDot, activeIndex === index && styles.activeDot]} />
-                ))}
+                <View style={styles.paginationContainer}>
+                  {slides.map((_, index) => (
+                    <View key={index} style={[styles.paginationDot, activeIndex === index && styles.activeDot]} />
+                  ))}
+                </View>
               </View>
+            </LinearGradient>
+          </ImageBackground>
+
+          <View style={styles.module1}>
+            <Text style={styles.serviceTitle}>Services</Text>
+            <View style={styles.service}>
+              <TouchableOpacity style={styles.button} onPress={handleAdoptions}>
+                <View style={styles.iconcontainer}>
+                  <Image style={styles.icon} source={require('../../assets/Images/manageadoption.png')}/>
+                </View>
+                <Text style={styles.labels}>Adoptions</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.button} onPress={handleEvents}>
+                <View style={styles.iconcontainer}>
+                  <Image style={styles.icon} source={require('../../assets/Images/manageevent.png')}/>
+                </View>
+                <Text style={styles.labels}>Events</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.button} onPress={handleFeedback}>
+                <View style={styles.iconcontainer}>
+                  <Image style={styles.icon} source={require('../../assets/Images/managefeedback.png')}/>
+                </View>
+                <Text style={styles.labels}>Feedback</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.button} onPress={handleNearby}>
+                <View style={styles.iconcontainer}>
+                  <Image style={styles.icon} source={require('../../assets/Images/managenearby.png')}/>
+                </View>
+                <Text style={styles.labels}>Nearby</Text>
+              </TouchableOpacity>
             </View>
-          </LinearGradient>
-        </ImageBackground>
-
-        <View style={styles.module1}>
-          <Text style={styles.serviceTitle}>Services</Text>
-          <View style={styles.service}>
-            <TouchableOpacity style={styles.button} onPress={handleAdoptions}>
-              <View style={styles.iconcontainer}>
-                <Image style={styles.icon} source={require('../../assets/Images/manageadoption.png')}/>
-              </View>
-              <Text style={styles.labels}>Adoptions</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.button} onPress={handleEvents}>
-              <View style={styles.iconcontainer}>
-                <Image style={styles.icon} source={require('../../assets/Images/manageevent.png')}/>
-              </View>
-              <Text style={styles.labels}>Events</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.button} onPress={handleFeedback}>
-              <View style={styles.iconcontainer}>
-                <Image style={styles.icon} source={require('../../assets/Images/managefeedback.png')}/>
-              </View>
-              <Text style={styles.labels}>Feedback</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.button} onPress={handleNearby}>
-              <View style={styles.iconcontainer}>
-                <Image style={styles.icon} source={require('../../assets/Images/managenearby.png')}/>
-              </View>
-              <Text style={styles.labels}>Nearby</Text>
-            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.modules}>
+            <Text style={styles.infoTitle}>Information Management</Text>
+            <View style={styles.manage}>
+              <TouchableOpacity style={styles.button} onPress={handlePet}>
+                <View style={styles.iconcontainer}>
+                  <Image style={styles.icon} source={require('../../assets/Images/managepet.png')}/>
+                </View>
+                <Text style={styles.labels}>Pets</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.button} onPress={handleUser}>
+                <View style={styles.iconcontainer}> 
+                  <Image style={styles.icon} source={require('../../assets/Images/manageuser.png')}/>
+                </View>
+                <Text style={styles.labels}>Users</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.button} onPress={handleStaff}>
+                <View style={styles.iconcontainer}>
+                  <Image style={styles.icon} source={require('../../assets/Images/managestaff.png')}/>
+                </View>
+                <Text style={styles.labels}>Staff</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.button} onPress={handleAdminlogs}>
+                <View style={styles.iconcontainer}>
+                  <Image style={styles.icon} source={require('../../assets/Images/managelogs.png')}/>
+                </View>
+                <Text style={styles.labels}>Admin Logs</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-        
-        <View style={styles.modules}>
-          <Text style={styles.infoTitle}>Information Management</Text>
-          <View style={styles.manage}>
-            <TouchableOpacity style={styles.button} onPress={handlePet}>
-              <View style={styles.iconcontainer}>
-                <Image style={styles.icon} source={require('../../assets/Images/managepet.png')}/>
-              </View>
-              <Text style={styles.labels}>Pets</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.button} onPress={handleUser}>
-              <View style={styles.iconcontainer}> 
-                <Image style={styles.icon} source={require('../../assets/Images/manageuser.png')}/>
-              </View>
-              <Text style={styles.labels}>Users</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.button} onPress={handleStaff}>
-              <View style={styles.iconcontainer}>
-                <Image style={styles.icon} source={require('../../assets/Images/managestaff.png')}/>
-              </View>
-              <Text style={styles.labels}>Staff</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.button} onPress={handleAdminlogs}>
-              <View style={styles.iconcontainer}>
-                <Image style={styles.icon} source={require('../../assets/Images/managelogs.png')}/>
-              </View>
-              <Text style={styles.labels}>Admin Logs</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+      </ScrollView>
     </PaperProvider>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flexGrow: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: '#FAF9F6',
@@ -485,6 +490,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 100,
     marginTop: 60,
+    marginBottom: 30, // Added marginBottom to ensure space at the bottom when scrolling
   },
   manage: {
     padding: 10,
