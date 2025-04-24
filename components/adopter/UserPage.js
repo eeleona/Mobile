@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     elevation: 3,
     height: 60,
-    borderRadius: 20,
+    borderRadius: 8,
     justifyContent: 'center',
     shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   tabIndicator: {
     backgroundColor: '#ff69b4',
     height: '100%',
-    borderRadius: 20,
+    borderRadius: 8,
   },
   tabLabel: {
     fontSize: 12,

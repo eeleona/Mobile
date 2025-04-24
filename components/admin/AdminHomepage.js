@@ -102,25 +102,8 @@ const AdminHomepage = ({ navigation }) => {
                   style={styles.logo} 
                   accessibilityLabel="App logo"
                 />
-                <View style={styles.searchBox}>
-                  <MaterialIcons 
-                    name="search" 
-                    size={20} 
-                    color="#ff69b4" 
-                    style={styles.searchIcon} 
-                    accessibilityRole="imagebutton"
-                  />
-                  <TextInput 
-                    placeholder="Search..." 
-                    placeholderTextColor="#ff69b4" 
-                    style={styles.input}
-                    accessibilityLabel="Search input"
-                    value={searchQuery}
-                    onChangeText={handleSearch}
-                    onFocus={() => searchQuery.length > 0 && setShowSearchResults(true)}
-                    onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
-                  />
-                </View>
+                <Text style={styles.welcome1}>Welcome, </Text>
+                <Text style={styles.welcome2}>Super-Admin!</Text>
               </View> 
               
               {/* Search Results Modal */}
@@ -144,7 +127,7 @@ const AdminHomepage = ({ navigation }) => {
 
               <View style={styles.welcomecontainer}>
                 <Image style={styles.pawicon} source={require('../../assets/Images/pawicon.png')}></Image>
-                <Text style={styles.welcome}>Kumusta, Ka-Paw?</Text>
+                <Text style={styles.welcome}>Dashboard</Text>
               </View>
               
               <View style={styles.carouselContainer}>

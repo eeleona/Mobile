@@ -370,11 +370,13 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
   },
   welcome: {
     fontFamily: 'Inter_500Medium',
     color: '#333',
-    fontSize: 18,
+    fontSize: 30,
   },
   welcome2: {
     fontFamily: 'Inter_700Bold',
@@ -447,7 +449,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   bottomContainer: {
-    marginTop: 340,
+    marginTop: 10,
     marginBottom: 30,
     alignItems: 'center',
   },

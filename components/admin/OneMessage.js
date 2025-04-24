@@ -28,21 +28,21 @@ const OneMessage = ({ route, navigation }) => {
   const adminId = "670a04a34f63c22acf3d8c9a".toString();
 
   // SSL workaround for Android in development
-  useEffect(() => {
-    if (__DEV__ && Platform.OS === 'android') {
-      // const http = require('http');
-      // const https = require('https');
-      // const httpAgent = new http.Agent();
-      // const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+  // useEffect(() => {
+  //   if (__DEV__ && Platform.OS === 'android') {
+  //     // const http = require('http');
+  //     // const https = require('https');
+  //     // const httpAgent = new http.Agent();
+  //     // const httpsAgent = new https.Agent({ rejectUnauthorized: false });
     
-      global._fetch = global.fetch;
-      global.fetch = (url, options) => {
-        const agent = url.startsWith('https') ? httpsAgent : httpAgent;
-        return global._fetch(url, { ...options, agent });
-      };
-    }
+  //     global._fetch = global.fetch;
+  //     global.fetch = (url, options) => {
+  //       const agent = url.startsWith('https') ? httpsAgent : httpAgent;
+  //       return global._fetch(url, { ...options, agent });
+  //     };
+  //   }
     
-  }, []);
+  // }, []);
 
   useEffect(() => {
 
@@ -60,12 +60,12 @@ const OneMessage = ({ route, navigation }) => {
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
-    rejectUnauthorized: !__DEV__,
+    // rejectUnauthorized: !__DEV__,
     
     // For Android development
-    agent: Platform.OS === 'android' && __DEV__ 
-      ? new (require('https').Agent({ rejectUnauthorized: false })) 
-      : undefined,
+    // agent: Platform.OS === 'android' && __DEV__ 
+    //   ? new (require('https').Agent({ rejectUnauthorized: false })) 
+    //   : undefined,
     });
 
     // Debugging events
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   },
   adminMessage: {
     backgroundColor: "#FF69B4",
-    borderTopRightRadius: 4,
+    borderRadius: 8,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     backgroundColor: "#e5e5ea",
-    borderTopLeftRadius: 4,
+    borderRadius: 8,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },

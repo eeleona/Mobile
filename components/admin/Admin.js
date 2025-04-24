@@ -27,11 +27,13 @@ const Admin = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [search, setSearch] = useState('');
   const [staffList, setStaffList] = useState([]);
+  const [selectedStaff, setSelectedStaff] = useState(null);
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState({});
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [staffSearchQuery, setStaffSearchQuery] = useState('');
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(300)).current;
@@ -59,7 +61,7 @@ const Admin = () => {
         )
       );
     }
-  }, [search, adminList]); // Make sure this closing bracket and semi-colon are here
+  }, [search, adminList]);
 
   const fetchAdmins = async () => {
     try {
@@ -170,7 +172,9 @@ const Admin = () => {
   const handleDelete = async () => {
     try {
       setLoading(true);
-      await axios.delete(`${config.address}/api/admin/delete/${selectedAdmin._id}`);
+      await axios.patch(`${config.address}/api/admin/update/${selectedAdmin._id}`, {
+        s_role: 'deleted-admin'
+      });
       fetchAdmins();
       closeModal();
       setShowDeleteModal(false);
@@ -184,17 +188,17 @@ const Admin = () => {
   };
 
   const handleStaffSelection = (staff) => {
-    setSelectedAdmin({
+    setSelectedStaff({
       s_id: staff.s_id,
       a_fname: staff.s_fname,
       a_lname: staff.s_lname,
-      a_mname: staff.s_mname,
-      a_add: staff.s_add,
-      a_contactnumber: staff.s_contactnumber,
-      a_position: staff.s_position,
-      a_gender: staff.s_gender,
-      a_birthdate: staff.s_birthdate,
-      a_email: staff.s_email
+      a_mname: staff.s_mname || '',
+      a_add: staff.s_add || '',
+      a_contactnumber: staff.s_contactnumber || '',
+      a_position: staff.s_position || '',
+      a_gender: staff.s_gender || '',
+      a_birthdate: staff.s_birthdate || '',
+      a_email: staff.s_email || ''
     });
     setShowStaffModal(false);
     setShowConfirmationModal(true);
@@ -203,25 +207,58 @@ const Admin = () => {
   const confirmAddAdmin = async () => {
     try {
       setLoading(true);
-      const response = await axios.post(`${config.address}/api/admin/new`, {
-        ...selectedAdmin,
-        a_username: generateUsername(selectedAdmin.a_fname, selectedAdmin.a_lname),
-        a_password: generatePassword()
-      });
       
-      // Send email with credentials
-      await axios.post(`${config.address}/api/send-email`, {
-        to: selectedAdmin.a_email,
-        subject: "Your Admin Credentials",
-        text: `Dear ${selectedAdmin.a_fname},\n\nYour admin account has been created.\n\nPlease change your password after logging in.\n`
-      });
+      // Generate credentials
+      const username = generateUsername(selectedStaff.a_fname, selectedStaff.a_lname);
+      const password = generatePassword();
 
-      fetchAdmins();
-      setShowConfirmationModal(false);
-      Alert.alert('Success', 'Admin added successfully');
+      // Create admin data
+      const adminData = {
+        s_id: selectedStaff.s_id,
+        a_fname: selectedStaff.a_fname,
+        a_lname: selectedStaff.a_lname,
+        a_mname: selectedStaff.a_mname,
+        a_add: selectedStaff.a_add,
+        a_contactnumber: selectedStaff.a_contactnumber,
+        a_position: selectedStaff.a_position,
+        a_gender: selectedStaff.a_gender,
+        a_birthdate: selectedStaff.a_birthdate,
+        a_email: selectedStaff.a_email,
+        a_username: username,
+        a_password: password,
+        s_role: 'admin'
+      };
+
+      // Add admin
+      const response = await axios.post(`${config.address}/api/admin/new`, adminData);
+      
+      if (response.data.success) {
+        // Send email if email exists
+        if (adminData.a_email) {
+          try {
+            await axios.post(`${config.address}/api/send-email`, {
+              to: adminData.a_email,
+              subject: "Your Admin Credentials",
+              text: `Dear ${adminData.a_fname},\n\nYour admin account has been created.\nUsername: ${username}\nPassword: ${password}\n\nPlease change your password after logging in.\n`
+            });
+          } catch (emailError) {
+            console.error('Error sending email:', emailError);
+          }
+        }
+
+        fetchAdmins();
+        setShowConfirmationModal(false);
+        setSelectedStaff(null);
+        Alert.alert('Success', 'Admin added successfully');
+      } else {
+        throw new Error(response.data.message || 'Failed to add admin');
+      }
     } catch (error) {
       console.error('Error adding admin:', error);
-      Alert.alert('Error', 'Failed to add admin');
+      Alert.alert(
+        'Error', 
+        error.response?.data?.message || 'Failed to add admin. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
@@ -242,6 +279,21 @@ const Admin = () => {
     }
     return password;
   };
+
+  const filteredStaff = staffList.filter(staff => {
+    // Only show staff who aren't already admins
+    if (adminList.some(admin => admin.s_id === staff.s_id)) return false;
+    
+    // Filter by search query if present
+    if (!staffSearchQuery.trim()) return true;
+    
+    const query = staffSearchQuery.toLowerCase();
+    return (
+      (staff.s_fname && staff.s_fname.toLowerCase().includes(query)) ||
+      (staff.s_lname && staff.s_lname.toLowerCase().includes(query)) ||
+      (staff.s_position && staff.s_position.toLowerCase().includes(query))
+    );
+  });
 
   let [fontsLoaded] = useFonts({
     Inter_700Bold,
@@ -319,7 +371,7 @@ const Admin = () => {
     }
   };
 
-  if (loading) {
+  if (loading && adminList.length === 0) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#ff69b4" />
@@ -524,27 +576,64 @@ const Admin = () => {
         >
           <View style={styles.staffModalContainer}>
             <View style={styles.staffModalHeader}>
-              <Text style={styles.staffModalTitle}>Select Staff to Add as Admin</Text>
-              <TouchableOpacity onPress={() => setShowStaffModal(false)}>
+              <Text style={styles.staffModalTitle}>Select Staff Member</Text>
+              <TouchableOpacity 
+                onPress={() => setShowStaffModal(false)}
+                style={styles.closeButton}
+              >
                 <MaterialIcons name="close" size={24} color="#718096" />
               </TouchableOpacity>
             </View>
+            
+            <View style={styles.modalSearchContainer}>
+              <TextInput
+                style={styles.modalSearchBar}
+                placeholder="Search staff..."
+                placeholderTextColor="#aaa"
+                value={staffSearchQuery}
+                onChangeText={setStaffSearchQuery}
+              />
+              <MaterialIcons
+                name="search"
+                size={24}
+                color="#ff69b4"
+                style={styles.modalSearchIcon}
+              />
+            </View>
+
             <FlatList
-              data={staffList.filter(staff => !adminList.some(admin => admin.s_id === staff.s_id))}
+              data={filteredStaff}
               keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
               renderItem={({ item }) => (
-                <TouchableOpacity 
-                  style={styles.staffItem}
-                  onPress={() => handleStaffSelection(item)}
-                >
-                  <Text style={styles.staffName}>
-                    {item.s_fname} {item.s_lname}
-                  </Text>
-                  <Text style={styles.staffPosition}>{item.s_position}</Text>
-                </TouchableOpacity>
+                <View>
+                  <TouchableOpacity 
+                    style={styles.staffItemContainer}
+                    onPress={() => handleStaffSelection(item)}
+                  >
+                    <View style={styles.staffAvatar}>
+                      <MaterialIcons name="person" size={28} color="#ff69b4" />
+                    </View>
+                    <View style={styles.staffInfo}>
+                      <Text style={styles.staffName}>
+                        {item.s_fname} {item.s_lname}
+                      </Text>
+                      <View style={styles.staffDetails}>
+                        <Text style={styles.staffPosition}>{item.s_position}</Text>
+                        <Text style={styles.staffEmail}>{item.s_email}</Text>
+                      </View>
+                    </View>
+                    <MaterialIcons 
+                      name="chevron-right" 
+                      size={24} 
+                      color="#cbd5e0" 
+                    />
+                  </TouchableOpacity>
+                  <View style={styles.divider} />
+                </View>
               )}
               ListEmptyComponent={
                 <View style={styles.emptyStaffContainer}>
+                  <MaterialIcons name="people-outline" size={50} color="#cbd5e0" />
                   <Text style={styles.emptyStaffText}>No staff available to add as admin</Text>
                 </View>
               }
@@ -562,10 +651,10 @@ const Admin = () => {
             <View style={styles.confirmationModal}>
               <Text style={styles.confirmationTitle}>Confirm Add Admin</Text>
               <Text style={styles.confirmationText}>
-                Are you sure you want to add {selectedAdmin?.a_fname} {selectedAdmin?.a_lname} as an admin?
+                Are you sure you want to add {selectedStaff?.a_fname} {selectedStaff?.a_lname} as an admin?
               </Text>
               <Text style={styles.confirmationEmail}>
-                Email: {selectedAdmin?.a_email}
+                Email: {selectedStaff?.a_email}
               </Text>
               <View style={styles.confirmationButtons}>
                 <TouchableOpacity 
@@ -627,11 +716,21 @@ const Admin = () => {
 };
 
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAF9F6',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 16,
+    color: '#4a5568',
+    marginTop: 10,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -658,13 +757,6 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     marginLeft: 8,
-  },
-  header: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 24,
-    color: '#2a2a2a',
-    marginHorizontal: 20,
-    marginVertical: 15,
   },
   listContainer: {
     paddingHorizontal: 20,
@@ -727,17 +819,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#718096',
     marginLeft: 5,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 16,
-    color: '#4a5568',
-    marginTop: 10,
   },
   emptyContainer: {
     flex: 1,
@@ -842,10 +923,15 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
+    margin: 20,
+    right: 10,
+    bottom: 10,
     backgroundColor: '#ff69b4',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -885,36 +971,91 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ff69b4',
     paddingVertical: 4,
   },
+
+  // Enhanced Staff Selection Modal Styles
   staffModalContainer: {
     flex: 1,
-    padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: '#FAF9F6',
   },
   staffModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    padding: 20,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   staffModalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#1e293b',
   },
-  staffItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+  closeButton: {
+    padding: 5,
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginVertical: 10,
+    borderRadius: 10,
+    borderColor: '#eee',
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    elevation: 2,
+  },
+  modalSearchBar: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+    color: '#333',
+  },
+  modalSearchIcon: {
+    marginLeft: 8,
+  },
+  staffItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    backgroundColor: 'white',
+  },
+  staffAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFF0F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  staffInfo: {
+    flex: 1,
   },
   staffName: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#1e293b',
+    marginBottom: 4,
+  },
+  staffDetails: {
+    flexDirection: 'row',
   },
   staffPosition: {
     fontSize: 14,
     color: '#64748b',
-    marginTop: 5,
+    marginRight: 10,
+  },
+  staffEmail: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#f1f5f9',
+    marginLeft: 85,
   },
   emptyStaffContainer: {
     flex: 1,
@@ -925,6 +1066,8 @@ const styles = StyleSheet.create({
   emptyStaffText: {
     fontSize: 16,
     color: '#64748b',
+    marginTop: 15,
+    textAlign: 'center',
   },
   confirmationBackdrop: {
     flex: 1,
@@ -973,7 +1116,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addConfirmButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#b4e38a',
   },
   deleteConfirmButton: {
     backgroundColor: '#F44336',
