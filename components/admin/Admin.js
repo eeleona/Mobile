@@ -10,9 +10,10 @@ import {
   Animated, 
   Easing, 
   ActivityIndicator,
-  TextInput
+  TextInput,
+  Alert
 } from 'react-native';
-import { PaperProvider } from 'react-native-paper';
+import { PaperProvider, FAB } from 'react-native-paper';
 import axios from 'axios';
 import config from '../../server/config/config';
 import { useFonts, Inter_700Bold, Inter_500Medium } from '@expo-google-fonts/inter';
@@ -25,11 +26,19 @@ const Admin = () => {
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [search, setSearch] = useState('');
+  const [staffList, setStaffList] = useState([]);
+  const [showStaffModal, setShowStaffModal] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editFormData, setEditFormData] = useState({});
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(300)).current;
 
   useEffect(() => {
     fetchAdmins();
+    fetchStaff();
   }, []);
 
   useEffect(() => {
@@ -40,8 +49,8 @@ const Admin = () => {
       setFilteredAdmins(
         adminList.filter(
           admin =>
-            ((admin.a_fname && admin.a_fname.toLowerCase().includes(lower)) ||
-            (admin.a_lname && admin.a_lname.toLowerCase().includes(lower))) ||
+            (admin.a_fname && admin.a_fname.toLowerCase().includes(lower)) ||
+            (admin.a_lname && admin.a_lname.toLowerCase().includes(lower)) ||
             (admin.s_role && (
               (admin.s_role === 'admin' && 'admin'.includes(lower)) ||
               (admin.s_role === 'pending-admin' && 'pending admin'.includes(lower)) ||
@@ -50,12 +59,11 @@ const Admin = () => {
         )
       );
     }
-  }, [search, adminList]);
+  }, [search, adminList]); // Make sure this closing bracket and semi-colon are here
 
   const fetchAdmins = async () => {
     try {
       const response = await axios.get(`${config.address}/api/admin/all`);
-      console.log('Admin API response:', response.data); // Debug log
       if (response.data && Array.isArray(response.data.admins)) {
         const filteredAdmins = response.data.admins.filter(admin => 
           admin.s_role === 'admin' || admin.s_role === 'pending-admin'
@@ -69,7 +77,6 @@ const Admin = () => {
       }
     } catch (error) {
       console.error('Error fetching admins:', error.message);
-      // Alert.alert('Error', 'Failed to fetch administrators');
       setAdminList([]);
       setFilteredAdmins([]);
     } finally {
@@ -77,8 +84,30 @@ const Admin = () => {
     }
   };
 
+  const fetchStaff = async () => {
+    try {
+      const response = await axios.get(`${config.address}/api/staff/all`);
+      if (response.data && Array.isArray(response.data.theStaff)) {
+        setStaffList(response.data.theStaff);
+      }
+    } catch (error) {
+      console.error('Error fetching staff:', error);
+    }
+  };
+
   const openModal = (admin) => {
     setSelectedAdmin(admin);
+    setEditFormData({
+      a_fname: admin.a_fname,
+      a_lname: admin.a_lname,
+      a_mname: admin.a_mname,
+      a_add: admin.a_add,
+      a_contactnumber: admin.a_contactnumber,
+      a_position: admin.a_position,
+      a_gender: admin.a_gender,
+      a_birthdate: admin.a_birthdate,
+      a_email: admin.a_email
+    });
     setModalVisible(true);
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -110,8 +139,108 @@ const Admin = () => {
       }),
     ]).start(() => {
       setModalVisible(false);
-      setSelectedAdmin(null); // Clear selected admin when modal closes
+      setSelectedAdmin(null);
+      setEditMode(false);
     });
+  };
+
+  const handleInputChange = (name, value) => {
+    setEditFormData({ ...editFormData, [name]: value });
+  };
+
+  const handleEdit = () => {
+    setEditMode(true);
+  };
+
+  const handleUpdate = async () => {
+    try {
+      setLoading(true);
+      await axios.put(`${config.address}/api/admin/update/${selectedAdmin._id}`, editFormData);
+      fetchAdmins();
+      setEditMode(false);
+      Alert.alert('Success', 'Admin updated successfully');
+    } catch (error) {
+      console.error('Error updating admin:', error);
+      Alert.alert('Error', 'Failed to update admin');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setLoading(true);
+      await axios.delete(`${config.address}/api/admin/delete/${selectedAdmin._id}`);
+      fetchAdmins();
+      closeModal();
+      setShowDeleteModal(false);
+      Alert.alert('Success', 'Admin deleted successfully');
+    } catch (error) {
+      console.error('Error deleting admin:', error);
+      Alert.alert('Error', 'Failed to delete admin');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStaffSelection = (staff) => {
+    setSelectedAdmin({
+      s_id: staff.s_id,
+      a_fname: staff.s_fname,
+      a_lname: staff.s_lname,
+      a_mname: staff.s_mname,
+      a_add: staff.s_add,
+      a_contactnumber: staff.s_contactnumber,
+      a_position: staff.s_position,
+      a_gender: staff.s_gender,
+      a_birthdate: staff.s_birthdate,
+      a_email: staff.s_email
+    });
+    setShowStaffModal(false);
+    setShowConfirmationModal(true);
+  };
+
+  const confirmAddAdmin = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.post(`${config.address}/api/admin/new`, {
+        ...selectedAdmin,
+        a_username: generateUsername(selectedAdmin.a_fname, selectedAdmin.a_lname),
+        a_password: generatePassword()
+      });
+      
+      // Send email with credentials
+      await axios.post(`${config.address}/api/send-email`, {
+        to: selectedAdmin.a_email,
+        subject: "Your Admin Credentials",
+        text: `Dear ${selectedAdmin.a_fname},\n\nYour admin account has been created.\n\nPlease change your password after logging in.\n`
+      });
+
+      fetchAdmins();
+      setShowConfirmationModal(false);
+      Alert.alert('Success', 'Admin added successfully');
+    } catch (error) {
+      console.error('Error adding admin:', error);
+      Alert.alert('Error', 'Failed to add admin');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateUsername = (firstName, lastName) => {
+    const shortFirstName = firstName.charAt(0).toLowerCase();
+    const shortLastName = lastName.slice(0, 5).toLowerCase();
+    const randomNum = Math.floor(Math.random() * 1000);
+    return `${shortFirstName}${shortLastName}${randomNum}`;
+  };
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let password = '';
+    for (let i = 0; i < 10; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
   };
 
   let [fontsLoaded] = useFonts({
@@ -159,14 +288,22 @@ const Admin = () => {
     </TouchableOpacity>
   );
 
-  const DetailRow = ({ icon, label, value }) => (
+  const DetailRow = ({ icon, label, value, editable, name, onChange }) => (
     <View style={styles.detailRow}>
       <View style={styles.detailIcon}>
         <MaterialIcons name={icon} size={20} color="#ff69b4" />
       </View>
       <View style={styles.detailTextContainer}>
         <Text style={styles.detailLabel}>{label}</Text>
-        <Text style={styles.detailValue}>{value || 'N/A'}</Text>
+        {editable ? (
+          <TextInput
+            style={styles.detailInput}
+            value={value || ''}
+            onChangeText={(text) => onChange(name, text)}
+          />
+        ) : (
+          <Text style={styles.detailValue}>{value || 'N/A'}</Text>
+        )}
       </View>
     </View>
   );
@@ -227,6 +364,15 @@ const Admin = () => {
           }
         />
 
+        {/* FAB Button */}
+        <FAB
+          style={styles.fab}
+          icon="plus"
+          color="white"
+          onPress={() => setShowStaffModal(true)}
+        />
+
+        {/* Admin Details Modal */}
         <Modal
           transparent={true}
           visible={modalVisible}
@@ -267,25 +413,220 @@ const Admin = () => {
                     </View>
 
                     <View style={styles.detailsSection}>
-                      <DetailRow icon="badge" label="Admin ID" value={selectedAdmin.a_id} />
-                      <DetailRow icon="person-outline" label="Username" value={selectedAdmin.a_username} />
-                      <DetailRow icon="email" label="Email" value={selectedAdmin.a_email} />
-                      <DetailRow icon="work-outline" label="Position" value={selectedAdmin.a_position} />
-                      <DetailRow icon="wc" label="Gender" value={selectedAdmin.a_gender} />
-                      <DetailRow icon="cake" label="Birthdate" value={formatDate(selectedAdmin.a_birthdate)} />
-                      <DetailRow icon="phone" label="Contact" value={selectedAdmin.a_contactnumber} />
-                      <DetailRow icon="location-on" label="Address" value={selectedAdmin.a_add} />
+                      <DetailRow 
+                        icon="badge" 
+                        label="Admin ID" 
+                        value={selectedAdmin.a_id} 
+                        editable={false}
+                      />
+                      <DetailRow 
+                        icon="person-outline" 
+                        label="Username" 
+                        value={selectedAdmin.a_username} 
+                        editable={false}
+                      />
+                      <DetailRow 
+                        icon="email" 
+                        label="Email" 
+                        value={editMode ? editFormData.a_email : selectedAdmin.a_email}
+                        editable={editMode}
+                        name="a_email"
+                        onChange={handleInputChange}
+                      />
+                      <DetailRow 
+                        icon="work-outline" 
+                        label="Position" 
+                        value={editMode ? editFormData.a_position : selectedAdmin.a_position}
+                        editable={editMode}
+                        name="a_position"
+                        onChange={handleInputChange}
+                      />
+                      <DetailRow 
+                        icon="wc" 
+                        label="Gender" 
+                        value={editMode ? editFormData.a_gender : selectedAdmin.a_gender}
+                        editable={editMode}
+                        name="a_gender"
+                        onChange={handleInputChange}
+                      />
+                      <DetailRow 
+                        icon="cake" 
+                        label="Birthdate" 
+                        value={editMode ? editFormData.a_birthdate : formatDate(selectedAdmin.a_birthdate)}
+                        editable={editMode}
+                        name="a_birthdate"
+                        onChange={handleInputChange}
+                      />
+                      <DetailRow 
+                        icon="phone" 
+                        label="Contact" 
+                        value={editMode ? editFormData.a_contactnumber : selectedAdmin.a_contactnumber}
+                        editable={editMode}
+                        name="a_contactnumber"
+                        onChange={handleInputChange}
+                      />
+                      <DetailRow 
+                        icon="location-on" 
+                        label="Address" 
+                        value={editMode ? editFormData.a_add : selectedAdmin.a_add}
+                        editable={editMode}
+                        name="a_add"
+                        onChange={handleInputChange}
+                      />
                     </View>
+
+                    {!editMode ? (
+                      <View style={styles.buttonContainer}>
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.editButton]}
+                          onPress={handleEdit}
+                        >
+                          <Text style={styles.buttonText}>Edit</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.deleteButton]}
+                          onPress={() => setShowDeleteModal(true)}
+                        >
+                          <Text style={styles.buttonText}>Delete</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View style={styles.buttonContainer}>
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.cancelButton]}
+                          onPress={() => setEditMode(false)}
+                        >
+                          <Text style={styles.buttonText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.saveButton]}
+                          onPress={handleUpdate}
+                          disabled={loading}
+                        >
+                          <Text style={styles.buttonText}>
+                            {loading ? 'Saving...' : 'Save'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
                 )}
               </ScrollView>
             </Animated.View>
           </Animated.View>
         </Modal>
+
+        {/* Staff Selection Modal */}
+        <Modal
+          visible={showStaffModal}
+          animationType="slide"
+          onRequestClose={() => setShowStaffModal(false)}
+        >
+          <View style={styles.staffModalContainer}>
+            <View style={styles.staffModalHeader}>
+              <Text style={styles.staffModalTitle}>Select Staff to Add as Admin</Text>
+              <TouchableOpacity onPress={() => setShowStaffModal(false)}>
+                <MaterialIcons name="close" size={24} color="#718096" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={staffList.filter(staff => !adminList.some(admin => admin.s_id === staff.s_id))}
+              keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={styles.staffItem}
+                  onPress={() => handleStaffSelection(item)}
+                >
+                  <Text style={styles.staffName}>
+                    {item.s_fname} {item.s_lname}
+                  </Text>
+                  <Text style={styles.staffPosition}>{item.s_position}</Text>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyStaffContainer}>
+                  <Text style={styles.emptyStaffText}>No staff available to add as admin</Text>
+                </View>
+              }
+            />
+          </View>
+        </Modal>
+
+        {/* Confirmation Modal */}
+        <Modal
+          transparent={true}
+          visible={showConfirmationModal}
+          onRequestClose={() => setShowConfirmationModal(false)}
+        >
+          <View style={styles.confirmationBackdrop}>
+            <View style={styles.confirmationModal}>
+              <Text style={styles.confirmationTitle}>Confirm Add Admin</Text>
+              <Text style={styles.confirmationText}>
+                Are you sure you want to add {selectedAdmin?.a_fname} {selectedAdmin?.a_lname} as an admin?
+              </Text>
+              <Text style={styles.confirmationEmail}>
+                Email: {selectedAdmin?.a_email}
+              </Text>
+              <View style={styles.confirmationButtons}>
+                <TouchableOpacity 
+                  style={[styles.confirmButton, styles.cancelConfirmButton]}
+                  onPress={() => setShowConfirmationModal(false)}
+                >
+                  <Text style={styles.confirmButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.confirmButton, styles.addConfirmButton]}
+                  onPress={confirmAddAdmin}
+                  disabled={loading}
+                >
+                  <Text style={styles.confirmButtonText}>
+                    {loading ? 'Adding...' : 'Confirm'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          transparent={true}
+          visible={showDeleteModal}
+          onRequestClose={() => setShowDeleteModal(false)}
+        >
+          <View style={styles.confirmationBackdrop}>
+            <View style={styles.confirmationModal}>
+              <Text style={styles.confirmationTitle}>Confirm Delete Admin</Text>
+              <Text style={styles.confirmationText}>
+                Are you sure you want to delete {selectedAdmin?.a_fname} {selectedAdmin?.a_lname}?
+              </Text>
+              <Text style={styles.warningText}>This action cannot be undone.</Text>
+              <View style={styles.confirmationButtons}>
+                <TouchableOpacity 
+                  style={[styles.confirmButton, styles.cancelConfirmButton]}
+                  onPress={() => setShowDeleteModal(false)}
+                >
+                  <Text style={styles.confirmButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.confirmButton, styles.deleteConfirmButton]}
+                  onPress={handleDelete}
+                  disabled={loading}
+                >
+                  <Text style={styles.confirmButtonText}>
+                    {loading ? 'Deleting...' : 'Delete'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </PaperProvider>
   );
 };
+
+
 
 const styles = StyleSheet.create({
   container: {
@@ -498,6 +839,151 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     fontSize: 16,
     color: '#1e293b',
+  },
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#ff69b4',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  actionButton: {
+    paddingVertical: 10,
+    borderRadius: 8,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  editButton: {
+    backgroundColor: '#b4e38a',
+    marginRight: 10,
+  },
+  deleteButton: {
+    backgroundColor: '#fc6868',
+  },
+  saveButton: {
+    backgroundColor: '#ff69b4',
+  },
+  cancelButton: {
+    backgroundColor: '#9E9E9E',
+    marginRight: 10,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  detailInput: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 16,
+    color: '#1e293b',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ff69b4',
+    paddingVertical: 4,
+  },
+  staffModalContainer: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: 'white',
+  },
+  staffModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  staffModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1e293b',
+  },
+  staffItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  staffName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1e293b',
+  },
+  staffPosition: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 5,
+  },
+  emptyStaffContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyStaffText: {
+    fontSize: 16,
+    color: '#64748b',
+  },
+  confirmationBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmationModal: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    width: '90%',
+    maxWidth: 400,
+  },
+  confirmationTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#1e293b',
+  },
+  confirmationText: {
+    fontSize: 16,
+    marginBottom: 10,
+    color: '#1e293b',
+  },
+  confirmationEmail: {
+    fontSize: 14,
+    marginBottom: 15,
+    color: '#64748b',
+  },
+  warningText: {
+    fontSize: 14,
+    marginBottom: 15,
+    color: '#F44336',
+    fontWeight: 'bold',
+  },
+  confirmationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  confirmButton: {
+    padding: 10,
+    borderRadius: 5,
+    width: '48%',
+    alignItems: 'center',
+  },
+  addConfirmButton: {
+    backgroundColor: '#4CAF50',
+  },
+  deleteConfirmButton: {
+    backgroundColor: '#F44336',
+  },
+  cancelConfirmButton: {
+    backgroundColor: '#9E9E9E',
+  },
+  confirmButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
 });
 
