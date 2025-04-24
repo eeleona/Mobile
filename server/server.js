@@ -14,9 +14,20 @@ require("./config/mongo_config");
 const app = express();
 const port = 8000;
 
+// SSL options for HTTPS server
 const options = {
   key: fs.readFileSync("/etc/letsencrypt/live/api.e-pet-adopt.site/privkey.pem"),
   cert: fs.readFileSync("/etc/letsencrypt/live/api.e-pet-adopt.site/fullchain.pem"),
+  // Modern TLS configuration
+  minVersion: 'TLSv1.2',
+  ciphers: [
+    'TLS_AES_256_GCM_SHA384',
+    'TLS_CHACHA20_POLY1305_SHA256',
+    'TLS_AES_128_GCM_SHA256',
+    'ECDHE-RSA-AES256-GCM-SHA384',
+    'ECDHE-RSA-AES128-GCM-SHA256'
+  ].join(':'),
+  honorCipherOrder: true
 };
 
 // ✅ Use HTTPS Server instead of HTTP
@@ -25,18 +36,36 @@ const server = https.createServer(options, app);
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      const allowedOrigins = ["https://e-pet-adopt.site", "null","http://localhost:3000"]; // ✅ Allow 'null' for mobile apps
-      if (!origin || allowedOrigins.includes(origin)) {
+      const allowedOrigins = [
+        "https://e-pet-adopt.site",
+        "http://localhost:3000",
+        "http://localhost:8081",
+        /\.e-pet-adopt\.site$/,
+        "exp://.*",
+        /\.ngrok\.io$/,
+        /^http:\/\/192\.168\.\d+\.\d+:\d+$/,
+        /^http:\/\/10\.0\.\d+\.\d+:\d+$/,
+        "null"
+      ];
+      
+      if (!origin || allowedOrigins.some(pattern => 
+        typeof pattern === 'string' ? origin === pattern : pattern.test(origin)
+      )) {
         callback(null, true);
       } else {
+        console.log('Blocked origin:', origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
-    credentials: true,
-    methods: ["GET", "POST", "PATCH", "DELETE"],
+    methods: ["GET", "POST","PATCH", "DELETE"],
+    credentials: true
   },
+  transports: ["websocket", "polling"],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  cookie: false
 });
-
 
 app.set("io", io);
 
@@ -48,7 +77,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Multer Setup
+// Multer Setup for image uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/images/"),
   filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
@@ -58,7 +87,7 @@ const upload = multer({ storage });
 app.use(express.json(), express.urlencoded({ extended: true }), cors());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Debugging Middleware
+// Debugging Middleware: Set CSP headers for security
 app.use((req, res, next) => {
   res.setHeader("Content-Security-Policy",
     "default-src 'self'; " +

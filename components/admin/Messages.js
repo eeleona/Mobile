@@ -20,23 +20,46 @@ const Messages = ({ navigation }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    socket.current = io(`${config.address}`, {
+    // Ensure the URL uses wss:// and correct port
+    const socketUrl = config.address.replace('https://', 'wss://');
+
+    socket.current = io(socketUrl, {
       transports: ['websocket'],
+      secure: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      rejectUnauthorized: false,  // For dev/testing only
       forceNew: true,
-      jsonp: false
+      timeout: 10000,
+      pingTimeout: 5000,
+      pingInterval: 10000
     });
 
-    if (adminId) {
-      socket.current.emit('joinRoom', adminId);
-    }
+    // Handle socket events
+    socket.current.on('connect', () => {
+      console.log('✅ Socket connected!');
+      socket.current.emit('joinRoom', 'adminId');  // Replace with actual adminId
+    });
+
+    socket.current.on('connect_error', (err) => {
+      console.log('🔥 Connection error:', err.message);
+    });
+
+    socket.current.on('disconnect', (reason) => {
+      console.log('❌ Socket disconnected:', reason);
+    });
+
+    socket.current.on('receiveMessage', (newMessage) => {
+      console.log('Received message:', newMessage);
+      // Handle incoming message update logic
+    });
 
     return () => {
-      if (socket.current) {
-        socket.current.off('receiveMessage');
-        socket.current.disconnect();
-      }
+      socket.current.disconnect();
     };
-  }, [adminId]);
+  }, []);
+  
 
   useEffect(() => {
     fetchUsers();

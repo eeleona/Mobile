@@ -1,3 +1,4 @@
+import axios from "axios";
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -16,31 +17,13 @@ import config from "../../server/config/config";
 import UserPh from "../../assets/Images/user.png";
 import AdminImg from "../../assets/Images/nobglogo.png";
 
-// Modify your socket initialization in OneMessage.js
-const socket = io(`${config.address}`, {
-  transports: ['websocket', 'polling'], // Use both like the web version does
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  forceNew: true,
-  secure: true, // Enable secure connection
-  rejectUnauthorized: false // Important for self-signed certificates in development
-});
-
-if (__DEV__ && Platform.OS === 'android') {
-  // For Android devices in development
-  console.log("Applying development SSL workaround");
-  
-  // This bypasses SSL certificate verification in development only
-  // IMPORTANT: Remove this for production builds!
-  process.nextTick = setImmediate;
-}
-
 const OneMessage = ({ route, navigation }) => {
   const { userId, userName, userImage } = route.params;
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const flatListRef = useRef(null);
+  const socket = useRef(null);
 
   const adminId = "670a04a34f63c22acf3d8c9a".toString();
 
@@ -117,11 +100,10 @@ const OneMessage = ({ route, navigation }) => {
     });
 
     return () => {
-      socket.off('connect');
-      socket.off('connect_error');
-      socket.off('error');
-      socket.off('disconnect');
-      socket.off('receiveMessage');
+      if (socket.current) {
+        socket.current.off('receiveMessage');
+        socket.current.disconnect();
+      }
     };
   }, []);
 
@@ -169,21 +151,17 @@ const OneMessage = ({ route, navigation }) => {
     setIsLoading(true);
     
     try {
-      // Create message object exactly like the web version
       const newMessage = {
         senderId: adminId,
         receiverId: userId,
         message: message.trim(),
       };
       
-      // Send via socket.io first (like the web version)
-      socket.emit("sendMessage", newMessage);
+      socket.current.emit("sendMessage", newMessage);
       
-      // Update local state with the new message
-      // Add temporary id and timestamp for display
       const messageWithTimestamp = {
         ...newMessage,
-        _id: Date.now().toString(), // Temporary ID
+        _id: Date.now().toString(),
         createdAt: new Date().toISOString(),
       };
       
@@ -337,7 +315,7 @@ const styles = StyleSheet.create({
   },
   adminMessage: {
     backgroundColor: "#FF69B4",
-    borderRadius: 8,
+    borderTopRightRadius: 4,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -346,7 +324,7 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     backgroundColor: "#e5e5ea",
-    borderRadius: 8,
+    borderTopLeftRadius: 4,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
