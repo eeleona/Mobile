@@ -1,4 +1,3 @@
-import axios from "axios";
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -17,32 +16,50 @@ import config from "../../server/config/config";
 import UserPh from "../../assets/Images/user.png";
 import AdminImg from "../../assets/Images/nobglogo.png";
 
+// Modify your socket initialization in OneMessage.js
+const socket = io(`${config.address}`, {
+  transports: ['websocket', 'polling'], // Use both like the web version does
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  forceNew: true,
+  secure: true, // Enable secure connection
+  rejectUnauthorized: false // Important for self-signed certificates in development
+});
+
+if (__DEV__ && Platform.OS === 'android') {
+  // For Android devices in development
+  console.log("Applying development SSL workaround");
+  
+  // This bypasses SSL certificate verification in development only
+  // IMPORTANT: Remove this for production builds!
+  process.nextTick = setImmediate;
+}
+
 const OneMessage = ({ route, navigation }) => {
   const { userId, userName, userImage } = route.params;
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const flatListRef = useRef(null);
-  const socket = useRef(null);
 
   const adminId = "670a04a34f63c22acf3d8c9a".toString();
 
   // SSL workaround for Android in development
-  // useEffect(() => {
-  //   if (__DEV__ && Platform.OS === 'android') {
-  //     // const http = require('http');
-  //     // const https = require('https');
-  //     // const httpAgent = new http.Agent();
-  //     // const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+  useEffect(() => {
+    if (__DEV__ && Platform.OS === 'android') {
+      // const http = require('http');
+      // const https = require('https');
+      // const httpAgent = new http.Agent();
+      // const httpsAgent = new https.Agent({ rejectUnauthorized: false });
     
-  //     global._fetch = global.fetch;
-  //     global.fetch = (url, options) => {
-  //       const agent = url.startsWith('https') ? httpsAgent : httpAgent;
-  //       return global._fetch(url, { ...options, agent });
-  //     };
-  //   }
+      global._fetch = global.fetch;
+      global.fetch = (url, options) => {
+        const agent = url.startsWith('https') ? httpsAgent : httpAgent;
+        return global._fetch(url, { ...options, agent });
+      };
+    }
     
-  // }, []);
+  }, []);
 
   useEffect(() => {
 
@@ -60,12 +77,12 @@ const OneMessage = ({ route, navigation }) => {
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
-    // rejectUnauthorized: !__DEV__,
+    rejectUnauthorized: !__DEV__,
     
     // For Android development
-    // agent: Platform.OS === 'android' && __DEV__ 
-    //   ? new (require('https').Agent({ rejectUnauthorized: false })) 
-    //   : undefined,
+    agent: Platform.OS === 'android' && __DEV__ 
+      ? new (require('https').Agent({ rejectUnauthorized: false })) 
+      : undefined,
     });
 
     // Debugging events
@@ -100,10 +117,11 @@ const OneMessage = ({ route, navigation }) => {
     });
 
     return () => {
-      if (socket.current) {
-        socket.current.off('receiveMessage');
-        socket.current.disconnect();
-      }
+      socket.off('connect');
+      socket.off('connect_error');
+      socket.off('error');
+      socket.off('disconnect');
+      socket.off('receiveMessage');
     };
   }, []);
 
@@ -151,17 +169,21 @@ const OneMessage = ({ route, navigation }) => {
     setIsLoading(true);
     
     try {
+      // Create message object exactly like the web version
       const newMessage = {
         senderId: adminId,
         receiverId: userId,
         message: message.trim(),
       };
       
-      socket.current.emit("sendMessage", newMessage);
+      // Send via socket.io first (like the web version)
+      socket.emit("sendMessage", newMessage);
       
+      // Update local state with the new message
+      // Add temporary id and timestamp for display
       const messageWithTimestamp = {
         ...newMessage,
-        _id: Date.now().toString(),
+        _id: Date.now().toString(), // Temporary ID
         createdAt: new Date().toISOString(),
       };
       
