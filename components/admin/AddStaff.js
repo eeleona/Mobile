@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
-import { TextInput, Button, ActivityIndicator } from 'react-native-paper';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  Alert,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator
+} from 'react-native';
+import { Divider } from 'react-native-paper';
 import axios from 'axios';
 import config from '../../server/config/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import jwt_decode from 'jwt-decode';
+import AppBar from '../design/AppBar';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const AddStaff = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -81,117 +92,186 @@ const AddStaff = ({ navigation }) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.container}>
+      <AppBar title="Add New Staff" onBackPress={() => navigation.goBack()} />
+
+      <View style={styles.formContainer}>
       <Text style={styles.title}>Add New Staff</Text>
-      
-      <TextInput
-        label="First Name"
-        value={formData.s_fname}
-        onChangeText={(text) => handleInputChange('s_fname', text)}
-        style={styles.input}
-        mode="outlined"
-      />
-      
-      <TextInput
-        label="Last Name"
-        value={formData.s_lname}
-        onChangeText={(text) => handleInputChange('s_lname', text)}
-        style={styles.input}
-        mode="outlined"
-      />
-      
-      <TextInput
-        label="Middle Name"
-        value={formData.s_mname}
-        onChangeText={(text) => handleInputChange('s_mname', text)}
-        style={styles.input}
-        mode="outlined"
-      />
-      
-      <TextInput
-        label="Address"
-        value={formData.s_add}
-        onChangeText={(text) => handleInputChange('s_add', text)}
-        style={styles.input}
-        mode="outlined"
-      />
-      
-      <TextInput
-        label="Contact Number"
-        value={formData.s_contactnumber}
-        onChangeText={(text) => handleInputChange('s_contactnumber', text)}
-        style={styles.input}
-        mode="outlined"
-        keyboardType="phone-pad"
-      />
-      
-      <TextInput
-        label="Position"
-        value={formData.s_position}
-        onChangeText={(text) => handleInputChange('s_position', text)}
-        style={styles.input}
-        mode="outlined"
-      />
-      
-      <TextInput
-        label="Gender"
-        value={formData.s_gender}
-        onChangeText={(text) => handleInputChange('s_gender', text)}
-        style={styles.input}
-        mode="outlined"
-      />
-      
-      <TextInput
-        label="Birthdate"
-        value={formData.s_birthdate}
-        onChangeText={(text) => handleInputChange('s_birthdate', text)}
-        style={styles.input}
-        mode="outlined"
-        placeholder="YYYY-MM-DD"
-      />
-      
-      <TextInput
-        label="Email"
-        value={formData.s_email}
-        onChangeText={(text) => handleInputChange('s_email', text)}
-        style={styles.input}
-        mode="outlined"
-        keyboardType="email-address"
-      />
-      
-      <Button
-        mode="contained"
-        onPress={handleSubmit}
-        style={styles.button}
-        loading={loading}
-        disabled={loading}
-      >
-        {loading ? 'Adding...' : 'Add Staff'}
-      </Button>
+      <Divider style={styles.rowDivider} />
+        <View style={styles.inputContainer}>
+          <MaterialIcons name="person" size={24} color="#ff69b4" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            value={formData.s_fname}
+            onChangeText={(text) => handleInputChange('s_fname', text)}
+            placeholder="First Name *"
+            placeholderTextColor="#aaa"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <MaterialIcons name="person" size={24} color="#ff69b4" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            value={formData.s_lname}
+            onChangeText={(text) => handleInputChange('s_lname', text)}
+            placeholder="Last Name *"
+            placeholderTextColor="#aaa"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <MaterialIcons name="person" size={24} color="#ff69b4" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            value={formData.s_mname}
+            onChangeText={(text) => handleInputChange('s_mname', text)}
+            placeholder="Middle Name"
+            placeholderTextColor="#aaa"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <MaterialIcons name="location-on" size={24} color="#ff69b4" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            value={formData.s_add}
+            onChangeText={(text) => handleInputChange('s_add', text)}
+            placeholder="Address"
+            placeholderTextColor="#aaa"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <MaterialIcons name="phone" size={24} color="#ff69b4" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            value={formData.s_contactnumber}
+            onChangeText={(text) => handleInputChange('s_contactnumber', text)}
+            placeholder="Contact Number"
+            placeholderTextColor="#aaa"
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <MaterialIcons name="work" size={24} color="#ff69b4" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            value={formData.s_position}
+            onChangeText={(text) => handleInputChange('s_position', text)}
+            placeholder="Position *"
+            placeholderTextColor="#aaa"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <MaterialIcons name="wc" size={24} color="#ff69b4" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            value={formData.s_gender}
+            onChangeText={(text) => handleInputChange('s_gender', text)}
+            placeholder="Gender"
+            placeholderTextColor="#aaa"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <MaterialIcons name="cake" size={24} color="#ff69b4" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            value={formData.s_birthdate}
+            onChangeText={(text) => handleInputChange('s_birthdate', text)}
+            placeholder="Birthdate (YYYY-MM-DD)"
+            placeholderTextColor="#aaa"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <MaterialIcons name="email" size={24} color="#ff69b4" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            value={formData.s_email}
+            onChangeText={(text) => handleInputChange('s_email', text)}
+            placeholder="Email"
+            placeholderTextColor="#aaa"
+            keyboardType="email-address"
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.submitButtonText}>Add Staff</Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    flex: 1,
     backgroundColor: '#FAF9F6',
+  },
+  formContainer: {
+    padding: 20,
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  rowDivider: {
+    backgroundColor: '#eee',
+    height: 1,
+    marginVertical: 15,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#2a2a2a',
-    textAlign: 'center',
+    color: '#ff69b4',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  icon: {
+    marginRight: 10,
   },
   input: {
-    marginBottom: 15,
-    backgroundColor: '#fff',
+    flex: 1,
+    height: 50,
+    color: '#333',
   },
-  button: {
-    marginTop: 20,
-    paddingVertical: 8,
+  submitButton: {
     backgroundColor: '#ff69b4',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
 });
 

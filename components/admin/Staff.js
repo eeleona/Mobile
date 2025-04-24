@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, FlatList, TouchableOpacity, Modal, ScrollView, Animated, Alert, Easing } from 'react-native';
+import { View, Text, TextInput, StyleSheet, FlatList, TouchableOpacity, Modal, ScrollView, Animated, Alert, Easing, Image, RefreshControl } from 'react-native';
 import { PaperProvider, ActivityIndicator, FAB } from 'react-native-paper';
 import axios from 'axios';
 import config from '../../server/config/config';
@@ -15,6 +15,7 @@ const Staff = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
   const [filteredStaff, setFilteredStaff] = useState([]);
   const [formData, setFormData] = useState({
     s_fname: '',
@@ -51,16 +52,59 @@ const Staff = ({ navigation }) => {
     }
   }, [search, staffList]);
 
+  const formatStaffId = (id) => {
+    if (!id) return 'N/A';
+    // Format as STF-YYYY-XXX (e.g., STF-2023-001)
+    return `STF-${new Date().getFullYear()}-${id.toString().padStart(3, '0')}`;
+  };
+
+  const formatContactNumber = (number) => {
+    if (!number) return 'N/A';
+    const numStr = number.toString(); // Ensure it's a string
+    if (numStr.startsWith('63')) {
+      // Convert international format to local format
+      return `0${numStr.slice(2, 5)} ${numStr.slice(5, 8)} ${numStr.slice(8)}`;
+    }
+    return numStr.replace(/(\d{4})(\d{3})(\d{4})/, '$1 $2 $3');
+  };
+
+  const handleContactNumberChange = (text) => {
+    // Remove all non-digit characters
+    const cleaned = text.toString().replace(/\D/g, '');
+    
+    // Format based on the cleaned input
+    let formatted = cleaned;
+    
+    // Apply the formatting pattern if there are enough digits
+    if (cleaned.length >= 7) {
+      if (cleaned.startsWith('63')) {
+        formatted = `${cleaned.substring(0, 2)} ${cleaned.substring(2, 5)} ${cleaned.substring(5, 8)} ${cleaned.substring(8)}`;
+      } else if (cleaned.length >= 10) {
+        formatted = cleaned.replace(/(\d{4})(\d{3})(\d{4})/, '$1 $2 $3');
+      }
+    }
+    
+    handleInputChange('s_contactnumber', formatted.trim());
+  };
+
   const fetchStaff = async () => {
     try {
+      setLoading(true);
       const response = await axios.get(`${config.address}/api/staff/all`);
       setStaffList(response.data.theStaff);
       setFilteredStaff(response.data.theStaff);
     } catch (error) {
       console.error('Error fetching staff:', error);
+      Alert.alert('Error', 'Failed to fetch staff data');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchStaff();
   };
 
   const verifyAdminAccess = async () => {
@@ -104,7 +148,7 @@ const Staff = ({ navigation }) => {
       s_lname: staff.s_lname,
       s_mname: staff.s_mname || '',
       s_add: staff.s_add,
-      s_contactnumber: staff.s_contactnumber,
+      s_contactnumber: formatContactNumber(staff.s_contactnumber),
       s_position: staff.s_position,
       s_gender: staff.s_gender,
       s_birthdate: staff.s_birthdate,
@@ -151,6 +195,38 @@ const Staff = ({ navigation }) => {
     setEditMode(true);
   };
 
+  const handleUpdate = async () => {
+    const token = await verifyAdminAccess();
+    if (!token) return;
+
+    try {
+      setLoading(true);
+      // Remove spaces from contact number before saving
+      const dataToSend = {
+        ...formData,
+        s_contactnumber: formData.s_contactnumber.toString().replace(/\s/g, '')
+      };
+      
+      const response = await axios.put(
+        `${config.address}/api/staff/update/${selectedStaff._id}`,
+        dataToSend,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setStaffList(staffList.map(staff => 
+        staff._id === selectedStaff._id ? response.data.theUpdateStaff : staff
+      ));
+      setEditMode(false);
+      Alert.alert('Success', 'Staff information updated successfully');
+      fetchStaff();
+    } catch (error) {
+      console.error('Error updating staff:', error);
+      Alert.alert('Error', 'Failed to update staff information');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDelete = async () => {
     const token = await verifyAdminAccess();
     if (!token) return;
@@ -165,41 +241,24 @@ const Staff = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
+              setLoading(true);
               await axios.delete(`${config.address}/api/staff/delete/${selectedStaff._id}`, {
                 headers: { Authorization: `Bearer ${token}` }
               });
               setStaffList(staffList.filter(staff => staff._id !== selectedStaff._id));
               closeModal();
               Alert.alert('Success', 'Staff member deleted successfully');
+              fetchStaff();
             } catch (error) {
               console.error('Error deleting staff:', error);
               Alert.alert('Error', 'Failed to delete staff member');
+            } finally {
+              setLoading(false);
             }
           }
         }
       ]
     );
-  };
-
-  const handleUpdate = async () => {
-    const token = await verifyAdminAccess();
-    if (!token) return;
-
-    try {
-      const response = await axios.put(
-        `${config.address}/api/staff/update/${selectedStaff._id}`,
-        formData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setStaffList(staffList.map(staff => 
-        staff._id === selectedStaff._id ? response.data.theUpdateStaff : staff
-      ));
-      setEditMode(false);
-      Alert.alert('Success', 'Staff information updated successfully');
-    } catch (error) {
-      console.error('Error updating staff:', error);
-      Alert.alert('Error', 'Failed to update staff information');
-    }
   };
 
   let [fontsLoaded] = useFonts({
@@ -249,12 +308,11 @@ const Staff = ({ navigation }) => {
   return (
     <PaperProvider>
       <View style={styles.container}>
-        {/* Search Bar styled like PendingAdoptions */}
         <View style={styles.searchContainer}>
           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
             <TextInput
               style={styles.searchBar}
-              placeholder="Search"
+              placeholder="Search name, position, gender"
               placeholderTextColor="#aaa"
               value={search}
               onChangeText={setSearch}
@@ -275,15 +333,26 @@ const Staff = ({ navigation }) => {
           renderItem={renderItem}
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#ff69b4']}
+              tintColor="#ff69b4"
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <MaterialIcons name="people-outline" size={50} color="#cbd5e0" />
+              <Image
+                source={require('../../assets/Images/pawicon2.png')}
+                style={styles.pawIcon}
+                resizeMode="contain"
+              />
               <Text style={styles.emptyText}>No staff members found</Text>
             </View>
           }
         />
 
-        {/* FAB Button */}
         <FAB
           style={styles.fab}
           icon="plus"
@@ -291,7 +360,6 @@ const Staff = ({ navigation }) => {
           onPress={() => navigation.navigate('Add Staff')}
         />
 
-        {/* Staff Details Modal */}
         <Modal
           transparent={true}
           visible={modalVisible}
@@ -315,53 +383,37 @@ const Staff = ({ navigation }) => {
                 {selectedStaff && (
                   <View style={styles.modalContent}>
                     <View style={styles.profileSection}>
-                      {editMode ? (
-                        <TextInput
-                          style={styles.editInput}
-                          value={formData.s_fname}
-                          onChangeText={(text) => handleInputChange('s_fname', text)}
-                        />
-                      ) : (
-                        <Text style={styles.profileName}>
-                          {selectedStaff.s_fname} {selectedStaff.s_lname}
-                        </Text>
-                      )}
+                      <Text style={styles.profileName}>
+                        {selectedStaff.s_fname} {selectedStaff.s_lname}
+                      </Text>
                       <View style={[styles.statusBadge, { backgroundColor: '#ff69b4' }]}>
-                        {editMode ? (
-                          <TextInput
-                            style={styles.editInput}
-                            value={formData.s_position}
-                            onChangeText={(text) => handleInputChange('s_position', text)}
-                          />
-                        ) : (
-                          <Text style={styles.statusText}>{selectedStaff.s_position}</Text>
-                        )}
+                        <Text style={styles.statusText}>{selectedStaff.s_position}</Text>
                       </View>
                     </View>
 
                     <View style={styles.detailsSection}>
                       <DetailRow 
-                        icon="person-outline" 
+                        icon="badge" 
                         label="Staff ID" 
-                        value={selectedStaff._id} 
+                        value={formatStaffId(selectedStaff.s_id)} 
                         editMode={false}
                       />
                       <DetailRow 
-                        icon="badge" 
+                        icon="person-outline" 
                         label="First Name" 
                         value={editMode ? formData.s_fname : selectedStaff.s_fname}
                         editMode={editMode}
                         onChangeText={(text) => handleInputChange('s_fname', text)}
                       />
                       <DetailRow 
-                        icon="badge" 
+                        icon="person-outline" 
                         label="Last Name" 
                         value={editMode ? formData.s_lname : selectedStaff.s_lname}
                         editMode={editMode}
                         onChangeText={(text) => handleInputChange('s_lname', text)}
                       />
                       <DetailRow 
-                        icon="badge" 
+                        icon="person-outline" 
                         label="Middle Name" 
                         value={editMode ? formData.s_mname : selectedStaff.s_mname || 'N/A'}
                         editMode={editMode}
@@ -390,10 +442,10 @@ const Staff = ({ navigation }) => {
                       />
                       <DetailRow 
                         icon="phone" 
-                        label="Contact" 
-                        value={editMode ? formData.s_contactnumber : selectedStaff.s_contactnumber}
+                        label="Contact Number" 
+                        value={editMode ? formData.s_contactnumber : formatContactNumber(selectedStaff.s_contactnumber)}
                         editMode={editMode}
-                        onChangeText={(text) => handleInputChange('s_contactnumber', text)}
+                        onChangeText={handleContactNumberChange}
                       />
                       <DetailRow 
                         icon="cake" 
@@ -411,7 +463,6 @@ const Staff = ({ navigation }) => {
                       />
                     </View>
 
-                    {/* Action Buttons */}
                     <View style={styles.modalActions}>
                       {editMode ? (
                         <>
@@ -468,6 +519,7 @@ const DetailRow = ({ icon, label, value, editMode, onChangeText }) => (
           style={styles.editInput}
           value={value}
           onChangeText={onChangeText}
+          keyboardType={label === 'Contact Number' ? 'phone-pad' : 'default'}
         />
       ) : (
         <Text style={styles.detailValue}>{value}</Text>
@@ -599,6 +651,11 @@ const styles = StyleSheet.create({
     color: '#718096',
     marginTop: 10,
   },
+  pawIcon: {
+    width: 80,
+    height: 80,
+    marginBottom: 15,
+  },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -619,7 +676,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
@@ -632,7 +689,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   modalContent: {
-    paddingVertical: 15,
+    paddingVertical: 10,
   },
   profileSection: {
     alignItems: 'center',
@@ -703,13 +760,12 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'flex-end',
     marginTop: 20,
-    marginBottom: 15,
+    marginBottom: 10,
   },
   actionButton: {
     paddingVertical: 10,
-    paddingHorizontal: 20,
     borderRadius: 8,
     minWidth: 100,
     alignItems: 'center',
@@ -720,16 +776,18 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   editButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#b4e38a',
+    marginRight: 10,
   },
   deleteButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: '#fc6868',
   },
   saveButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#b4e38a',
   },
   cancelButton: {
     backgroundColor: '#9E9E9E',
+    marginRight: 10,
   },
   fab: {
     position: 'absolute',
@@ -739,9 +797,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#ff69b4',
     elevation: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 2, height: 2 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowRadius: 2,
   },
 });
 
