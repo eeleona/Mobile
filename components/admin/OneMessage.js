@@ -1,3 +1,4 @@
+import axios from "axios";
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -16,63 +17,93 @@ import config from "../../server/config/config";
 import UserPh from "../../assets/Images/user.png";
 import AdminImg from "../../assets/Images/nobglogo.png";
 
-// Modify your socket initialization in OneMessage.js
-const socket = io(`${config.address}`, {
-  transports: ['websocket', 'polling'], // Use both like the web version does
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  forceNew: true,
-  secure: true, // Enable secure connection
-  rejectUnauthorized: false // Important for self-signed certificates in development
-});
-
-if (__DEV__ && Platform.OS === 'android') {
-  // For Android devices in development
-  console.log("Applying development SSL workaround");
-  
-  // This bypasses SSL certificate verification in development only
-  // IMPORTANT: Remove this for production builds!
-  process.nextTick = setImmediate;
-}
-
 const OneMessage = ({ route, navigation }) => {
   const { userId, userName, userImage } = route.params;
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const flatListRef = useRef(null);
+  const socket = useRef(null);
 
   const adminId = "670a04a34f63c22acf3d8c9a".toString();
 
-  // Add this to your component
+  // SSL workaround for Android in development
   useEffect(() => {
-    console.log("Attempting to connect to socket at:", config.address);
+    if (__DEV__ && Platform.OS === 'android') {
+      // const http = require('http');
+      // const https = require('https');
+      // const httpAgent = new http.Agent();
+      // const httpsAgent = new https.Agent({ rejectUnauthorized: false });
     
-    socket.on('connect', () => {
-      console.log('Socket connected successfully with ID:', socket.id);
+      global._fetch = global.fetch;
+      global.fetch = (url, options) => {
+        const agent = url.startsWith('https') ? httpsAgent : httpAgent;
+        return global._fetch(url, { ...options, agent });
+      };
+    }
+    
+  }, []);
+
+  useEffect(() => {
+
+    // Use wss:// for secure connection
+    const socketUrl = 'https://api.e-pet-adopt.site:8000';
+  
+  socket.current = io(socketUrl, {
+    // Force WebSocket transport only
+    transports: ['websocket'],
+    
+    // Set secure based on environment
+    secure: !__DEV__,
+    
+    // Other options
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+    rejectUnauthorized: !__DEV__,
+    
+    // For Android development
+    agent: Platform.OS === 'android' && __DEV__ 
+      ? new (require('https').Agent({ rejectUnauthorized: false })) 
+      : undefined,
     });
-    
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      console.error('Socket connection error details:', error.message);
+
+    // Debugging events
+    const socketEvents = [
+      'connect',
+      'connect_error',
+      'disconnect',
+      'error',
+      'reconnect',
+      'reconnect_attempt',
+      'reconnecting',
+      'reconnect_error',
+      'reconnect_failed',
+      'ping',
+      'pong'
+    ];
+
+    socketEvents.forEach(event => {
+      socket.current.on(event, (data) => {
+        console.log(`Socket ${event}:`, data || '');
+      });
     });
-    
-    socket.on('error', (error) => {
-      console.error('Socket general error:', error);
+
+    socket.current.on('connect', () => {
+      console.log('✅ Socket connected! ID:', socket.current.id);
+      socket.current.emit('joinRoom', adminId);
     });
-    
-    socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
+
+    socket.current.on('receiveMessage', (newMessage) => {
+      setMessages(prev => [...prev, newMessage]);
+      scrollToBottom();
     });
-    
-    // Your existing socket code...
-    
+
     return () => {
-      socket.off('connect');
-      socket.off('connect_error');
-      socket.off('error');
-      socket.off('disconnect');
-      socket.off('receiveMessage');
+      if (socket.current) {
+        socket.current.off('receiveMessage');
+        socket.current.disconnect();
+      }
     };
   }, []);
 
@@ -120,21 +151,17 @@ const OneMessage = ({ route, navigation }) => {
     setIsLoading(true);
     
     try {
-      // Create message object exactly like the web version
       const newMessage = {
         senderId: adminId,
         receiverId: userId,
         message: message.trim(),
       };
       
-      // Send via socket.io first (like the web version)
-      socket.emit("sendMessage", newMessage);
+      socket.current.emit("sendMessage", newMessage);
       
-      // Update local state with the new message
-      // Add temporary id and timestamp for display
       const messageWithTimestamp = {
         ...newMessage,
-        _id: Date.now().toString(), // Temporary ID
+        _id: Date.now().toString(),
         createdAt: new Date().toISOString(),
       };
       
