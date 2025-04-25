@@ -8,7 +8,7 @@
     "icon": "./assets/Images/nobglogo.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "icon": "./assets/Images/nobglogo.png",
+      "image": "./assets/Images/nobglogo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -16,11 +16,15 @@
       [
         "expo-font",
         {
-          "fonts": ["./assets/Fonts/Inter-VariableFont_opsz,wght.ttf"]
+          "fonts": [
+            "./assets/Fonts/Inter-VariableFont_opsz,wght.ttf"
+          ]
         }
       ]
     ],
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.eleona.homefurever"
@@ -35,7 +39,7 @@
     "web": {
       "favicon": "./assets/Images/nobglogo.png"
     },
-    "owner": "eleona", 
+    "owner": "mahra",
     "updates": {
       "url": "https://u.expo.dev/ffe29be6-e99a-4acd-b4c8-96d65c3565f3"
     },
@@ -44,7 +48,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "ffe29be6-e99a-4acd-b4c8-96d65c3565f3"
+        "projectId": "a4919ef7-c79f-4ea7-9645-7b6e72bc664d"
       }
     }
   }
