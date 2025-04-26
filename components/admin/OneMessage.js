@@ -16,6 +16,7 @@ import io from "socket.io-client";
 import config from "../../server/config/config";
 import UserPh from "../../assets/Images/user.png";
 import AdminImg from "../../assets/Images/nobglogo.png";
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 const OneMessage = ({ route, navigation }) => {
   const { userId, userName, userImage } = route.params;
@@ -28,47 +29,38 @@ const OneMessage = ({ route, navigation }) => {
 
   const adminId = "670a04a34f63c22acf3d8c9a".toString();
 
-  // SSL workaround for Android in development
+  // Network connectivity handler
   useEffect(() => {
-    if (__DEV__ && Platform.OS === 'android') {
-      // const http = require('http');
-      // const https = require('https');
-      // const httpAgent = new http.Agent();
-      // const httpsAgent = new https.Agent({ rejectUnauthorized: false });
-    
-      global._fetch = global.fetch;
-      global.fetch = (url, options) => {
-        const agent = url.startsWith('https') ? httpsAgent : httpAgent;
-        return global._fetch(url, { ...options, agent });
-      };
-    }
-    
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+      if (state.isConnected && socket.current && !socket.current.connected) {
+        socket.current.connect();
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Socket.io connection setup
   useEffect(() => {
     const socketUrl = 'https://api.e-pet-adopt.site:8000';
-  
-  socket.current = io(socketUrl, {
-    // Force WebSocket transport only
-    transports: ['websocket'],
-    
-    // Set secure based on environment
-    secure: !__DEV__,
-    
-    // Other options
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-    rejectUnauthorized: !__DEV__,
-    
-    // For Android development
-    agent: Platform.OS === 'android' && __DEV__ 
-      ? new (require('https').Agent({ rejectUnauthorized: false })) 
-      : undefined,
-    });
 
-    // Debugging events
+    const socketOptions = {
+      transports: ['websocket'],
+      forceNew: true,
+      upgrade: false,
+      secure: true,
+      rejectUnauthorized: false,
+      timeout: 10000,
+      pingTimeout: 30000,
+      pingInterval: 25000,
+      extraHeaders: __DEV__ ? {
+        'Origin': Platform.OS === 'android' ? 'http://10.0.2.2' : 'http://localhost',
+      } : undefined
+    };
+
+    socket.current = io(socketUrl, socketOptions);
+
     const socketEvents = [
       'connect',
       'connect_error',
@@ -80,30 +72,29 @@ const OneMessage = ({ route, navigation }) => {
       'reconnect_error',
       'reconnect_failed',
       'ping',
-      'pong',
+      'pong'
     ];
-  
+
     socketEvents.forEach(event => {
       socket.current.on(event, (data) => {
         console.log(`Socket ${event}:`, data || '');
       });
     });
-  
+
     socket.current.on('connect', () => {
       console.log('✅ Socket connected! ID:', socket.current.id);
       socket.current.emit('joinRoom', adminId);
     });
-  
+
     socket.current.on('connect_error', (err) => {
       console.log('Connection error:', err);
       Alert.alert("Connection Error", "Failed to connect to the server");
     });
-  
+
     socket.current.on('receiveMessage', (newMessage) => {
       setMessages(prev => [...prev, newMessage]);
-      scrollToBottom();
     });
-  
+
     return () => {
       if (socket.current) {
         socket.current.off('receiveMessage');
@@ -111,7 +102,15 @@ const OneMessage = ({ route, navigation }) => {
       }
     };
   }, []);
-  
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages]);
 
   // Fetch messages when userId changes
   useEffect(() => {
@@ -120,12 +119,6 @@ const OneMessage = ({ route, navigation }) => {
     }
   }, [userId]);
 
-  const scrollToBottom = () => {
-    if (flatListRef.current) {
-      flatListRef.current.scrollToEnd({ animated: true });
-    }
-  };
-
   const fetchMessages = async (selectedUserId) => {
     try {
       console.log("Fetching messages for users:", adminId, selectedUserId);
@@ -133,20 +126,19 @@ const OneMessage = ({ route, navigation }) => {
         `${config.address}/api/messages/${adminId}/${selectedUserId}`,
         {
           headers: {
-            Accept: 'application/json',
+            'Accept': 'application/json',
             'Content-Type': 'application/json',
           },
         }
       );
-
+    
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-
+    
       const data = await response.json();
       console.log("Messages fetched successfully:", data.length);
       setMessages(data);
-      scrollToBottom();
     } catch (error) {
       console.error("Failed to fetch messages:", error);
       Alert.alert("Error", "Failed to load messages");
@@ -154,28 +146,30 @@ const OneMessage = ({ route, navigation }) => {
   };
 
   const handleSendMessage = () => {
-    if (!message.trim() || !userId) return;
-  
-    setIsLoading(true);
+    if (!message.trim() || !userId || !isConnected) {
+      Alert.alert("Error", "Cannot send message - no network connection");
+      return;
+    }
 
+    setIsLoading(true);
+  
     try {
       const newMessage = {
         senderId: adminId,
         receiverId: userId,
         message: message.trim(),
       };
-
+    
       socket.current.emit("sendMessage", newMessage);
-
+    
       const messageWithTimestamp = {
         ...newMessage,
         _id: Date.now().toString(),
         createdAt: new Date().toISOString(),
       };
-
-      setMessages(prev => [...prev, messageWithTimestamp]);
+    
+      setMessages((prevMessages) => [...prevMessages, messageWithTimestamp]);
       setMessage("");
-      scrollToBottom();
     } catch (error) {
       console.error("Error sending message:", error);
       Alert.alert("Error", "Failed to send message");
@@ -184,21 +178,37 @@ const OneMessage = ({ route, navigation }) => {
     }
   };
 
-  const renderItem = ({ item }) => {
-    const isAdmin = item.senderId === adminId;
-
-    return (
-      <View
-        style={[
-          styles.messageContainer,
-          isAdmin ? styles.adminMessage : styles.userMessage,
-        ]}
-      >
-        <Text style={styles.messageText}>{item.message}</Text>
-        <Text style={styles.timestamp}>
-          {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
-      </View>
+  const renderMessageItem = ({ item }) => (
+    <View
+      style={[
+        styles.messageWrapper,
+        item.senderId === adminId ? styles.adminWrapper : styles.userWrapper,
+      ]}
+    >
+      {item.senderId === adminId ? (
+        <>
+          <View style={styles.messageContainer}>
+            <Text style={styles.adminMessageText}>{item.message}</Text>
+            <Text style={styles.adminTimestamp}>
+              {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </View>
+          <Image source={AdminImg} style={styles.adminAvatar} />
+        </>
+      ) : (
+        <>
+          <Image
+            source={userImage ? { uri: userImage } : UserPh}
+            style={styles.userAvatar}
+          />
+          <View style={styles.messageContainer}>
+            <Text style={styles.userMessageText}>{item.message}</Text>
+            <Text style={styles.userTimestamp}>
+              {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </View>
+        </>
+      )}
     </View>
   );
 
@@ -210,116 +220,211 @@ const OneMessage = ({ route, navigation }) => {
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+          <MaterialIcons name="keyboard-arrow-left" size={32} color="white" />
         </TouchableOpacity>
         <Image
           source={userImage ? { uri: userImage } : UserPh}
-          style={styles.userAvatar}
+          style={styles.headerAvatar}
         />
-        <Text style={styles.headerText}>{userName || "User"}</Text>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerText}>{userName || "User"}</Text>
+          <Text style={styles.statusText}>
+            {isConnected ? 'Online' : 'Offline'}
+          </Text>
+        </View>
       </View>
 
       <FlatList
         ref={flatListRef}
         data={messages}
         renderItem={renderMessageItem}
-        keyExtractor={(item, index) => index.toString()}
+        keyExtractor={(item) => item._id}
         contentContainerStyle={styles.messagesContent}
         style={styles.messagesContainer}
-        onContentSizeChange={scrollToBottom}
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
       />
 
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
+          placeholder="Type your message..."
+          placeholderTextColor="#888"
           value={message}
           onChangeText={setMessage}
           onSubmitEditing={handleSendMessage}
           returnKeyType="send"
-          editable={!isLoading}
+          editable={!isLoading && isConnected}
         />
-        <TouchableOpacity 
-          onPress={handleSendMessage} 
-          style={[styles.sendButton, isLoading && styles.disabledButton]}
-          disabled={isLoading}
+        <TouchableOpacity
+          onPress={handleSendMessage}
+          style={[
+            styles.sendButton,
+            (isLoading || !isConnected) && styles.disabledButton
+          ]}
+          disabled={isLoading || !isConnected}
         >
-          <Text style={styles.sendButtonText}>{isLoading ? "..." : "Send"}</Text>
+          <MaterialIcons 
+            name="send" 
+            size={24} 
+            color="white" 
+          />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
 };
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f8f8",
+    backgroundColor: "#f5f5f5",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white", // Changed to white
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  backButton: {
+    marginRight: 10,
+  },
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: "white",
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerText: {
+    color: "#333", // Changed to dark color for white header
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  statusText: {
+    color: "#666", // Changed to darker color
+    fontSize: 12,
   },
   messagesContainer: {
     flex: 1,
-    paddingHorizontal: 10,
+    paddingHorizontal: 15,
+  },
+  messagesContent: {
+    paddingTop: 15,
+    paddingBottom: 20,
+  },
+  messageWrapper: {
+    flexDirection: "row",
+    marginVertical: 8,
+    alignItems: "flex-end",
+  },
+  adminWrapper: {
+    justifyContent: "flex-end",
+  },
+  userWrapper: {
+    justifyContent: "flex-start",
   },
   messageContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    marginBottom: 10,
-  },
-  adminMessage: {
-    alignSelf: "flex-end",
-  },
-  userMessage: {
-    alignSelf: "flex-start",
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 8,
-  },
-  messageBubble: {
-    backgroundColor: "#e1f5fe",
-    padding: 10,
-    borderRadius: 8,
+    borderRadius: 18,
+    padding: 12,
     maxWidth: "70%",
+    marginHorizontal: 8,
   },
-  messageText: {
+  adminMessageText: {
     fontSize: 16,
-    color: "#333",
+    color: "white", // White text for pink bubbles
   },
-  timestamp: {
-    fontSize: 10,
-    color: "#999",
+  userMessageText: {
+    fontSize: 16,
+    color: "#333", // Dark text for white bubbles
+  },
+  adminAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  userAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  adminTimestamp: {
+    fontSize: 12,
     marginTop: 4,
+    color: "rgba(255,255,255,0.7)",
     textAlign: "right",
+  },
+  userTimestamp: {
+    fontSize: 12,
+    marginTop: 4,
+    color: "rgba(0,0,0,0.5)",
   },
   inputContainer: {
     flexDirection: "row",
-    padding: 10,
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    backgroundColor: "white",
     borderTopWidth: 1,
-    borderColor: "#ccc",
-    backgroundColor: "#fff",
+    borderTopColor: "#eee",
   },
   input: {
     flex: 1,
-    backgroundColor: "#eee",
-    borderRadius: 20,
-    paddingHorizontal: 15,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     fontSize: 16,
+    marginRight: 10,
+    maxHeight: 120,
   },
   sendButton: {
-    marginLeft: 8,
-    backgroundColor: "#2196f3",
-    borderRadius: 20,
-    paddingHorizontal: 20,
+    backgroundColor: "#FF69B4",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
   },
-  sendButtonText: {
-    color: "#fff",
-    fontSize: 16,
+  disabledButton: {
+    opacity: 0.5,
+  },
+  // Message bubble styles
+  adminMessage: {
+    backgroundColor: "#FF69B4", // Pink for admin
+    borderTopRightRadius: 4,
+    marginLeft: 40,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  userMessage: {
+    backgroundColor: "white", // White for user
+    borderTopLeftRadius: 4,
+    marginRight: 40,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
 });
-
 
 export default OneMessage;
