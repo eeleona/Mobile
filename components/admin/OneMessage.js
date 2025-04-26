@@ -25,50 +25,20 @@ const OneMessage = ({ route, navigation }) => {
   const flatListRef = useRef(null);
   const socket = useRef(null);
 
-  const adminId = "670a04a34f63c22acf3d8c9a".toString();
-
-  // SSL workaround for Android in development
-  useEffect(() => {
-    if (__DEV__ && Platform.OS === 'android') {
-      // const http = require('http');
-      // const https = require('https');
-      // const httpAgent = new http.Agent();
-      // const httpsAgent = new https.Agent({ rejectUnauthorized: false });
-    
-      global._fetch = global.fetch;
-      global.fetch = (url, options) => {
-        const agent = url.startsWith('https') ? httpsAgent : httpAgent;
-        return global._fetch(url, { ...options, agent });
-      };
-    }
-    
-  }, []);
+  const adminId = "670a04a34f63c22acf3d8c9a";
 
   useEffect(() => {
-
-    // Use wss:// for secure connection
     const socketUrl = 'https://api.e-pet-adopt.site:8000';
-  
-  socket.current = io(socketUrl, {
-    // Force WebSocket transport only
-    transports: ['websocket'],
-    
-    // Set secure based on environment
-    secure: !__DEV__,
-    
-    // Other options
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-    rejectUnauthorized: !__DEV__,
-    
-    // For Android development
-    agent: Platform.OS === 'android' && __DEV__ 
-      ? new (require('https').Agent({ rejectUnauthorized: false })) 
-      : undefined,
+
+    socket.current = io(socketUrl, {
+      transports: ['websocket'],
+      secure: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      rejectUnauthorized: false, // important for dev testing
     });
 
-    // Debugging events
     const socketEvents = [
       'connect',
       'connect_error',
@@ -80,7 +50,7 @@ const OneMessage = ({ route, navigation }) => {
       'reconnect_error',
       'reconnect_failed',
       'ping',
-      'pong'
+      'pong',
     ];
 
     socketEvents.forEach(event => {
@@ -126,16 +96,16 @@ const OneMessage = ({ route, navigation }) => {
         `${config.address}/api/messages/${adminId}/${selectedUserId}`,
         {
           headers: {
-            'Accept': 'application/json',
+            Accept: 'application/json',
             'Content-Type': 'application/json',
           },
         }
       );
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log("Messages fetched successfully:", data.length);
       setMessages(data);
@@ -147,25 +117,25 @@ const OneMessage = ({ route, navigation }) => {
 
   const handleSendMessage = () => {
     if (!message.trim() || !userId) return;
-  
+
     setIsLoading(true);
-    
+
     try {
       const newMessage = {
         senderId: adminId,
         receiverId: userId,
         message: message.trim(),
       };
-      
+
       socket.current.emit("sendMessage", newMessage);
-      
+
       const messageWithTimestamp = {
         ...newMessage,
         _id: Date.now().toString(),
         createdAt: new Date().toISOString(),
       };
-      
-      setMessages((prevMessages) => [...prevMessages, messageWithTimestamp]);
+
+      setMessages(prev => [...prev, messageWithTimestamp]);
       setMessage("");
       scrollToBottom();
     } catch (error) {
@@ -176,213 +146,133 @@ const OneMessage = ({ route, navigation }) => {
     }
   };
 
-  const renderMessageItem = ({ item }) => (
-    <View
-      style={[
-        styles.messageWrapper,
-        item.senderId === adminId ? styles.alignRight : styles.alignLeft,
-      ]}
-    >
-      <Image
-        source={item.senderId === adminId ? AdminImg : (userImage ? { uri: userImage } : UserPh)}
-        style={styles.avatar}
-      />
+  const renderItem = ({ item }) => {
+    const isAdmin = item.senderId === adminId;
+
+    return (
       <View
         style={[
           styles.messageContainer,
-          item.senderId === adminId
-            ? styles.adminMessage
-            : styles.userMessage,
+          isAdmin ? styles.adminMessage : styles.userMessage,
         ]}
       >
-        <Text style={styles.messageText}>{item.message}</Text>
-        <Text style={styles.timestamp}>
-          {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
+        <Image
+          source={isAdmin ? AdminImg : userImage ? { uri: userImage } : UserPh}
+          style={styles.avatar}
+        />
+        <View style={styles.messageBubble}>
+          <Text style={styles.messageText}>{item.message}</Text>
+          <Text style={styles.timestamp}>
+            {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={90}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <Image
-          source={userImage ? { uri: userImage } : UserPh}
-          style={styles.userAvatar}
-        />
-        <Text style={styles.headerText}>{userName || "User"}</Text>
-      </View>
-
       <FlatList
         ref={flatListRef}
         data={messages}
-        renderItem={renderMessageItem}
-        keyExtractor={(item, index) => index.toString()}
-        contentContainerStyle={styles.messagesContent}
-        style={styles.messagesContainer}
+        keyExtractor={(item) => item._id}
+        renderItem={renderItem}
+        contentContainerStyle={styles.messagesList}
         onContentSizeChange={scrollToBottom}
-        onLayout={scrollToBottom}
       />
 
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Type your message..."
-          placeholderTextColor="#888"
           value={message}
           onChangeText={setMessage}
-          onSubmitEditing={handleSendMessage}
-          returnKeyType="send"
-          editable={!isLoading}
+          placeholder="Type a message..."
         />
-        <TouchableOpacity 
-          onPress={handleSendMessage} 
-          style={[styles.sendButton, isLoading && styles.disabledButton]}
+        <TouchableOpacity
+          style={styles.sendButton}
+          onPress={handleSendMessage}
           disabled={isLoading}
         >
-          <Text style={styles.sendButtonText}>
-            {isLoading ? "Sending..." : "Send"}
-          </Text>
+          <Text style={styles.sendButtonText}>{isLoading ? "..." : "Send"}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
 };
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8f8f8",
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FF69B4",
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    elevation: 3,
-  },
-  backButton: {
-    marginRight: 15,
-  },
-  backButtonText: {
-    color: "white",
-    fontSize: 24,
-  },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-    borderWidth: 2,
-    borderColor: "white",
-  },
-  headerText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "bold",
-    flex: 1,
-  },
-  messagesContainer: {
-    flex: 1,
-    paddingHorizontal: 10,
-  },
-  messagesContent: {
-    paddingBottom: 20,
-  },
-  messageWrapper: {
-    flexDirection: "row",
-    marginVertical: 8,
-    alignItems: "flex-end",
-  },
-  alignRight: {
-    justifyContent: "flex-end",
-  },
-  alignLeft: {
-    justifyContent: "flex-start",
+  messagesList: {
+    padding: 10,
   },
   messageContainer: {
-    borderRadius: 18,
-    padding: 12,
-    maxWidth: "70%",
+    flexDirection: "row",
+    alignItems: "flex-end",
+    marginBottom: 10,
   },
   adminMessage: {
-    backgroundColor: "#FF69B4",
-    borderTopRightRadius: 4,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    alignSelf: "flex-end",
   },
   userMessage: {
-    backgroundColor: "#e5e5ea",
-    borderTopLeftRadius: 4,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    alignSelf: "flex-start",
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     marginRight: 8,
+  },
+  messageBubble: {
+    backgroundColor: "#e1f5fe",
+    padding: 10,
+    borderRadius: 8,
+    maxWidth: "70%",
   },
   messageText: {
     fontSize: 16,
-    color: "#000",
-  },
-  adminText: {
-    color: "white",
+    color: "#333",
   },
   timestamp: {
-    fontSize: 12,
+    fontSize: 10,
+    color: "#999",
     marginTop: 4,
-    color: "rgba(0,0,0,0.5)",
-  },
-  adminTimestamp: {
-    color: "rgba(255,255,255,0.7)",
+    textAlign: "right",
   },
   inputContainer: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    backgroundColor: "white",
+    padding: 10,
     borderTopWidth: 1,
-    borderTopColor: "#eee",
+    borderColor: "#ccc",
+    backgroundColor: "#fff",
   },
   input: {
     flex: 1,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#eee",
     borderRadius: 20,
     paddingHorizontal: 15,
-    paddingVertical: 10,
     fontSize: 16,
-    marginRight: 10,
   },
   sendButton: {
-    backgroundColor: "#FF69B4",
+    marginLeft: 8,
+    backgroundColor: "#2196f3",
     borderRadius: 20,
-    paddingVertical: 10,
     paddingHorizontal: 20,
-  },
-  disabledButton: {
-    opacity: 0.6,
+    justifyContent: "center",
+    alignItems: "center",
   },
   sendButtonText: {
-    color: "white",
-    fontWeight: "bold",
+    color: "#fff",
+    fontSize: 16,
   },
 });
+
 
 export default OneMessage;

@@ -207,23 +207,23 @@ const AdoptionForm = ({ navigation, route }) => {
                                             <Text style={styles.sectionTitle}>Pet Information</Text>
                                         </View>
                                         <View style={styles.infoRow}>
-                                            <MaterialIcons name="badge" size={18} color="#666" style={styles.infoIcon} />
+                                            <MaterialIcons name="pets" size={18} color="#666" style={styles.infoIcon} />
                                             <Text style={styles.infoText}>Name: {petInfo.p_name}</Text>
                                         </View>
                                         <View style={styles.infoRow}>
-                                            <MaterialIcons name="category" size={18} color="#666" style={styles.infoIcon} />
+                                            <MaterialIcons name="pets" size={18} color="#666" style={styles.infoIcon} />
                                             <Text style={styles.infoText}>Type: {petInfo.p_type}</Text>
                                         </View>
                                         <View style={styles.infoRow}>
-                                            <MaterialIcons name="cake" size={18} color="#666" style={styles.infoIcon} />
+                                            <MaterialIcons name="pets" size={18} color="#666" style={styles.infoIcon} />
                                             <Text style={styles.infoText}>Age: {petInfo.p_age} years old</Text>
                                         </View>
                                         <View style={styles.infoRow}>
-                                            <MaterialIcons name="wc" size={18} color="#666" style={styles.infoIcon} />
+                                            <MaterialIcons name="pets" size={18} color="#666" style={styles.infoIcon} />
                                             <Text style={styles.infoText}>Gender: {petInfo.p_gender}</Text>
                                         </View>
                                         <View style={styles.infoRow}>
-                                            <MaterialIcons name="grass" size={18} color="#666" style={styles.infoIcon} />
+                                            <MaterialIcons name="pets" size={18} color="#666" style={styles.infoIcon} />
                                             <Text style={styles.infoText}>Breed: {petInfo.p_breed}</Text>
                                         </View>
                                     </View>
@@ -479,7 +479,7 @@ const AdoptionForm = ({ navigation, route }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 16,
+        
         backgroundColor: '#FAF9F6',
     },
     sectionHeader: {
@@ -503,7 +503,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
-        marginBottom: 15,
+        marginVertical: 10,
+        marginHorizontal: 15,
     },
     infoRow: {
         flexDirection: 'row',
@@ -526,6 +527,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+        marginHorizontal: 15, marginTop: 10,
     },
     labelContainer: {
         flexDirection: 'row',
@@ -543,7 +545,7 @@ const styles = StyleSheet.create({
     },
     input: {
         marginBottom: 16,
-        backgroundColor: '#f8f8f8',
+        backgroundColor: 'white',
         borderWidth: 1,
         borderColor: '#e0e0e0',
         borderRadius: 8,
@@ -565,6 +567,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         marginBottom: 40,
+        marginHorizontal: 15,
     },
     buttonIcon: {
         marginRight: 8,

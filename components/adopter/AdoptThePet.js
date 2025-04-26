@@ -101,15 +101,19 @@ const styles = StyleSheet.create({
     paddingBottom: 50,
   },
   section: {
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     
-    padding: 16,
-    marginBottom: 16,
+    marginVertical: 10,
+    borderRadius: 10,
+    borderColor: '#eee',
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
-    elevation: 2,
   },
   imageContainer: {
     alignItems: 'center',

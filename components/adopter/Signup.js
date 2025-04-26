@@ -193,8 +193,8 @@ const Signup = () => {
             await axios.post(`${config.address}/api/send-email`, emailData);
 
             Alert.alert(
-                "Success",
-                "Account created! Awaiting verification.",
+                "Account created successfully!",
+                "Your account is pending verification. You can now login your account.",
                 [{ text: "OK", onPress: () => navigation.navigate('Login') }]
             );
         } catch (error) {
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
     whitebg: {
         backgroundColor: '#fff',
         marginHorizontal: 16,
-        marginBottom: 16,
+        marginVertical: 15,
         borderRadius: 10,
         borderColor: '#eee',
         borderWidth: 1,
@@ -774,7 +774,6 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         
     },
-    
     modalTitle: {
         fontSize: 22,
         fontWeight: 'bold',

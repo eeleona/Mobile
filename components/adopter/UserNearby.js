@@ -109,7 +109,7 @@ const UserNearby = () => {
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchBar}
-          placeholder="Search"
+          placeholder="Search for name, address, or service"
           placeholderTextColor="#aaa"
           value={searchQuery}
           onChangeText={(text) => setSearchQuery(text)} // Fix: Update the state with the input text

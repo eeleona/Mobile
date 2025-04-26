@@ -156,36 +156,6 @@ const AdoptionTracker = () => {
       <AppBar title="Adoption Tracker" />
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Pet Information Section */}
-        <View style={styles.section}>
-          {petDetails?.pet_img?.[0] ? (
-            <Image
-              source={{ uri: `${config.address}${petDetails.pet_img[0]}` }}
-              style={styles.petImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={styles.imagePlaceholder}>
-              <MaterialIcons name="pets" size={40} color="#999" />
-              <Text style={styles.placeholderText}>No Image Available</Text>
-            </View>
-          )}
-          
-          <PetDetailRow icon="pets" label="Name:" value={petDetails?.p_name} />
-          <Divider style={styles.rowDivider} />
-          <PetDetailRow icon="pets" label="Type:" value={petDetails?.p_type} />
-          <Divider style={styles.rowDivider} />
-          <PetDetailRow icon="pets" label="Breed:" value={petDetails?.p_breed} />
-          <Divider style={styles.rowDivider} />
-          <PetDetailRow icon="pets" label="Gender:" value={petDetails?.p_gender} />
-          <Divider style={styles.rowDivider} />
-          <PetDetailRow 
-            icon="pets" 
-            label="Age:" 
-            value={petDetails?.p_age ? `${petDetails.p_age} years` : null} 
-          />
-        </View>
-
         {/* Status Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Adoption Status</Text>
@@ -245,6 +215,39 @@ const AdoptionTracker = () => {
             )}
           </View>
         </View>
+        {/* Pet Information Section */}
+        <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Pet Details</Text>
+          <Divider style={styles.rowDivider} />
+          {petDetails?.pet_img?.[0] ? (
+            <Image
+              source={{ uri: `${config.address}${petDetails.pet_img[0]}` }}
+              style={styles.petImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <MaterialIcons name="pets" size={40} color="#999" />
+              <Text style={styles.placeholderText}>No Image Available</Text>
+            </View>
+          )}
+          
+          <PetDetailRow icon="pets" label="Name:" value={petDetails?.p_name} />
+          <Divider style={styles.rowDivider} />
+          <PetDetailRow icon="pets" label="Type:" value={petDetails?.p_type} />
+          <Divider style={styles.rowDivider} />
+          <PetDetailRow icon="pets" label="Breed:" value={petDetails?.p_breed} />
+          <Divider style={styles.rowDivider} />
+          <PetDetailRow icon="pets" label="Gender:" value={petDetails?.p_gender} />
+          <Divider style={styles.rowDivider} />
+          <PetDetailRow 
+            icon="pets" 
+            label="Age:" 
+            value={petDetails?.p_age ? `${petDetails.p_age} years` : null} 
+          />
+        </View>
+
+        
 
         {/* Action Buttons */}
         <View style={styles.buttonContainer}>
@@ -297,21 +300,21 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '600',
     color: '#FF66C4',
-    marginBottom: 12,
   },
   sectionDivider: {
-    marginBottom: 12,
+    marginVertical: 12,
     backgroundColor: '#eee',
     height: 1,
   },
   petImage: {
     width: '100%',
-    height: 200,
+    height: 300,
     borderRadius: 12,
     marginBottom: 16,
+    marginTop: 8,
   },
   imagePlaceholder: {
     width: '100%',
