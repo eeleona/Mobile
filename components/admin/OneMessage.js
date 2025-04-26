@@ -1,4 +1,3 @@
-import axios from "axios";
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -12,6 +11,7 @@ import {
   Platform,
   Alert,
 } from "react-native";
+import NetInfo from '@react-native-community/netinfo';
 import io from "socket.io-client";
 import config from "../../server/config/config";
 import UserPh from "../../assets/Images/user.png";
@@ -22,23 +22,53 @@ const OneMessage = ({ route, navigation }) => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const flatListRef = useRef(null);
   const socket = useRef(null);
 
-  const adminId = "670a04a34f63c22acf3d8c9a";
+  const adminId = "670a04a34f63c22acf3d8c9a".toString();
 
+  // SSL workaround for Android in development
+  useEffect(() => {
+    if (__DEV__ && Platform.OS === 'android') {
+      // const http = require('http');
+      // const https = require('https');
+      // const httpAgent = new http.Agent();
+      // const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+    
+      global._fetch = global.fetch;
+      global.fetch = (url, options) => {
+        const agent = url.startsWith('https') ? httpsAgent : httpAgent;
+        return global._fetch(url, { ...options, agent });
+      };
+    }
+    
+  }, []);
+
+  // Socket.io connection setup
   useEffect(() => {
     const socketUrl = 'https://api.e-pet-adopt.site:8000';
-
-    socket.current = io(socketUrl, {
-      transports: ['websocket'],
-      secure: true,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      rejectUnauthorized: false, // important for dev testing
+  
+  socket.current = io(socketUrl, {
+    // Force WebSocket transport only
+    transports: ['websocket'],
+    
+    // Set secure based on environment
+    secure: !__DEV__,
+    
+    // Other options
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+    rejectUnauthorized: !__DEV__,
+    
+    // For Android development
+    agent: Platform.OS === 'android' && __DEV__ 
+      ? new (require('https').Agent({ rejectUnauthorized: false })) 
+      : undefined,
     });
 
+    // Debugging events
     const socketEvents = [
       'connect',
       'connect_error',
@@ -52,23 +82,28 @@ const OneMessage = ({ route, navigation }) => {
       'ping',
       'pong',
     ];
-
+  
     socketEvents.forEach(event => {
       socket.current.on(event, (data) => {
         console.log(`Socket ${event}:`, data || '');
       });
     });
-
+  
     socket.current.on('connect', () => {
       console.log('✅ Socket connected! ID:', socket.current.id);
       socket.current.emit('joinRoom', adminId);
     });
-
+  
+    socket.current.on('connect_error', (err) => {
+      console.log('Connection error:', err);
+      Alert.alert("Connection Error", "Failed to connect to the server");
+    });
+  
     socket.current.on('receiveMessage', (newMessage) => {
       setMessages(prev => [...prev, newMessage]);
       scrollToBottom();
     });
-
+  
     return () => {
       if (socket.current) {
         socket.current.off('receiveMessage');
@@ -76,7 +111,9 @@ const OneMessage = ({ route, navigation }) => {
       }
     };
   }, []);
+  
 
+  // Fetch messages when userId changes
   useEffect(() => {
     if (userId) {
       fetchMessages(userId);
@@ -112,12 +149,13 @@ const OneMessage = ({ route, navigation }) => {
       scrollToBottom();
     } catch (error) {
       console.error("Failed to fetch messages:", error);
+      Alert.alert("Error", "Failed to load messages");
     }
   };
 
   const handleSendMessage = () => {
     if (!message.trim() || !userId) return;
-
+  
     setIsLoading(true);
 
     try {
@@ -156,32 +194,38 @@ const OneMessage = ({ route, navigation }) => {
           isAdmin ? styles.adminMessage : styles.userMessage,
         ]}
       >
-        <Image
-          source={isAdmin ? AdminImg : userImage ? { uri: userImage } : UserPh}
-          style={styles.avatar}
-        />
-        <View style={styles.messageBubble}>
-          <Text style={styles.messageText}>{item.message}</Text>
-          <Text style={styles.timestamp}>
-            {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </Text>
-        </View>
+        <Text style={styles.messageText}>{item.message}</Text>
+        <Text style={styles.timestamp}>
+          {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </Text>
       </View>
-    );
-  };
+    </View>
+  );
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      keyboardVerticalOffset={90}
     >
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backButtonText}>←</Text>
+        </TouchableOpacity>
+        <Image
+          source={userImage ? { uri: userImage } : UserPh}
+          style={styles.userAvatar}
+        />
+        <Text style={styles.headerText}>{userName || "User"}</Text>
+      </View>
+
       <FlatList
         ref={flatListRef}
         data={messages}
-        keyExtractor={(item) => item._id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.messagesList}
+        renderItem={renderMessageItem}
+        keyExtractor={(item, index) => index.toString()}
+        contentContainerStyle={styles.messagesContent}
+        style={styles.messagesContainer}
         onContentSizeChange={scrollToBottom}
       />
 
@@ -190,11 +234,13 @@ const OneMessage = ({ route, navigation }) => {
           style={styles.input}
           value={message}
           onChangeText={setMessage}
-          placeholder="Type a message..."
+          onSubmitEditing={handleSendMessage}
+          returnKeyType="send"
+          editable={!isLoading}
         />
-        <TouchableOpacity
-          style={styles.sendButton}
-          onPress={handleSendMessage}
+        <TouchableOpacity 
+          onPress={handleSendMessage} 
+          style={[styles.sendButton, isLoading && styles.disabledButton]}
           disabled={isLoading}
         >
           <Text style={styles.sendButtonText}>{isLoading ? "..." : "Send"}</Text>
@@ -210,8 +256,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8f8f8",
   },
-  messagesList: {
-    padding: 10,
+  messagesContainer: {
+    flex: 1,
+    paddingHorizontal: 10,
   },
   messageContainer: {
     flexDirection: "row",
