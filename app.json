@@ -32,7 +32,9 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/Images/nobglogo.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#ffffff",
+        "usesCleartextTraffic": true,
+        "networkSecurityConfig": "@xml/network_security_config"
       },
       "package": "com.eleona.homefurever"
     },

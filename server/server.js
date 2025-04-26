@@ -45,7 +45,11 @@ const io = new Server(server, {
         /\.ngrok\.io$/,
         /^http:\/\/192\.168\.\d+\.\d+:\d+$/,
         /^http:\/\/10\.0\.\d+\.\d+:\d+$/,
-        "null"
+        "null",
+        // Add Android specific origins
+        "http://localhost", // For Android emulator
+        "http://10.0.2.2", // For Android emulator to localhost
+        /\.expo\.io$/, // For Expo
       ];
       
       if (!origin || allowedOrigins.some(pattern => 

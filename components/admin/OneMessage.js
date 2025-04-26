@@ -1,4 +1,3 @@
-import axios from "axios";
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -12,6 +11,7 @@ import {
   Platform,
   Alert,
 } from "react-native";
+import NetInfo from '@react-native-community/netinfo';
 import io from "socket.io-client";
 import config from "../../server/config/config";
 import UserPh from "../../assets/Images/user.png";
@@ -22,53 +22,44 @@ const OneMessage = ({ route, navigation }) => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const flatListRef = useRef(null);
   const socket = useRef(null);
 
   const adminId = "670a04a34f63c22acf3d8c9a".toString();
 
-  // SSL workaround for Android in development
+  // Network connectivity handler
   useEffect(() => {
-    if (__DEV__ && Platform.OS === 'android') {
-      // const http = require('http');
-      // const https = require('https');
-      // const httpAgent = new http.Agent();
-      // const httpsAgent = new https.Agent({ rejectUnauthorized: false });
-    
-      global._fetch = global.fetch;
-      global.fetch = (url, options) => {
-        const agent = url.startsWith('https') ? httpsAgent : httpAgent;
-        return global._fetch(url, { ...options, agent });
-      };
-    }
-    
-  }, []);
-
-  useEffect(() => {
-
-    // Use wss:// for secure connection
-    const socketUrl = 'https://api.e-pet-adopt.site:8000';
-  
-  socket.current = io(socketUrl, {
-    // Force WebSocket transport only
-    transports: ['websocket'],
-    
-    // Set secure based on environment
-    secure: !__DEV__,
-    
-    // Other options
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-    rejectUnauthorized: !__DEV__,
-    
-    // For Android development
-    agent: Platform.OS === 'android' && __DEV__ 
-      ? new (require('https').Agent({ rejectUnauthorized: false })) 
-      : undefined,
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+      if (state.isConnected && socket.current && !socket.current.connected) {
+        socket.current.connect();
+      }
     });
 
-    // Debugging events
+    return () => unsubscribe();
+  }, []);
+
+  // Socket.io connection setup
+  useEffect(() => {
+    const socketUrl = 'https://api.e-pet-adopt.site:8000';
+  
+    const socketOptions = {
+      transports: ['websocket'],
+      forceNew: true,
+      upgrade: false,
+      secure: true,
+      rejectUnauthorized: false,  // <-- accept self-signed certs (development)
+      timeout: 10000,
+      pingTimeout: 30000,
+      pingInterval: 25000,
+      extraHeaders: __DEV__ ? {
+        'Origin': Platform.OS === 'android' ? 'http://10.0.2.2' : 'http://localhost',
+      } : undefined
+    };
+  
+    socket.current = io(socketUrl, socketOptions);
+  
     const socketEvents = [
       'connect',
       'connect_error',
@@ -82,23 +73,28 @@ const OneMessage = ({ route, navigation }) => {
       'ping',
       'pong'
     ];
-
+  
     socketEvents.forEach(event => {
       socket.current.on(event, (data) => {
         console.log(`Socket ${event}:`, data || '');
       });
     });
-
+  
     socket.current.on('connect', () => {
       console.log('✅ Socket connected! ID:', socket.current.id);
       socket.current.emit('joinRoom', adminId);
     });
-
+  
+    socket.current.on('connect_error', (err) => {
+      console.log('Connection error:', err);
+      Alert.alert("Connection Error", "Failed to connect to the server");
+    });
+  
     socket.current.on('receiveMessage', (newMessage) => {
       setMessages(prev => [...prev, newMessage]);
       scrollToBottom();
     });
-
+  
     return () => {
       if (socket.current) {
         socket.current.off('receiveMessage');
@@ -106,7 +102,9 @@ const OneMessage = ({ route, navigation }) => {
       }
     };
   }, []);
+  
 
+  // Fetch messages when userId changes
   useEffect(() => {
     if (userId) {
       fetchMessages(userId);
@@ -142,11 +140,15 @@ const OneMessage = ({ route, navigation }) => {
       scrollToBottom();
     } catch (error) {
       console.error("Failed to fetch messages:", error);
+      Alert.alert("Error", "Failed to load messages");
     }
   };
 
   const handleSendMessage = () => {
-    if (!message.trim() || !userId) return;
+    if (!message.trim() || !userId || !isConnected) {
+      Alert.alert("Error", "Cannot send message - no network connection");
+      return;
+    }
   
     setIsLoading(true);
     
@@ -195,8 +197,16 @@ const OneMessage = ({ route, navigation }) => {
             : styles.userMessage,
         ]}
       >
-        <Text style={styles.messageText}>{item.message}</Text>
-        <Text style={styles.timestamp}>
+        <Text style={[
+          styles.messageText,
+          item.senderId === adminId && styles.adminText
+        ]}>
+          {item.message}
+        </Text>
+        <Text style={[
+          styles.timestamp,
+          item.senderId === adminId && styles.adminTimestamp
+        ]}>
           {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </Text>
       </View>
@@ -218,13 +228,18 @@ const OneMessage = ({ route, navigation }) => {
           style={styles.userAvatar}
         />
         <Text style={styles.headerText}>{userName || "User"}</Text>
+        {!isConnected && (
+          <View style={styles.connectionStatus}>
+            <Text style={styles.connectionStatusText}>Offline</Text>
+          </View>
+        )}
       </View>
 
       <FlatList
         ref={flatListRef}
         data={messages}
         renderItem={renderMessageItem}
-        keyExtractor={(item, index) => index.toString()}
+        keyExtractor={(item) => item._id}
         contentContainerStyle={styles.messagesContent}
         style={styles.messagesContainer}
         onContentSizeChange={scrollToBottom}
@@ -240,12 +255,15 @@ const OneMessage = ({ route, navigation }) => {
           onChangeText={setMessage}
           onSubmitEditing={handleSendMessage}
           returnKeyType="send"
-          editable={!isLoading}
+          editable={!isLoading && isConnected}
         />
         <TouchableOpacity 
           onPress={handleSendMessage} 
-          style={[styles.sendButton, isLoading && styles.disabledButton]}
-          disabled={isLoading}
+          style={[
+            styles.sendButton, 
+            (isLoading || !isConnected) && styles.disabledButton
+          ]}
+          disabled={isLoading || !isConnected}
         >
           <Text style={styles.sendButtonText}>
             {isLoading ? "Sending..." : "Send"}
@@ -289,6 +307,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     flex: 1,
+  },
+  connectionStatus: {
+    backgroundColor: 'red',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  connectionStatusText: {
+    color: 'white',
+    fontSize: 12,
   },
   messagesContainer: {
     flex: 1,
