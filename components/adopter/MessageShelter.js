@@ -59,7 +59,7 @@ const MessageShelter = ({ route, navigation }) => {
 
         setCurrentUserId(decoded.id);
         setUserName(decoded.name || 'User');
-        setUserImage(decoded.image && decoded.image.startsWith('http') ? { uri: userImage } : UserPh);
+        setUserImage(decoded.image && decoded.image.startsWith('http') ? { uri: decoded.image } : UserPh);
 
       } catch (error) {
         console.error("Error getting user data:", error);
@@ -259,8 +259,8 @@ const MessageShelter = ({ route, navigation }) => {
       ) : (
         <>
           <Image 
-            source={receiverImage} 
-            style={styles.receiverAvatar} 
+            source={item.senderId === currentUserId ? userImage : receiverImage} 
+            style={item.senderId === currentUserId ? styles.senderAvatar : styles.receiverAvatar} 
           />
           <View style={[styles.messageContainer, styles.receiverMessage]}>
             <Text style={styles.receiverMessageText}>{item.message}</Text>
