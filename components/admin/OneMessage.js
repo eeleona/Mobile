@@ -187,7 +187,7 @@ const OneMessage = ({ route, navigation }) => {
     >
       {item.senderId === adminId ? (
         <>
-          <View style={styles.messageContainer}>
+          <View style={[styles.messageContainer, styles.adminMessage]}>
             <Text style={styles.adminMessageText}>{item.message}</Text>
             <Text style={styles.adminTimestamp}>
               {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -201,7 +201,7 @@ const OneMessage = ({ route, navigation }) => {
             source={userImage ? { uri: userImage } : UserPh}
             style={styles.userAvatar}
           />
-          <View style={styles.messageContainer}>
+          <View style={[styles.messageContainer, styles.userMessage]}>
             <Text style={styles.userMessageText}>{item.message}</Text>
             <Text style={styles.userTimestamp}>
               {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -220,7 +220,7 @@ const OneMessage = ({ route, navigation }) => {
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialIcons name="keyboard-arrow-left" size={32} color="white" />
+          <MaterialIcons name="keyboard-arrow-left" size={32} color="#FF69B4" />
         </TouchableOpacity>
         <Image
           source={userImage ? { uri: userImage } : UserPh}
@@ -228,9 +228,7 @@ const OneMessage = ({ route, navigation }) => {
         />
         <View style={styles.headerTextContainer}>
           <Text style={styles.headerText}>{userName || "User"}</Text>
-          <Text style={styles.statusText}>
-            {isConnected ? 'Online' : 'Offline'}
-          </Text>
+          
         </View>
       </View>
 
@@ -279,12 +277,12 @@ const OneMessage = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#FAF9F6",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "white", // Changed to white
+    backgroundColor: "white",
     paddingVertical: 15,
     paddingHorizontal: 10,
     elevation: 3,
@@ -304,27 +302,30 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginRight: 12,
     borderWidth: 2,
-    borderColor: "white",
+    borderColor: "#FF69B4",
   },
   headerTextContainer: {
     flex: 1,
   },
   headerText: {
-    color: "#333", // Changed to dark color for white header
+    color: "#333",
     fontSize: 18,
     fontWeight: "bold",
+    fontFamily: 'Inter_600SemiBold',
   },
   statusText: {
-    color: "#666", // Changed to darker color
+    color: "#353935",
     fontSize: 12,
+    fontFamily: 'Inter_500Medium',
   },
   messagesContainer: {
     flex: 1,
-    paddingHorizontal: 15,
+    paddingHorizontal: 6,
+    backgroundColor: '#f5f5f5',
   },
   messagesContent: {
-    paddingTop: 15,
-    paddingBottom: 20,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   messageWrapper: {
     flexDirection: "row",
@@ -343,13 +344,35 @@ const styles = StyleSheet.create({
     maxWidth: "70%",
     marginHorizontal: 8,
   },
+  adminMessage: {
+    backgroundColor: "#FF69B4",
+    borderRadius: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  userMessage: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
   adminMessageText: {
     fontSize: 16,
-    color: "white", // White text for pink bubbles
+    color: "white",
+    fontFamily: 'Inter_500Medium',
   },
   userMessageText: {
     fontSize: 16,
-    color: "#333", // Dark text for white bubbles
+    color: "#333",
+    fontFamily: 'Inter_500Medium',
   },
   adminAvatar: {
     width: 36,
@@ -360,17 +383,21 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
   adminTimestamp: {
     fontSize: 12,
     marginTop: 4,
     color: "rgba(255,255,255,0.7)",
     textAlign: "right",
+    fontFamily: 'Inter_500Medium',
   },
   userTimestamp: {
     fontSize: 12,
     marginTop: 4,
     color: "rgba(0,0,0,0.5)",
+    fontFamily: 'Inter_500Medium',
   },
   inputContainer: {
     flexDirection: "row",
@@ -390,6 +417,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginRight: 10,
     maxHeight: 120,
+    fontFamily: 'Inter_500Medium',
   },
   sendButton: {
     backgroundColor: "#FF69B4",
@@ -401,29 +429,6 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
-  },
-  // Message bubble styles
-  adminMessage: {
-    backgroundColor: "#FF69B4", // Pink for admin
-    borderTopRightRadius: 4,
-    marginLeft: 40,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-  },
-  userMessage: {
-    backgroundColor: "white", // White for user
-    borderTopLeftRadius: 4,
-    marginRight: 40,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    borderWidth: 1,
-    borderColor: '#eee',
   },
 });
 

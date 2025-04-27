@@ -232,7 +232,7 @@ const EditEvent = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#FAF9F6',
   },
   formContainer: {
     margin: 20,
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   submitButton: {
-    backgroundColor: '#FF66C4',
+    backgroundColor: '#cad47c',
     padding: 15,
     borderRadius: 6,
     alignItems: 'center',

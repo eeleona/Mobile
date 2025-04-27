@@ -99,7 +99,7 @@ const DetailRow = ({ label, value }) => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f6f6',
+    backgroundColor: '#FAF9F6',
   },
   scrollContainer: {
     padding: 16,
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     height: 250,
     borderRadius: 8,
     resizeMode: 'contain', // Show full image
-    backgroundColor: '#f0f0f0',
+    backgroundColor: 'white',
   },
   sectionTitle: {
     fontSize: 18,

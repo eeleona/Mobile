@@ -161,13 +161,13 @@ const Events = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F6F6F6',
+        backgroundColor: '#FAF9F6',
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#F6F6F6',
+        backgroundColor: '#FAF9F6',
     },
     loadingIndicator: {
         marginBottom: 16,
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
         margin: 20,
         right: 10,
         bottom: 10,
-        backgroundColor: '#ff69b4',
+        backgroundColor: '#cad47c',
         elevation: 5,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -263,7 +263,6 @@ const styles = StyleSheet.create({
     },
     // Search bar styles
     searchContainer: {
-        backgroundColor: '#F6F6F6',
         padding: 15,
         paddingBottom: 10,
     },

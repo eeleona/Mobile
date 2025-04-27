@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
+import { Divider } from 'react-native-paper';
 import config from '../../server/config/config';
 import AppBar from '../design/AppBar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -119,7 +120,9 @@ const AddEvent = ({ navigation }) => {
       <AppBar title="Add New Event" onBackPress={() => navigation.goBack()} />
 
       <View style={styles.formContainer}>
-        <Text style={styles.label}>Event Title *</Text>
+        <Text style={styles.sectionTitle}>Add Event Form</Text>
+                  <Divider style={styles.sectionDivider} />
+        <Text style={styles.label}>Event Title</Text>
         <TextInput
           style={styles.input}
           value={formData.e_title}
@@ -135,7 +138,7 @@ const AddEvent = ({ navigation }) => {
           placeholder="Enter location"
         />
 
-        <Text style={styles.label}>Date *</Text>
+        <Text style={styles.label}>Date</Text>
         <TextInput
           style={styles.input}
           value={formData.e_date}
@@ -186,6 +189,17 @@ const styles = StyleSheet.create({
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
       shadowRadius: 4,borderRadius: 12, },
+      sectionTitle: {
+        fontSize: 22,
+        fontWeight: '600',
+        color: '#ff69b4',
+        marginBottom: 12,
+      },
+      sectionDivider: {
+        marginBottom: 12,
+        backgroundColor: '#eee',
+        height: 1,
+      },
   label: { fontSize: 16, fontWeight: 'bold', marginBottom: 5, color: '#333' },
   input: {
     borderWidth: 1,

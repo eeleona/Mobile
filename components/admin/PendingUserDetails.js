@@ -14,6 +14,7 @@ const PendingUserDetails = ({ route, navigation }) => {
   const [otherReason, setOtherReason] = useState('');
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [showValidId, setShowValidId] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false); // State for the verify confirmation modal
 
   const handleVerify = async () => {
     setLoading(true);
@@ -34,6 +35,7 @@ const PendingUserDetails = ({ route, navigation }) => {
       Alert.alert('Error', error.response?.data?.message || 'Failed to verify user.');
     } finally {
       setLoading(false);
+      setShowVerifyModal(false); // Close the modal after verification
     }
   };
 
@@ -193,19 +195,18 @@ const PendingUserDetails = ({ route, navigation }) => {
           
           <TouchableOpacity 
             style={[styles.button, styles.verifyButton]} 
-            onPress={handleVerify}
+            onPress={() => setShowVerifyModal(true)} // Open the verify confirmation modal
             disabled={loading}
           >
             {loading && !showDeclineModal ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.buttonText}>Accept</Text>
+              <Text style={styles.buttonText}>Verify</Text>
             )}
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Decline Reason Modal */}
+            {/* Decline Reason Modal */}
       <Modal
         visible={showDeclineModal}
         transparent={true}
@@ -267,7 +268,43 @@ const PendingUserDetails = ({ route, navigation }) => {
                 onPress={handleReject}
                 disabled={!declineReason || (declineReason === 'Other' && !otherReason)}
               >
-                <Text style={styles.confirmButtonText}>Submit</Text>
+                <Text style={styles.confirmButtonText}>Reject</Text>
+              </TouchableOpacity>
+            </View>
+          </Animatable.View>
+        </View>
+      </Modal>
+
+      {/* Verify Confirmation Modal */}
+      <Modal
+        visible={showVerifyModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowVerifyModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Animatable.View 
+            animation="fadeInUp"
+            duration={300}
+            style={styles.modalContainer}
+          >
+            <Text style={styles.modalTitle}>Confirm Verification</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to verify this user? They will be notified via email.
+            </Text>
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowVerifyModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleVerify}
+              >
+                <Text style={styles.confirmButtonText}>Confirm</Text>
               </TouchableOpacity>
             </View>
           </Animatable.View>
@@ -417,10 +454,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   verifyButton: {
-    backgroundColor: '#66BB6A',
+    backgroundColor: '#cad47c',
   },
   rejectButton: {
-    backgroundColor: '#E53935',
+    backgroundColor: '#fc6868',
   },
   buttonText: {
     color: 'white',
@@ -493,7 +530,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   confirmButton: {
-    backgroundColor: '#E53935',
+    backgroundColor: '#cad47c',
   },
   disabledButton: {
     opacity: 0.6,

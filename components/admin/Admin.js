@@ -529,12 +529,12 @@ const Admin = () => {
 
                     {!editMode ? (
                       <View style={styles.buttonContainer}>
-                        <TouchableOpacity 
+                        {/* <TouchableOpacity 
                           style={[styles.actionButton, styles.editButton]}
                           onPress={handleEdit}
                         >
                           <Text style={styles.buttonText}>Edit</Text>
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
                         <TouchableOpacity 
                           style={[styles.actionButton, styles.deleteButton]}
                           onPress={() => setShowDeleteModal(true)}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { Divider } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import AppBar from '../design/AppBar';
@@ -12,6 +12,12 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
   const { adoption } = route.params;
   const [loading, setLoading] = useState(false);
   const [actionType, setActionType] = useState(null);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [visitDate, setVisitDate] = useState('');
+  const [visitTime, setVisitTime] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [otherReason, setOtherReason] = useState('');
 
   const verifyAdminAccess = async () => {
     try {
@@ -23,11 +29,9 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
         return false;
       }
   
-      // Decode the token to get user role
       const decodedToken = jwt_decode(token);
       const currentTime = Date.now() / 1000;
       
-      // Check if token is expired
       if (decodedToken.exp < currentTime) {
         await AsyncStorage.removeItem('authToken');
         Alert.alert('Session Expired', 'Your session has expired. Please log in again.', [
@@ -36,7 +40,6 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
         return false;
       }
   
-      // Check if user has admin role
       if (!['admin', 'super-admin'].includes(decodedToken.role)) {
         Alert.alert('Access Denied', 'Only administrators can perform this action.');
         return false;
@@ -51,6 +54,11 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
   };
 
   const handleAccept = async () => {
+    if (!visitDate || !visitTime) {
+      Alert.alert('Validation Error', 'Please select both date and time for the home visit');
+      return;
+    }
+
     setLoading(true);
     setActionType('accept');
     try {
@@ -59,7 +67,7 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
   
       const response = await axios.patch(
         `${config.address}/api/adoption/approve/${adoption._id}`,
-        {}, // Empty body since approval is handled by route
+        { visitDate, visitTime },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -68,7 +76,7 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
         }
       );
   
-      Alert.alert('Success', 'Adoption request approved!');
+      Alert.alert('Success', 'Adoption request approved and visit scheduled!');
       navigation.goBack();
     } catch (error) {
       console.error('Error accepting adoption:', error);
@@ -80,19 +88,26 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
       );
     } finally {
       setLoading(false);
+      setShowAcceptModal(false);
     }
   };
   
   const handleReject = async () => {
+    if (!rejectionReason || (rejectionReason === 'Other' && !otherReason)) {
+      Alert.alert('Validation Error', 'Please select or specify a reason for rejection');
+      return;
+    }
+
     setLoading(true);
     setActionType('reject');
     try {
       const token = await verifyAdminAccess();
       if (!token) return;
   
+      const reason = rejectionReason === 'Other' ? otherReason : rejectionReason;
       const response = await axios.patch(
         `${config.address}/api/adoption/decline/${adoption._id}`,
-        {}, // Empty body since decline is handled by route
+        { rejection_reason: reason },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -113,16 +128,14 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
       );
     } finally {
       setLoading(false);
+      setShowRejectModal(false);
     }
   };
-  
-    
 
   const formatContactNumber = (number) => {
     if (!number) return 'N/A';
-    const numStr = number.toString(); // Ensure it's a string
+    const numStr = number.toString();
     if (numStr.startsWith('63')) {
-      // Convert international format to local format
       return `0${numStr.slice(2, 5)} ${numStr.slice(5, 8)} ${numStr.slice(8)}`;
     }
     return numStr.replace(/(\d{4})(\d{3})(\d{4})/, '$1 $2 $3');
@@ -171,7 +184,6 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
               style={styles.profileImage}
               source={{ uri: `${config.address}${adoption.v_id.v_img}` }}
             />
-            
           </View>
           ) : (
             <View style={styles.imagePlaceholder}>
@@ -212,29 +224,159 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[styles.button, styles.rejectButton]}
-            onPress={handleReject}
-            disabled={loading && actionType === 'reject'}
+            onPress={() => setShowRejectModal(true)}
+            disabled={loading}
           >
-            {loading && actionType === 'reject' ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Reject</Text>
-            )}
+            <Text style={styles.buttonText}>Reject</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.button, styles.acceptButton]}
-            onPress={handleAccept}
-            disabled={loading && actionType === 'accept'}
+            onPress={() => setShowAcceptModal(true)}
+            disabled={loading}
           >
-            {loading && actionType === 'accept' ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Accept</Text>
-            )}
+            <Text style={styles.buttonText}>Accept</Text>
           </TouchableOpacity>
-          
         </View>
       </ScrollView>
+
+      {/* Accept Adoption Modal */}
+      <Modal
+        visible={showAcceptModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAcceptModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Schedule Home Visit</Text>
+            
+            <Text style={styles.modalSubtitle}>Please select date and time for the home visit:</Text>
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Select Date (YYYY-MM-DD)"
+              value={visitDate}
+              onChangeText={setVisitDate}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Select Time (HH:MM)"
+              value={visitTime}
+              onChangeText={setVisitTime}
+            />
+            
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowAcceptModal(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleAccept}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalButtonText}>Confirm</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Reject Adoption Modal */}
+      <Modal
+        visible={showRejectModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowRejectModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Reject Adoption Request</Text>
+            
+            <Text style={styles.modalSubtitle}>Please select reason for rejection:</Text>
+            
+            <View style={styles.reasonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.reasonButton,
+                  rejectionReason === 'Incomplete Information' && styles.selectedReason
+                ]}
+                onPress={() => setRejectionReason('Incomplete Information')}
+              >
+                <Text style={styles.reasonText}>Incomplete Information</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.reasonButton,
+                  rejectionReason === 'Not Suitable' && styles.selectedReason
+                ]}
+                onPress={() => setRejectionReason('Not Suitable')}
+              >
+                <Text style={styles.reasonText}>Not Suitable</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.reasonButton,
+                  rejectionReason === 'Pet Already Adopted' && styles.selectedReason
+                ]}
+                onPress={() => setRejectionReason('Pet Already Adopted')}
+              >
+                <Text style={styles.reasonText}>Pet Already Adopted</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.reasonButton,
+                  rejectionReason === 'Other' && styles.selectedReason
+                ]}
+                onPress={() => setRejectionReason('Other')}
+              >
+                <Text style={styles.reasonText}>Other</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {rejectionReason === 'Other' && (
+              <TextInput
+                style={styles.input}
+                placeholder="Please specify reason..."
+                value={otherReason}
+                onChangeText={setOtherReason}
+              />
+            )}
+            
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowRejectModal(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleReject}
+                disabled={loading || !rejectionReason || (rejectionReason === 'Other' && !otherReason)}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalButtonText}>Confirm Rejection</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -329,7 +471,7 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 40,
+    marginBottom: 10,
   },
   button: {
     flex: 1,
@@ -340,15 +482,97 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   acceptButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#cad47c',
   },
   rejectButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: '#fc6868',
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContainer: {
+    width: '90%',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ff69b4',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  input: {
+    height: 50,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    fontSize: 16,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 5,
+  },
+  cancelButton: {
+    backgroundColor: '#fc6868',
+  },
+  confirmButton: {
+    backgroundColor: '#cad47c',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  reasonContainer: {
+    marginBottom: 15,
+  },
+  reasonButton: {
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  selectedReason: {
+    backgroundColor: '#ff69b4',
+    borderColor: '#ff69b4',
+  },
+  reasonText: {
+    fontSize: 16,
+    color: '#333',
   },
 });
 

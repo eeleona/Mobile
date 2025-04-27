@@ -364,10 +364,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   failButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: '#fc6868',
   },
   completeButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#cad47c',
   },
   buttonText: {
     color: '#fff',

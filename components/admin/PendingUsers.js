@@ -57,8 +57,12 @@ const PendingUsers = () => {
     >
       <Image
         style={styles.userThumbnail}
-        source={{ uri: `${config.address}${item.p_img}` }}
-        defaultSource={require('../../assets/Images/user.png')}
+        source={
+          item.p_img
+            ? { uri: `${config.address}${item.p_img}` }
+            : require('../../assets/Images/user.png')
+        }
+        
       />
       <View style={styles.userInfo}>
         <Text style={styles.userName}>

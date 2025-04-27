@@ -7,7 +7,9 @@ import {
   TouchableOpacity, 
   ScrollView,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Modal,
+  Pressable
 } from 'react-native';
 import { Divider } from 'react-native-paper';
 import config from '../../server/config/config';
@@ -20,8 +22,8 @@ const ViewEvent = ({ route, navigation }) => {
   const [eventData, setEventData] = useState(route.params.event);
   const [isDeleting, setIsDeleting] = useState(false);
   const [token, setToken] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
-  // Load token from AsyncStorage when component mounts
   useEffect(() => {
     const getToken = async () => {
       try {
@@ -32,11 +34,9 @@ const ViewEvent = ({ route, navigation }) => {
         Alert.alert('Error', 'Failed to load authentication token');
       }
     };
-    
     getToken();
   }, []);
 
-  // In ViewEvent.js, modify the handleEdit function:
   const handleEdit = () => {
     navigation.navigate('Edit Event', { 
       event: eventData,
@@ -50,14 +50,7 @@ const ViewEvent = ({ route, navigation }) => {
   };
 
   const handleDelete = async () => {
-    Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this event?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', onPress: confirmDelete, style: 'destructive' }
-      ]
-    );
+    setModalVisible(true); // open modal
   };
 
   const confirmDelete = async () => {
@@ -65,7 +58,6 @@ const ViewEvent = ({ route, navigation }) => {
       Alert.alert('Error', 'Authentication required');
       return;
     }
-
     setIsDeleting(true);
     try {
       await axios.delete(`${config.address}/api/events/delete/${event._id}`, {
@@ -81,6 +73,7 @@ const ViewEvent = ({ route, navigation }) => {
       Alert.alert('Error', error.response?.data?.message || 'Failed to delete event');
     } finally {
       setIsDeleting(false);
+      setModalVisible(false);
     }
   };
 
@@ -139,6 +132,37 @@ const ViewEvent = ({ route, navigation }) => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Confirm Delete</Text>
+            <Text style={styles.modalText}>Are you sure you want to delete this event?</Text>
+
+            <View style={styles.modalButtonContainer}>
+              <Pressable
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={confirmDelete}
+              >
+                <Text style={styles.modalButtonText}>Delete</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -254,14 +278,60 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   editButton: {
-    backgroundColor: '#FF66C4',
+    backgroundColor: '#cad47c',
   },
   deleteButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: '#fc6868',
   },
   buttonText: {
     color: 'white',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '80%',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    padding: 10,
+    marginHorizontal: 5,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#ccc',
+  },
+  confirmButton: {
+    backgroundColor: '#F44336',
+  },
+  modalButtonText: {
+    color: 'white',
     fontWeight: 'bold',
   },
 });
