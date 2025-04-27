@@ -1,238 +1,520 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, Image, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import io from 'socket.io-client';
+import {
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  StatusBar,
+} from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
+import io from 'socket.io-client/dist/socket.io';
 import config from '../../server/config/config';
-import axios from 'axios';
-import { useNavigation } from '@react-navigation/native';
 import AdminImg from '../../assets/Images/nobglogo.png';
+import UserPh from '../../assets/Images/user.png';
+import { MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const MessageShelter = ({ route }) => {
-  const { senderId, receiverId, receiverName, receiverImage, senderImage } = route.params;
+import jwtDecode from 'jwt-decode';
+
+
+const MessageShelter = ({ route, navigation }) => {
+  const adminId = "670a04a34f63c22acf3d8c9a";
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [userName, setUserName] = useState('');
+  const [userImage, setUserImage] = useState(null);
+  
+  const receiverId = adminId;
+  const receiverName = "Pasay City Animal Shelter";
+  const receiverImage = AdminImg;
+
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
-  const scrollViewRef = useRef();
-  const navigation = useNavigation();
+  const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const flatListRef = useRef(null);
+  const socket = useRef(null);
 
-  const socket = io(`${config.address}`, {
-    secure: true,
-    transports: ['websocket', 'polling']
-  });
-
+  // Get user data from token
   useEffect(() => {
-    socket.emit('joinRoom', senderId);
-    fetchMessages();
+    const getUserData = async () => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        if (!token) {
+          Alert.alert("Login Required", "Please log in to send messages");
+          navigation.goBack();
+          return;
+        }
 
-    socket.on('receiveMessage', (newMessage) => {
-      if (newMessage.senderId === receiverId || newMessage.senderId === senderId) {
-        setMessages((prevMessages) => [...prevMessages, newMessage]);
-        autoScrollChat();
+        const decoded = jwtDecode(token);
+        console.log('Decoded user token:', decoded);
+        if (!decoded.id) {
+          throw new Error("Invalid token format");
+        }
+
+        setCurrentUserId(decoded.id);
+        setUserName(decoded.name || 'User');
+        setUserImage(decoded.image && decoded.image.startsWith('http') ? { uri: userImage } : UserPh);
+
+      } catch (error) {
+        console.error("Error getting user data:", error);
+        Alert.alert("Error", "Failed to load user data");
+        navigation.goBack();
+      }
+    };
+
+    getUserData();
+  }, []);
+
+  // Network connectivity handler
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      console.log('Network state changed:', state.isConnected);
+      setIsConnected(state.isConnected);
+      if (state.isConnected && socket.current && !socket.current.connected) {
+        socket.current.connect();
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Socket.io connection setup
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const socketUrl = config.address.replace('https://', 'wss://');
+    
+    const socketOptions = {
+      transports: ['websocket'],
+      secure: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      rejectUnauthorized: false,
+      forceNew: true,
+      timeout: 10000,
+      pingTimeout: 30000,
+      pingInterval: 25000,
+      extraHeaders: __DEV__ ? {
+              'Origin': Platform.OS === 'android' ? 'http://10.0.2.2' : 'http://localhost',
+            } : undefined
+    };
+
+    socket.current = io(socketUrl, socketOptions);
+
+    socket.current.on('connect', () => {
+      console.log('✅ User Chat Socket connected! ID:', socket.current.id);
+      socket.current.emit('joinRoom', currentUserId);
+    });
+
+    socket.current.on('connect_error', (err) => {
+      console.log('🔥 User Chat Connection error:', err.message);
+      Alert.alert("Connection Error", "Failed to connect to the server");
+    });
+
+    socket.current.on('disconnect', (reason) => {
+      console.log('❌ User Chat Socket disconnected:', reason);
+    });
+
+    socket.current.on('receiveMessage', (newMessage) => {
+      console.log('User received new message:', newMessage);
+      if (newMessage.senderId === receiverId || newMessage.senderId === currentUserId) {
+        setMessages(prev => [...prev, newMessage]);
       }
     });
 
     return () => {
-      socket.off('receiveMessage');
+      if (socket.current) {
+        socket.current.off('receiveMessage');
+        socket.current.disconnect();
+      }
     };
-  }, [senderId]);
+  }, [currentUserId]);
 
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
-    autoScrollChat();
+    if (messages.length > 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
   }, [messages]);
+
+  // Fetch messages when we have valid IDs
+  useEffect(() => {
+    if (currentUserId && receiverId) {
+      fetchMessages();
+    }
+  }, [currentUserId, receiverId]);
 
   const fetchMessages = async () => {
     try {
-      const response = await axios.get(`${config.address}/api/messages/${senderId}/${receiverId}`);
-      setMessages(response.data);
-      autoScrollChat();
+      setIsLoading(true);
+  
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        throw new Error("No token found");
+      }
+  
+      const response = await fetch(
+        `${config.address}/api/messages/${currentUserId}/${receiverId}`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+  
+      if (!response.ok) {
+        throw new Error('Failed to fetch messages');
+      }
+  
+      const data = await response.json();
+      
+  
+      // Sort messages by creation time
+      const sortedMessages = data.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  
+      setMessages(sortedMessages);
     } catch (error) {
-      console.error('Failed to fetch messages:', error);
+      console.error('Error fetching messages:', error);
+      Alert.alert('Error', 'Failed to load messages.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSendMessage = () => {
-    if (!message.trim()) return;
+    if (!message.trim()) {
+      Alert.alert("Error", "Message cannot be empty");
+      return;
+    }
 
-    const newMessage = {
-      senderId,
-      receiverId,
-      message,
-    };
+    if (!isConnected) {
+      Alert.alert("Error", "No network connection");
+      return;
+    }
 
-    socket.emit('sendMessage', newMessage);
-    setMessages((prevMessages) => [...prevMessages, newMessage]);
-    setMessage('');
-    autoScrollChat();
-  };
+    if (!currentUserId) {
+      Alert.alert("Error", "User not identified");
+      return;
+    }
 
-  const autoScrollChat = () => {
-    if (scrollViewRef.current) {
-      scrollViewRef.current.scrollToEnd({ animated: true });
+    setIsLoading(true);
+  
+    try {
+      const newMessage = {
+        senderId: currentUserId,
+        receiverId: receiverId,
+        message: message.trim(),
+      };
+
+      console.log('Sending message:', newMessage);
+      socket.current.emit("sendMessage", newMessage);
+    
+      const messageWithTimestamp = {
+        ...newMessage,
+        _id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+      };
+    
+      setMessages(prev => [...prev, messageWithTimestamp]);
+      setMessage("");
+    } catch (error) {
+      console.error("Error sending message:", error);
+      Alert.alert("Error", "Failed to send message");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
+  const renderMessageItem = ({ item }) => (
+    <View
+      style={[
+        styles.messageWrapper,
+        item.senderId === currentUserId ? styles.senderWrapper : styles.receiverWrapper,
+      ]}
+    >
+      {item.senderId === currentUserId ? (
+        <>
+          <View style={[styles.messageContainer, styles.senderMessage]}>
+            <Text style={styles.senderMessageText}>{item.message}</Text>
+            <Text style={styles.senderTimestamp}>
+              {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </View>
+          <Image 
+            source={userImage} 
+            style={styles.senderAvatar} 
+          />
+        </>
+      ) : (
+        <>
+          <Image 
+            source={receiverImage} 
+            style={styles.receiverAvatar} 
+          />
+          <View style={[styles.messageContainer, styles.receiverMessage]}>
+            <Text style={styles.receiverMessageText}>{item.message}</Text>
+            <Text style={styles.receiverTimestamp}>
+              {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </View>
+        </>
+      )}
+    </View>
+  );
+
+  if (!currentUserId) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading user data...</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      {/* Header with back button and shelter name */}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={90}
+    >
+      <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Image source={AdminImg} style={styles.headerImage} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <MaterialIcons name="keyboard-arrow-left" size={32} color="#FF69B4" />
         </TouchableOpacity>
-        <Text style={styles.headerName}>Pasay City Animal Shelter</Text>
+        <Image
+          source={receiverImage}
+          style={styles.headerAvatar}
+        />
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerText}>{receiverName}</Text>
+        </View>
       </View>
 
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
+      <FlatList
+        ref={flatListRef}
+        data={messages}
+        renderItem={renderMessageItem}
+        keyExtractor={(item) => item._id}
         contentContainerStyle={styles.messagesContent}
-      >
-        {messages.map((msg, index) => (
-          <View key={index} style={msg.senderId === senderId ? styles.senderContainer : styles.receiverContainer}>
-            {msg.senderId !== senderId ? (
-              <View style={styles.messageRow}>
-                <Image source={receiverImage} style={styles.messageImage} />
-                <View style={styles.receiverMessage}>
-                  <Text style={styles.messageText}>{msg.message}</Text>
-                  <Text style={styles.messageTime}>{formatDate(msg.createdAt)}</Text>
-                </View>
-              </View>
-            ) : (
-              <View style={[styles.messageRow, styles.senderMessageRow]}>
-                <View style={styles.senderMessage}>
-                  <Text style={styles.messageText}>{msg.message}</Text>
-                  <Text style={styles.messageTime}>{formatDate(msg.createdAt)}</Text>
-                </View>
-                <Image source={{ uri: senderImage }} style={styles.messageImage} />
-              </View>
-            )}
-          </View>
-        ))}
-      </ScrollView>
+        style={styles.messagesContainer}
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Loading messages...</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No messages yet. Start the conversation!</Text>
+            </View>
+          )
+        }
+      />
 
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Type your message"
+          placeholder="Type your message..."
+          placeholderTextColor="#888"
           value={message}
           onChangeText={setMessage}
+          onSubmitEditing={handleSendMessage}
+          returnKeyType="send"
+          editable={!isLoading && isConnected}
           multiline
         />
-        <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
-          <Text style={styles.sendButtonText}>Send</Text>
+        <TouchableOpacity
+          onPress={handleSendMessage}
+          style={[
+            styles.sendButton,
+            (isLoading || !isConnected) && styles.disabledButton
+          ]}
+          disabled={isLoading || !isConnected}
+        >
+          <MaterialIcons 
+            name="send" 
+            size={24} 
+            color="white" 
+          />
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#FAF9F6",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    marginTop: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#eee',
   },
-  headerImage: {
+  backButton: {
+    marginRight: 10,
+  },
+  headerAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     marginRight: 12,
+    borderWidth: 2,
+    borderColor: "#FF69B4",
   },
-  headerName: {
-    fontWeight: 'bold',
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerText: {
+    color: "#333",
     fontSize: 18,
+    fontWeight: "bold",
+  },
+  emptyContainer: {
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    height: 200,
+  },
+  emptyText: {
+    color: "#888",
+    fontSize: 16,
+    textAlign: "center",
   },
   messagesContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 6,
+    backgroundColor: '#f5f5f5',
   },
   messagesContent: {
-    paddingBottom: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
-  senderContainer: {
-    marginBottom: 16,
-    alignItems: 'flex-end',
+  messageWrapper: {
+    flexDirection: "row",
+    marginVertical: 8,
+    alignItems: "flex-end",
   },
-  receiverContainer: {
-    marginBottom: 16,
+  senderWrapper: {
+    justifyContent: "flex-end",
   },
-  messageRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    maxWidth: '80%',
+  receiverWrapper: {
+    justifyContent: "flex-start",
   },
-  senderMessageRow: {
-    justifyContent: 'flex-end',
-  },
-  messageImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  receiverMessage: {
-    backgroundColor: '#f0f0f0',
+  messageContainer: {
+    borderRadius: 18,
     padding: 12,
-    borderRadius: 16,
-    borderBottomLeftRadius: 0,
-    marginLeft: 8,
+    maxWidth: "70%",
+    marginHorizontal: 8,
   },
   senderMessage: {
-    backgroundColor: '#ffccd5',
-    padding: 12,
+    backgroundColor: "#FF69B4",
     borderRadius: 16,
-    borderBottomRightRadius: 0,
-    marginRight: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
-  messageText: {
+  receiverMessage: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  senderMessageText: {
     fontSize: 16,
+    color: "white",
   },
-  messageTime: {
+  receiverMessageText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  senderAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  receiverAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  senderTimestamp: {
     fontSize: 12,
-    color: '#777',
     marginTop: 4,
+    color: "rgba(255,255,255,0.7)",
+    textAlign: "right",
+  },
+  receiverTimestamp: {
+    fontSize: 12,
+    marginTop: 4,
+    color: "rgba(0,0,0,0.5)",
   },
   inputContainer: {
-    flexDirection: 'row',
-    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    backgroundColor: "white",
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    alignItems: 'center',
+    borderTopColor: "#eee",
   },
   input: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 20,
-    paddingHorizontal: 16,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 24,
+    paddingHorizontal: 18,
     paddingVertical: 12,
-    marginRight: 8,
-    maxHeight: 100,
+    fontSize: 16,
+    marginRight: 10,
+    maxHeight: 120,
   },
   sendButton: {
-    backgroundColor: '#ff758f',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
+    backgroundColor: "#FF69B4",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  sendButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+  disabledButton: {
+    opacity: 0.5,
   },
 });
 

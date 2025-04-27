@@ -1,31 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, FlatList, StatusBar } from 'react-native';
-import { jwtDecode } from 'jwt-decode';
-import axios from 'axios';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  View, Text, Image, TouchableOpacity, 
+  StyleSheet, FlatList, StatusBar, Alert 
+} from 'react-native';
+import io from 'socket.io-client/dist/socket.io';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import jwtDecode from 'jwt-decode';
 import RecepientLogo from '../../assets/Images/nobglogo.png';
 import config from '../../server/config/config';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const AdminImg = require('../../assets/Images/nobglogo.png');
-const UserInbox = () => {
-  const navigation = useNavigation();
-  const [senderId, setSenderId] = useState(null);
-  const [loading, setLoading] = useState(true);
 
+const UserInbox = ({ navigation }) => {
+  const [userId, setUserId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [latestMessage, setLatestMessage] = useState(null);
+  const adminId = '670a04a34f63c22acf3d8c9a';
+  const socket = useRef(null);
+
+  // Fetch userId from AsyncStorage
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const token = await AsyncStorage.getItem('token');
+        const token = await AsyncStorage.getItem('authToken');
         if (!token) {
-          setLoading(false);
+          console.log('No token found. Redirecting to login.');
+          navigation.navigate('LogIn');
           return;
         }
 
-        const decodedToken = jwtDecode(token);
-        setSenderId(decodedToken.id);
+        const decoded = jwtDecode(token);
+        console.log('Decoded user:', decoded);
+
+        if (!decoded?.id) {
+          console.log('Invalid token structure. Redirecting to login.');
+          navigation.navigate('LogIn');
+          return;
+        }
+
+        setUserId(decoded.id);
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Error decoding token:', error);
+        Alert.alert('Error', 'Session expired. Please log in again.');
+        navigation.navigate('LogIn');
       } finally {
         setLoading(false);
       }
@@ -34,10 +52,104 @@ const UserInbox = () => {
     fetchUserData();
   }, []);
 
+  // Setup socket connection
+  useEffect(() => {
+    if (!userId) return;
+
+    const socketUrl = config.address.replace('https://', 'wss://');
+
+    socket.current = io(socketUrl, {
+      transports: ['websocket'],
+      secure: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      rejectUnauthorized: false,
+      forceNew: true,
+      timeout: 10000,
+      pingTimeout: 5000,
+      pingInterval: 10000
+    });
+
+    socket.current.on('connect', () => {
+      console.log('✅ User Socket connected!');
+    });
+
+    socket.current.on('connect_error', (err) => {
+      console.log('🔥 User Connection error:', err.message);
+    });
+
+    socket.current.on('disconnect', (reason) => {
+      console.log('❌ User Socket disconnected:', reason);
+    });
+
+    socket.current.on('receiveMessage', (newMessage) => {
+      console.log('📥 New incoming message:', newMessage);
+      if (newMessage.senderId === adminId || newMessage.receiverId === userId) {
+        setLatestMessage(newMessage);
+      }
+    });
+
+    return () => {
+      if (socket.current) socket.current.disconnect();
+    };
+  }, [userId]);
+
+  // Fetch latest messages
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchMessages = async () => {
+      try {
+        console.log("Fetching messages for users:", adminId, userId);
+        const response = await fetch(
+          `${config.address}/api/messages/${adminId}/${userId}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data && data.length > 0) {
+          const sortedMessages = [...data].sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+          );
+          setLatestMessage(sortedMessages[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        Alert.alert('Error', 'Failed to load messages.');
+      }
+    };
+
+    fetchMessages();
+  }, [userId]);
+
   const handleChatPress = () => {
+    if (!userId) {
+      Alert.alert('Login Required', 'Please log in to start chatting.');
+      navigation.navigate('LogIn');
+      return;
+    }
+
     navigation.navigate('Message Shelter', {
-      senderId: 'sampleSenderId', // Temporary hardcoded value for testing
-      receiverId: '670a04a34f63c22acf3d8c9a', // Admin's fixed ID
+      userId,
+      adminId,
+    });
+  };
+
+  const formatMessageTime = (timestamp) => {
+    if (!timestamp) return '';
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
@@ -53,15 +165,23 @@ const UserInbox = () => {
     <View style={styles.container}>
       <StatusBar barStyle="default" />
       <View style={styles.header}>
-              <Image source={AdminImg} style={styles.logo} />
-              <Text style={styles.headerTitle}>Messages</Text>
-            </View>
-      
+        <Image source={AdminImg} style={styles.logo} />
+        <Text style={styles.headerTitle}>Messages</Text>
+      </View>
+
       <TouchableOpacity style={styles.chatItem} onPress={handleChatPress}>
         <Image source={RecepientLogo} style={styles.chatImage} />
-        <View style={styles.chatContent}>
+        <View style={styles.chatInfo}>
           <Text style={styles.chatName}>Pasay City Animal Shelter</Text>
-          <Text style={styles.chatPreview}>Tap to view messages</Text>
+          <Text style={styles.chatMessage}>
+            {latestMessage ? latestMessage.message : 'No messages yet.'}
+          </Text>
+        </View>
+        <View style={styles.chatMeta}>
+          <Text style={styles.chatTime}>
+            {latestMessage ? formatMessageTime(latestMessage.createdAt) : ''}
+          </Text>
+          
         </View>
       </TouchableOpacity>
     </View>
@@ -69,68 +189,59 @@ const UserInbox = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAF9F6',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  container: { flex: 1, backgroundColor: '#fff' },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: 16,
     backgroundColor: '#ff69b4',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
-  logo: {
-    width: 40,
-    height: 40,
-    marginRight: 15,
-  },
-  headerTitle: {
+  logo: { width: 40, height: 40, marginRight: 12 },
+  headerTitle: { 
+    fontSize: 20, 
+    fontWeight: 'bold',
     color: 'white',
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'left',
-    flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  chatItem: { 
+    flexDirection: 'row', 
+    padding: 16, 
+    borderBottomWidth: 1, 
+    borderColor: '#ddd', 
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
- 
-  chatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-  },
-  chatImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  chatImage: { 
+    width: 50, 
+    height: 50, 
+    borderRadius: 25, 
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#ff69b4',
   },
-  chatContent: {
-    flex: 1,
-  },
-  chatName: {
+  chatInfo: { flex: 1 },
+  chatName: { 
+    fontSize: 16, 
     fontWeight: 'bold',
-    fontSize: 16,
+    color: '#2a2a2a',
   },
-  chatPreview: {
-    color: '#666',
-    marginTop: 4,
+  chatMessage: { 
+    fontSize: 14, 
+    color: '#777', 
+    marginTop: 4 
+  },
+  chatMeta: { 
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  chatTime: { 
+    fontSize: 12, 
+    color: '#aaa',
+    marginBottom: 4,
   },
 });
 
