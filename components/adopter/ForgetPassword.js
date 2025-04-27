@@ -244,7 +244,7 @@ const ForgetPassword = ({ navigation }) => {
               onChangeText={setNewPassword}
               secureTextEntry={secureTextEntry}
               accessoryRight={renderPasswordIcon}
-              disabled={!isCodeVerified || !resetToken}
+              disabled={!isCodeVerified} // Fix: Only check if the code is verified
               status={status.password ? 'success' : 'basic'}
               size="medium"
             />
@@ -256,7 +256,7 @@ const ForgetPassword = ({ navigation }) => {
               onChangeText={setConfirmPassword}
               secureTextEntry={secureTextEntry}
               accessoryRight={renderPasswordIcon}
-              disabled={!isCodeVerified || !resetToken}
+              disabled={!isCodeVerified} // Fix: Only check if the code is verified
               status={status.password ? 'success' : 'basic'}
               size="medium"
             />

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, Text, TouchableOpacity, View, Image,
-  KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, StatusBar
+  KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, StatusBar,
+  Modal, TextInput, Alert
 } from 'react-native';
 import { useFonts, Inter_700Bold, Inter_500Medium, Inter_400Regular } from '@expo-google-fonts/inter';
 import { ApplicationProvider, Input } from '@ui-kitten/components';
@@ -20,6 +21,15 @@ const LogIn = ({ navigation }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [secureTextEntry, setSecureTextEntry] = useState(true);
+
+  // Forgot password states
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [step, setStep] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const toggleSecureEntry = () => {
     setSecureTextEntry(!secureTextEntry);
@@ -73,6 +83,74 @@ const LogIn = ({ navigation }) => {
     navigation.navigate('Sign up');
   };
 
+  // Forgot password functions
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      await axios.post(`${config.address}/api/user/forgotpassword`, { email });
+      setStep(2);
+    } catch (err) {
+      console.error("Forgot Password Error:", err.response?.data || err.message);
+      Alert.alert('Error', 'Email not found.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!verificationCode) {
+      Alert.alert('Error', 'Please enter the verification code');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      await axios.post(`${config.address}/api/user/verify-code`, { email, verificationCode });
+      setStep(3);
+    } catch (err) {
+      Alert.alert('Error', 'Invalid code.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Please enter and confirm your new password');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match!');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      await axios.post(`${config.address}/api/user/reset-password`, { email, newPassword });
+      Alert.alert('Success', 'Password reset successfully.');
+      resetForgotPassword();
+    } catch (err) {
+      Alert.alert('Error', 'Error resetting password.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const resetForgotPassword = () => {
+    setShowForgotPassword(false);
+    setStep(1);
+    setEmail('');
+    setVerificationCode('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
   const [fontsLoaded] = useFonts({
     Inter_700Bold,
     Inter_500Medium,
@@ -88,10 +166,8 @@ const LogIn = ({ navigation }) => {
         style={styles.container}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        
-
           <View style={styles.innerContainer}>
-          <StatusBar barStyle="default" />
+            <StatusBar barStyle="default" />
             <View style={styles.headercontainer}>
               <Image
                 style={styles.header}
@@ -137,7 +213,7 @@ const LogIn = ({ navigation }) => {
                       size="large"
                     />
                     <View style={styles.forgotPasswordContainer}>
-                      <TouchableOpacity onPress={() => navigation.navigate('Forget Password')}>
+                      <TouchableOpacity onPress={() => setShowForgotPassword(true)}>
                         <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                       </TouchableOpacity>
                     </View>
@@ -177,6 +253,104 @@ const LogIn = ({ navigation }) => {
             </Animatable.View>
           </View>
         </TouchableWithoutFeedback>
+
+        {/* Forgot Password Modal */}
+        <Modal
+          visible={showForgotPassword}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={resetForgotPassword}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Forgot Password</Text>
+              
+              {step === 1 && (
+                <>
+                  <Text style={styles.modalText}>Enter your email. We will send you a code to reset your password.</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="Email"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={handleForgotPassword}
+                    disabled={isProcessing}
+                  >
+                    <Text style={styles.modalButtonText}>
+                      {isProcessing ? 'Sending...' : 'Submit'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {step === 2 && (
+                <>
+                  <Text style={styles.modalText}>Enter the code that was sent to your email.</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="Verification Code"
+                    value={verificationCode}
+                    onChangeText={setVerificationCode}
+                    keyboardType="numeric"
+                  />
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={handleVerifyCode}
+                    disabled={isProcessing}
+                  >
+                    <Text style={styles.modalButtonText}>
+                      {isProcessing ? 'Verifying...' : 'Submit'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {step === 3 && (
+                <>
+                  <Text style={styles.modalText}>Enter your new password</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="New Password"
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry={true}
+                  />
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="Confirm New Password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={true}
+                  />
+                  {newPassword !== confirmPassword && (
+                    <Text style={styles.passwordError}>Passwords do not match</Text>
+                  )}
+                  <TouchableOpacity
+                    style={[styles.modalButton, newPassword !== confirmPassword && styles.disabledButton]}
+                    onPress={handleResetPassword}
+                    disabled={newPassword !== confirmPassword || isProcessing}
+                  >
+                    <Text style={styles.modalButtonText}>
+                      {isProcessing ? 'Resetting...' : 'Reset Password'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={resetForgotPassword}
+              >
+                <Text style={styles.modalCloseButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </ApplicationProvider>
   );
@@ -297,6 +471,75 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: 'center',
     fontFamily: 'Inter_500Medium',
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 20,
+    marginBottom: 15,
+    color: '#FF69B4',
+  },
+  modalText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  modalInput: {
+    width: '100%',
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    fontFamily: 'Inter_400Regular',
+  },
+  modalButton: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#FF69B4',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  modalButtonText: {
+    fontFamily: 'Inter_700Bold',
+    color: 'white',
+    fontSize: 16,
+  },
+  modalCloseButton: {
+    marginTop: 10,
+  },
+  modalCloseButtonText: {
+    fontFamily: 'Inter_500Medium',
+    color: '#FF69B4',
+    fontSize: 14,
+  },
+  passwordError: {
+    color: 'red',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
   },
 });
 
