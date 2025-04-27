@@ -214,7 +214,33 @@ const AdoptionTracker = () => {
               </Text>
             )}
           </View>
+          {/* Action Buttons */}
+        <View style={styles.buttonContainer}>
+          
+          
+          {adoptionStatus === 'accepted' && (
+            <TouchableOpacity 
+              style={[styles.button, styles.primaryButton]}
+              onPress={() => Alert.alert('Contact Shelter', 'Would you like to contact the shelter about your visit?')}
+            >
+              <MaterialIcons name="phone" size={20} color="#FFF" />
+              <Text style={[styles.buttonText, { color: '#FFF' }]}>Contact Shelter</Text>
+            </TouchableOpacity>
+          )}
+          
+          {/* Show feedback button for "completed" status (which comes from "complete" in the database) */}
+          {adoptionStatus === 'completed' && (
+            <TouchableOpacity 
+              style={[styles.button, styles.feedbackButton]}
+              onPress={handleSubmitFeedback}
+            >
+              <MaterialIcons name="feedback" size={20} color="#FFF" />
+              <Text style={[styles.buttonText, { color: '#FFF' }]}>Submit Feedback</Text>
+            </TouchableOpacity>
+          )}
         </View>
+        </View>
+
         {/* Pet Information Section */}
         <View style={styles.section}>
         <Text style={styles.sectionTitle}>Pet Details</Text>
@@ -249,31 +275,7 @@ const AdoptionTracker = () => {
 
         
 
-        {/* Action Buttons */}
-        <View style={styles.buttonContainer}>
-          
-          
-          {adoptionStatus === 'accepted' && (
-            <TouchableOpacity 
-              style={[styles.button, styles.primaryButton]}
-              onPress={() => Alert.alert('Contact Shelter', 'Would you like to contact the shelter about your visit?')}
-            >
-              <MaterialIcons name="phone" size={20} color="#FFF" />
-              <Text style={[styles.buttonText, { color: '#FFF' }]}>Contact Shelter</Text>
-            </TouchableOpacity>
-          )}
-          
-          {/* Show feedback button for "completed" status (which comes from "complete" in the database) */}
-          {adoptionStatus === 'completed' && (
-            <TouchableOpacity 
-              style={[styles.button, styles.feedbackButton]}
-              onPress={handleSubmitFeedback}
-            >
-              <MaterialIcons name="feedback" size={20} color="#FFF" />
-              <Text style={[styles.buttonText, { color: '#FFF' }]}>Submit Feedback</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        
       </ScrollView>
     </View>
   );
@@ -465,7 +467,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    
     flexDirection: 'row',
     gap: 8,
   },
