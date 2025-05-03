@@ -55,8 +55,8 @@ const Signup = () => {
             newErrors.confirmPassword = "Passwords don't match";
         if (!formData.address) 
             newErrors.address = "Address is required";
-        if (!formData.contactNumber || !/^\+?[1-9]\d{1,14}$/.test(formData.contactNumber)) 
-            newErrors.contactNumber = "Invalid contact number";
+        if (!formData.contactNumber || !/^09\d{9}$/.test(formData.contactNumber)) 
+            newErrors.contactNumber = "Contact number must start with 09 and be 11 digits";
         if (!formData.gender) 
             newErrors.gender = "Gender is required";
         if (!formData.validId) 
@@ -77,6 +77,12 @@ const Signup = () => {
         if (!validate()) return;
         setShowPrivacyModal(true);
     };
+
+    const validatePhoneNumber = (text) => {
+        // Remove all non-digit characters
+        const cleaned = ('' + text).replace(/\D/g, '');
+        return cleaned;
+      };
 
     const pickImage = async (type) => {
         try {
@@ -240,7 +246,11 @@ const Signup = () => {
                     </View>
                     {imageError && <Text style={styles.error}>{imageError}</Text>}
 
-                    <Text style={styles.label}>Username</Text>
+                    <Text style={styles.label}>
+                        <Text style={styles.requiredLabel}>Username</Text>
+                        <Text style={styles.requiredAsterisk}>*</Text>
+                    </Text>
+
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.input}
@@ -252,7 +262,10 @@ const Signup = () => {
                     </View>
                     {errors.username && <Text style={styles.error}>{errors.username}</Text>}
 
-                    <Text style={styles.label}>Email Address</Text>
+                    <Text style={styles.label}>
+                        <Text style={styles.requiredLabel}>Email Address</Text>
+                        <Text style={styles.requiredAsterisk}>*</Text>
+                    </Text>
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.input}
@@ -265,9 +278,12 @@ const Signup = () => {
                     </View>
                     {errors.email && <Text style={styles.error}>{errors.email}</Text>}
 
-                    <View style={styles.row}>
+                    
                         <View style={[styles.passwordInput]}>
-                            <Text style={styles.label}>Password</Text>
+                        <Text style={styles.label}>
+                            <Text style={styles.requiredLabel}>Password</Text>
+                            <Text style={styles.requiredAsterisk}>*</Text>
+                        </Text>
                             <View style={styles.inputContainer}>
                                 <TextInput
                                     style={styles.input}
@@ -291,7 +307,10 @@ const Signup = () => {
                             {errors.password && <Text style={styles.error}>{errors.password}</Text>}
                         </View>
                         <View style={styles.passwordInput}>
-                            <Text style={styles.label}>Confirm Password</Text>
+                        <Text style={styles.label}>
+                            <Text style={styles.requiredLabel}>Re-enter Password</Text>
+                            <Text style={styles.requiredAsterisk}>*</Text>
+                        </Text>
                             <View style={styles.inputContainer}>
                                 <TextInput
                                     style={styles.input}
@@ -315,12 +334,15 @@ const Signup = () => {
                             {errors.confirmPassword && <Text style={styles.error}>{errors.confirmPassword}</Text>}
                         </View>
                     </View>
-
+                    <View style={styles.whitebg}>
                     <Text style={styles.header2}>Personal Information</Text>
                     
                     <View style={styles.row}>
                         <View style={[styles.firstNameInput]}>
-                            <Text style={styles.label}>First Name</Text>
+                        <Text style={styles.label}>
+                            <Text style={styles.requiredLabel}>First Name</Text>
+                            <Text style={styles.requiredAsterisk}>*</Text>
+                        </Text>
                             <View style={styles.inputContainer}>
                                 <TextInput
                                     style={styles.input}
@@ -333,7 +355,10 @@ const Signup = () => {
                             {errors.firstName && <Text style={styles.error}>{errors.firstName}</Text>}
                         </View>
                         <View style={styles.middleNameInput}>
-                            <Text style={styles.label}>M.I.</Text>
+                        <Text style={styles.label}>
+                            <Text style={styles.requiredLabel}>M.I.</Text>
+                            <Text style={styles.requiredAsterisk}>*</Text>
+                        </Text>
                             <View style={styles.inputContainer}>
                                 <TextInput
                                     style={styles.input}
@@ -350,7 +375,10 @@ const Signup = () => {
                         </View>
                     </View>
                     <View style={styles.lastNameInput}>
-                        <Text style={styles.label}>Last Name</Text>
+                        <Text style={styles.label}>
+                            <Text style={styles.requiredLabel}>Last Name</Text>
+                            <Text style={styles.requiredAsterisk}>*</Text>
+                        </Text>
                         <View style={styles.inputContainer}>
                             <TextInput
                                 style={styles.input}
@@ -363,35 +391,49 @@ const Signup = () => {
                         {errors.lastName && <Text style={styles.error}>{errors.lastName}</Text>}
                     </View>
 
-                    <Text style={styles.label}>Address</Text>
+                    <Text style={styles.label}>
+                        <Text style={styles.requiredLabel}>Complete Address</Text>
+                        <Text style={styles.requiredAsterisk}>*</Text>
+                    </Text>
                     <View style={styles.inputContainer}>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Complete address"
-                            value={formData.address}
-                            onChangeText={(text) => setFormData({...formData, address: text})}
+                    <TextInput
+                        style={[styles.input, styles.addressInput]}
+                        value={formData.address}
+                        onChangeText={(text) => setFormData({...formData, address: text})}
+                        multiline={true}
+                        numberOfLines={3}
                         />
-                        <MaterialIcons name="home" size={20} color="#888" style={styles.inputIcon} />
+                        <MaterialIcons name="home" size={20} color="#888" style={styles.inputIcon2} />
                     </View>
                     {errors.address && <Text style={styles.error}>{errors.address}</Text>}
 
-                    <View style={styles.row}>
+                    
                         <View style={[styles.halfInput, {marginRight: 10}]}>
-                            <Text style={styles.label}>Contact Number</Text>
+                        <Text style={styles.label}>
+                            <Text style={styles.requiredLabel}>Contact Number</Text>
+                            <Text style={styles.requiredAsterisk}>*</Text>
+                        </Text>
                             <View style={styles.inputContainer}>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="+63"
-                                    keyboardType="phone-pad"
-                                    value={formData.contactNumber}
-                                    onChangeText={(text) => setFormData({...formData, contactNumber: text})}
+                            <TextInput
+                                style={styles.input}
+                                placeholder="09XX XXX XXXX"
+                                keyboardType="phone-pad"
+                                value={formData.contactNumber}
+                                onChangeText={(text) => {
+                                    const cleaned = validatePhoneNumber(text);
+                                    setFormData({...formData, contactNumber: cleaned});
+                                }}
+                                maxLength={11} // 09 + 9 digits
                                 />
                                 <MaterialIcons name="phone" size={20} color="#888" style={styles.inputIcon} />
                             </View>
                             {errors.contactNumber && <Text style={styles.error}>{errors.contactNumber}</Text>}
                         </View>
                         <View style={styles.halfInput}>
-                            <Text style={styles.label}>Birthdate</Text>
+                        <Text style={styles.label}>
+                            <Text style={styles.requiredLabel}>Birthdate</Text>
+                            <Text style={styles.requiredAsterisk}>*</Text>
+                        </Text>
                             <TouchableOpacity 
                                 style={[styles.input, styles.dateInput]} 
                                 onPress={showDatePicker}
@@ -401,7 +443,7 @@ const Signup = () => {
                             </TouchableOpacity>
                             {errors.birthDate && <Text style={styles.error}>{errors.birthDate}</Text>}
                         </View>
-                    </View>
+                    
 
                     <DateTimePickerModal
                         isVisible={isDatePickerVisible}
@@ -410,12 +452,19 @@ const Signup = () => {
                         onCancel={hideDatePicker}
                         date={formData.birthDate}
                         maximumDate={new Date()}
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        display="spinner" // This gives better month/year selection
                         textColor="#ff69b4"
                         themeVariant="light"
+                        locale="en_PH" // Or your preferred locale
+                        cancelTextIOS="Cancel"
+                        confirmTextIOS="Confirm"
+                        headerTextIOS="Select Birthdate"
                     />
 
-                    <Text style={styles.label}>Gender</Text>
+                    <Text style={styles.label}>
+                        <Text style={styles.requiredLabel}>Gender</Text>
+                        <Text style={styles.requiredAsterisk}>*</Text>
+                    </Text>
                     <View style={styles.radioGroup}>
                         <TouchableOpacity 
                             style={[styles.radioOption, formData.gender === 'Male' && styles.radioOptionSelected]}
@@ -434,7 +483,10 @@ const Signup = () => {
                     </View>
                     {errors.gender && <Text style={styles.error}>{errors.gender}</Text>}
 
-                    <Text style={styles.label}>Valid ID</Text>
+                    <Text style={styles.label}>
+                            <Text style={styles.requiredLabel}>Valid ID</Text>
+                            <Text style={styles.requiredAsterisk}>*</Text>
+                        </Text>
                     <TouchableOpacity 
                         style={styles.uploadButton}
                         onPress={() => pickImage('id')}
@@ -553,7 +605,7 @@ const Signup = () => {
                                 >
                                     {modalLoading ? (
                                         <ActivityIndicator color="white" />
-                                    ) : 'Submit'}
+                                    ) : 'Create Account'}
                                 </Button>
                             </View>
                         </Modal>
@@ -571,7 +623,7 @@ const styles = StyleSheet.create({
     whitebg: {
         backgroundColor: '#fff',
         marginHorizontal: 16,
-        marginVertical: 15,
+        marginTop: 10,
         borderRadius: 10,
         borderColor: '#eee',
         borderWidth: 1,
@@ -596,7 +648,7 @@ const styles = StyleSheet.create({
         color: '#ff69b4',
         textAlign: 'left',
         marginBottom: 5,
-        marginTop: 20,
+        
     },
     profileImageContainer: {
         alignSelf: 'center',
@@ -634,6 +686,13 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#555',
     },
+    requiredLabel: {
+        fontWeight: '600',
+        color: '#555',
+      },
+      requiredAsterisk: {
+        color: 'red',
+      },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -655,6 +714,11 @@ const styles = StyleSheet.create({
         left: 12,
         zIndex: 1,
     },
+    inputIcon2: {
+        position: 'absolute',
+        left: 12,
+        zIndex: 1,
+    },
     passwordToggle: {
         position: 'absolute',
         right: 12,
@@ -664,7 +728,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     dateText: {
-        paddingLeft: 28,
+        paddingLeft: 5,
+        fontSize: 16,
     },
     error: {
         color: 'red',
@@ -691,6 +756,11 @@ const styles = StyleSheet.create({
     halfInput: {
         flex: 0.48,
     },
+    addressInput: {
+        height: 60,
+        textAlignVertical: 'top',
+        paddingTop: 12,
+      },
     radioGroup: {
         flexDirection: 'row',
         marginBottom: 15,
@@ -717,8 +787,10 @@ const styles = StyleSheet.create({
         color: '#555',
     },
     uploadButton: {
-        backgroundColor: '#ff69b4',
+        backgroundColor: 'white',
         padding: 15,
+        borderWidth: 1,
+        borderColor: '#ff69b4',
         borderRadius: 10,
         alignItems: 'center',
         marginBottom: 15,
@@ -727,9 +799,10 @@ const styles = StyleSheet.create({
     },
     uploadIcon: {
         marginRight: 10,
+        color: '#ff69b4',
     },
     uploadButtonText: {
-        color: '#fff',
+        color: '#ff69b4',
         fontWeight: 'bold',
         fontSize: 16,
     },
@@ -750,9 +823,10 @@ const styles = StyleSheet.create({
         padding: 15,
         borderRadius: 10,
         alignItems: 'center',
-        marginBottom: 70,
+        marginBottom: 40,
         elevation: 3,
         marginHorizontal: 16,
+        marginTop: 10,
     },
     submitButtonDisabled: {
         backgroundColor: '#ccc',
@@ -805,17 +879,14 @@ const styles = StyleSheet.create({
     checkboxContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 15,
-        marginBottom: 15,
-        padding: 8,
+        marginTop: 10,
         borderRadius: 8,
         backgroundColor: '#fff',
-        
     },
     checkboxLabel: {
         marginLeft: 10,
         color: '#555',
-        
+        fontSize: 16,
     },
     modalButton: {
         marginTop: 10,
