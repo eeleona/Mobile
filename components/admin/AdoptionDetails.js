@@ -1,20 +1,146 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Divider } from 'react-native-paper';
+import {Divider, Checkbox, Modal, Button, Portal, RadioButton, TextInput } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import AppBar from '../design/AppBar';
 import config from '../../server/config/config';
+import { PaperProvider } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import jwt_decode from 'jwt-decode';
+import axios from 'axios';
 
 const AdoptionDetails = ({ route, navigation }) => {
   const { adoption } = route.params;
   const [loading, setLoading] = useState(false);
+  const [showFailedModal, setShowFailedModal] = useState(false);
+  const [failedReason, setFailedReason] = useState('');
+  const [otherFailedReason, setOtherFailedReason] = useState('');
+  const [showCompleteConfirmModal, setShowCompleteConfirmModal] = useState(false);
+  const [checklists, setChecklists] = useState({
+    complied_papers: { isChecked: false, dateChecked: null },
+    home_visit_successful: { isChecked: false, dateChecked: null }
+  });
+  const [pendingCheckbox, setPendingCheckbox] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  
+  useEffect(() => {
+    if (adoption && adoption._id) {
+      // Initialize checklist with adoption data
+      setChecklists({
+        complied_papers: adoption.complied_papers || { isChecked: false, dateChecked: null },
+        home_visit_successful: adoption.home_visit_successful || { isChecked: false, dateChecked: null }
+      });
+    }
+  }, [adoption]);
+
+  const handleChecklistChange = async (field) => {
+    const now = new Date();
+    
+    // Update the checklist state
+    setChecklists(prev => ({
+      ...prev,
+      [field]: { isChecked: true, dateChecked: now }
+    }));
+    
+    try {
+      // Get token from AsyncStorage
+      const token = await AsyncStorage.getItem('authToken');
+      
+      // Call API to persist the update
+      await axios.patch(`${config.address}/api/adoption/checklist/${adoption._id}`, {
+        field: field,
+        dateChecked: now
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      setShowConfirmModal(false);
+      setPendingCheckbox(null);
+      Alert.alert('Success', 'Checklist item updated successfully');
+    } catch (error) {
+      console.error('Error updating checklist:', error);
+      Alert.alert('Error', 'Failed to update checklist. Please try again.');
+      
+      // Revert the checklist state on error
+      setChecklists(prev => ({
+        ...prev,
+        [field]: { isChecked: false, dateChecked: null }
+      }));
+    }
+  };
 
   const handleFail = () => {
-    Alert.alert('Adoption Failed', 'The adoption process has been marked as failed.');
+    setShowFailedModal(true);
+  };
+
+  const handleSubmitFailed = async () => {
+    setLoading(true);
+    if (!adoption || !adoption._id) {
+      Alert.alert('Error', 'No adoption selected');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      
+      await axios.patch(`${config.address}/api/adoption/fail/${adoption._id}`, { 
+        reason: failedReason === 'Other' ? otherFailedReason : failedReason 
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      setLoading(false);
+      setShowFailedModal(false);
+      Alert.alert('Success', 'Adoption marked as failed');
+      navigation.goBack(); // Return to previous screen
+    } catch (err) {
+      console.error("Error failing adoption:", err);
+      Alert.alert('Error', 'Failed to mark adoption as failed. Please try again.');
+      setLoading(false);
+    }
   };
 
   const handleComplete = () => {
-    Alert.alert('Adoption Completed', 'The adoption process has been marked as completed.');
+    setShowCompleteConfirmModal(true);
+  };
+
+  const handleCompleteAdoption = async () => {
+    setLoading(true);
+    if (!adoption || !adoption._id) {
+      Alert.alert('Error', 'No adoption selected');
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      
+      await axios.patch(`${config.address}/api/adoption/complete/${adoption._id}`, {
+        complied_papers: checklists.complied_papers,
+        home_visit_successful: checklists.home_visit_successful
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      setLoading(false);
+      setShowCompleteConfirmModal(false);
+      Alert.alert('Success', 'Adoption marked as complete');
+      navigation.goBack(); // Return to previous screen
+    } catch (err) {
+      console.error("Error completing adoption:", err);
+      Alert.alert('Error', 'Failed to mark adoption as complete. Please try again.');
+      setLoading(false);
+    }
   };
 
   const formatContactNumber = (number) => {
@@ -95,7 +221,11 @@ const AdoptionDetails = ({ route, navigation }) => {
     </View>
   );
 
+  const isActive = adoption?.status?.toLowerCase() === 'accepted';
+
+
   return (
+    <PaperProvider>
     <View style={styles.container}>
       <AppBar title="Adoption Details" onBackPress={() => navigation.goBack()} />
 
@@ -117,22 +247,74 @@ const AdoptionDetails = ({ route, navigation }) => {
           />
           <Divider style={styles.rowDivider} />
           <StatusStepper status={adoption.status} />
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[styles.button, styles.failButton]}
-              onPress={handleFail}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>Fail</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.completeButton]}
-              onPress={handleComplete}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>Complete</Text>
-            </TouchableOpacity>
-          </View>
+
+          {isActive && (
+            <View style={styles.checklistContainer}>
+              <Text style={styles.checklistTitle}>Requirements</Text>
+              <Divider style={styles.sectionDivider} />
+              
+              <TouchableOpacity 
+                style={styles.checkboxRow}
+                onPress={() => {
+                  if (!checklists.complied_papers.isChecked) {
+                    setPendingCheckbox('complied_papers');
+                    setShowConfirmModal(true);
+                  }
+                }}
+                disabled={checklists.complied_papers.isChecked}
+              >
+                <Checkbox
+                  status={checklists.complied_papers.isChecked ? 'checked' : 'unchecked'}
+                  color="#ff69b4"
+                  disabled={checklists.complied_papers.isChecked}
+                />
+                <Text style={styles.checkboxLabel}>Complete Adoption Papers</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.checkboxRow}
+                onPress={() => {
+                  if (!checklists.home_visit_successful.isChecked) {
+                    setPendingCheckbox('home_visit_successful');
+                    setShowConfirmModal(true);
+                  }
+                }}
+                disabled={checklists.home_visit_successful.isChecked}
+              >
+                <Checkbox
+                  status={checklists.home_visit_successful.isChecked ? 'checked' : 'unchecked'}
+                  color="#ff69b4"
+                  disabled={checklists.home_visit_successful.isChecked}
+                />
+                <Text style={styles.checkboxLabel}>Successful Home Visit</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          {/* Action Buttons - Only show for active adoptions */}
+          {isActive && (
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.button, styles.failButton]}
+                onPress={handleFail}
+                disabled={loading}
+              >
+                <Text style={styles.buttonText}>Fail</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.button, 
+                  styles.completeButton,
+                  (!checklists.complied_papers.isChecked || !checklists.home_visit_successful.isChecked) && styles.disabledButton
+                ]}
+                onPress={handleComplete}
+                disabled={loading || !checklists.complied_papers.isChecked || !checklists.home_visit_successful.isChecked}
+              >
+                <Text style={styles.buttonText}>Complete</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        
         </View>
 
         {/* Pet Details */}
@@ -151,14 +333,14 @@ const AdoptionDetails = ({ route, navigation }) => {
           )}
           <DetailRow icon="pets" label="Name:" value={adoption.p_id?.p_name} />
           <Divider style={styles.rowDivider} />
-          <DetailRow icon="category" label="Type:" value={adoption.p_id?.p_type} />
+          <DetailRow icon="pets" label="Type:" value={adoption.p_id?.p_type} />
           <Divider style={styles.rowDivider} />
           <DetailRow icon="pets" label="Breed:" value={adoption.p_id?.p_breed} />
           <Divider style={styles.rowDivider} />
-          <DetailRow icon="male" label="Gender:" value={adoption.p_id?.p_gender} />
+          <DetailRow icon="pets" label="Gender:" value={adoption.p_id?.p_gender} />
           <Divider style={styles.rowDivider} />
           <DetailRow
-            icon="calendar-today"
+            icon="pets"
             label="Age:"
             value={adoption.p_id?.p_age ? `${adoption.p_id.p_age} years` : null}
           />
@@ -215,7 +397,196 @@ const AdoptionDetails = ({ route, navigation }) => {
           <DetailRow icon="description" label="Household Description:" value={adoption.household_description} />
         </View>
       </ScrollView>
+      {/* Modal for confirming checklist item */}
+      <Portal>
+        <Modal 
+          visible={showConfirmModal} 
+          onDismiss={() => setShowConfirmModal(false)}
+          contentContainerStyle={styles.modalContainer}
+        >
+          <Text style={styles.modalTitle}>Confirm Checklist</Text>
+          <Text style={styles.modalText}>
+            Are you sure you want to mark <Text style={styles.boldText}>
+              {pendingCheckbox === 'complied_papers' ? 'Complied Papers' : 'Successful Home Visit'}
+            </Text> as completed? This cannot be undone.
+          </Text>
+          <View style={styles.modalButtonContainer}>
+            <Button 
+              mode="contained" 
+              onPress={() => handleChecklistChange(pendingCheckbox)}
+              style={styles.confirmButton}
+            >
+              Confirm
+            </Button>
+            <Button 
+              mode="outlined" 
+              onPress={() => setShowConfirmModal(false)}
+              style={styles.cancelButton}
+            >
+              Cancel
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
+
+      {/* Modal for completing adoption - Enhanced */}
+      <Portal>
+        <Modal 
+          visible={showCompleteConfirmModal} 
+          onDismiss={() => setShowCompleteConfirmModal(false)}
+          contentContainerStyle={[styles.modalContainer, styles.elevatedModal]}
+        >
+          <View style={styles.modalHeader}>
+            <MaterialIcons name="check-circle" size={24} color="#4CAF50" />
+            <Text style={[styles.modalTitle, styles.successTitle]}>Confirm Adoption Completion</Text>
+          </View>
+          
+          <View style={styles.modalContent}>
+            <Text style={styles.modalText}>
+              You are about to mark this adoption as successfully completed. Please verify all requirements:
+            </Text>
+            
+            <View style={styles.requirementsList}>
+              <View style={styles.requirementItem}>
+                <MaterialIcons 
+                  name={checklists.complied_papers.isChecked ? "check-box" : "check-box-outline-blank"} 
+                  size={20} 
+                  color={checklists.complied_papers.isChecked ? "#4CAF50" : "#757575"} 
+                />
+                <Text style={styles.requirementText}>Complete Adoption Papers</Text>
+              </View>
+              
+              <View style={styles.requirementItem}>
+                <MaterialIcons 
+                  name={checklists.home_visit_successful.isChecked ? "check-box" : "check-box-outline-blank"} 
+                  size={20} 
+                  color={checklists.home_visit_successful.isChecked ? "#4CAF50" : "#757575"} 
+                />
+                <Text style={styles.requirementText}>Successful Home Visit</Text>
+              </View>
+            </View>
+            
+            <Text style={styles.modalWarning}>
+              <MaterialIcons name="warning" size={16} color="#FF9800" /> 
+              {' '}This action cannot be undone.
+            </Text>
+          </View>
+          
+          <View style={styles.modalFooter}>
+            <Button 
+              mode="outlined" 
+              onPress={() => setShowCompleteConfirmModal(false)}
+              style={[styles.modalButton, styles.cancelButton]}
+              labelStyle={styles.cancelButtonLabel}
+            >
+              Cancel
+            </Button>
+            <Button 
+              mode="contained" 
+              onPress={handleCompleteAdoption}
+              style={[styles.modalButton, styles.successButton]}
+              loading={loading}
+              disabled={!checklists.complied_papers.isChecked || !checklists.home_visit_successful.isChecked}
+            >
+              Confirm Completion
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
+
+      {/* Modal for failing adoption - Enhanced */}
+      <Portal>
+        <Modal 
+          visible={showFailedModal} 
+          onDismiss={() => setShowFailedModal(false)}
+          contentContainerStyle={[styles.modalContainer, styles.elevatedModal]}
+        >
+          <View style={styles.modalHeader}>
+            <MaterialIcons name="error" size={24} color="#F44336" />
+            <Text style={[styles.modalTitle, styles.errorTitle]}>Adoption Unsuccessful</Text>
+          </View>
+          
+          <View style={styles.modalContent}>
+            <Text style={styles.modalText}>
+              Please select the primary reason why this adoption is not successful:
+            </Text>
+            
+            <RadioButton.Group 
+              onValueChange={value => {
+                setFailedReason(value);
+                if (value !== 'Other') {
+                  setOtherFailedReason('');
+                }
+              }} 
+              value={failedReason}
+            >
+              <View style={styles.radioItem}>
+                <RadioButton value="Incompatible with pet" color="#F44336" />
+                <Text style={styles.radioLabel}>Incompatible with pet</Text>
+              </View>
+              
+              <View style={styles.radioItem}>
+                <RadioButton value="Incomplete documentation" color="#F44336" />
+                <Text style={styles.radioLabel}>Incomplete documentation</Text>
+              </View>
+              
+              <View style={styles.radioItem}>
+                <RadioButton value="No longer interested" color="#F44336" />
+                <Text style={styles.radioLabel}>No longer interested</Text>
+              </View>
+              
+              <View style={styles.radioItem}>
+                <RadioButton value="Failed home visit" color="#F44336" />
+                <Text style={styles.radioLabel}>Failed home visit</Text>
+              </View>
+              
+              <View style={styles.radioItem}>
+                <RadioButton value="Other" color="#F44336" />
+                <Text style={styles.radioLabel}>Other reason</Text>
+              </View>
+            </RadioButton.Group>
+            
+            {failedReason === 'Other' && (
+              <TextInput
+                label="Please specify the reason"
+                value={otherFailedReason}
+                onChangeText={text => setOtherFailedReason(text)}
+                style={styles.textInput}
+                mode="outlined"
+                multiline
+                numberOfLines={3}
+              />
+            )}
+            
+            <Text style={styles.modalWarning}>
+              <MaterialIcons name="warning" size={16} color="#F44336" /> 
+              {' '}This will permanently mark the adoption as failed.
+            </Text>
+          </View>
+          
+          <View style={styles.modalFooter}>
+            <Button 
+              mode="outlined" 
+              onPress={() => setShowFailedModal(false)}
+              style={[styles.modalButton, styles.cancelButton]}
+              labelStyle={styles.cancelButtonLabel}
+            >
+              Cancel
+            </Button>
+            <Button 
+              mode="contained" 
+              onPress={handleSubmitFailed}
+              style={[styles.modalButton, styles.errorButton]}
+              loading={loading}
+              disabled={failedReason === '' || (failedReason === 'Other' && otherFailedReason === '')}
+            >
+              Submit
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
     </View>
+    </PaperProvider>
   );
 };
 
@@ -240,7 +611,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '600',
     color: '#ff69b4',
     marginBottom: 12,
@@ -350,6 +721,25 @@ const styles = StyleSheet.create({
   completedLine: {
     backgroundColor: '#4CAF50',
   },
+  checklistContainer: {
+    marginTop: 16,
+  },
+  checklistTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ff69b4',
+    marginBottom: 8,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 6,
+  },
+  checkboxLabel: {
+    marginLeft: 2,
+    fontSize: 14,
+    color: '#333',
+  },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -374,6 +764,116 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  disabledButton: {
+    backgroundColor: '#cccccc',
+  },
+  elevatedModal: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 10,
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    padding: 20,
+    margin: 20,
+    borderRadius: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalContent: {
+    marginBottom: 20,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  modalText: {
+    fontSize: 14,
+    marginBottom: 20,
+  },
+  successTitle: {
+    color: '#4CAF50',
+    marginLeft: 8,
+  },
+  errorTitle: {
+    color: '#F44336',
+    marginLeft: 8,
+  },
+  requirementsList: {
+    marginVertical: 12,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 6,
+  },
+  radioItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  radioLabel: {
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  modalWarning: {
+    fontSize: 13,
+    color: '#757575',
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  successButton: {
+    backgroundColor: '#4CAF50',
+  },
+  errorButton: {
+    backgroundColor: '#fc6868',
+  },
+  cancelButton: {
+    borderColor: '#757575',
+  },
+  cancelButtonLabel: {
+    color: '#757575',
+  },
+  requirementText: {
+    marginLeft: 8,
+    fontSize: 14,
+  },
+  boldText: {
+    fontWeight: 'bold',
+  },
+  modalButton: {
+    marginLeft: 10,
+    minWidth: 120,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 10,
+  },
+  confirmButton: {
+    backgroundColor: '#ff69b4',
+    marginLeft: 10,
+  },
+  cancelButton: {
+    borderColor: '#ff69b4',
+    marginLeft: 10,
+  },
+  textInput: {
+    marginTop: 10,
+    marginBottom: 20,
+  }
 });
 
 export default AdoptionDetails;
