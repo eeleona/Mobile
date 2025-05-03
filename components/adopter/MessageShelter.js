@@ -50,24 +50,34 @@ const MessageShelter = ({ route, navigation }) => {
           navigation.goBack();
           return;
         }
-
+  
         const decoded = jwtDecode(token);
         console.log('Decoded user token:', decoded);
         if (!decoded.id) {
           throw new Error("Invalid token format");
         }
-
+  
         setCurrentUserId(decoded.id);
         setUserName(decoded.name || 'User');
-        setUserImage(decoded.image && decoded.image.startsWith('http') ? { uri: decoded.image } : UserPh);
-
+        
+        // Properly handle user image
+        if (decoded.image) {
+          // Check if image is a full URL or needs server path
+          const imageUri = decoded.image.startsWith('http') 
+            ? decoded.image 
+            : `${config.address}${decoded.image}`;
+          setUserImage({ uri: imageUri });
+        } else {
+          setUserImage(UserPh);
+        }
+  
       } catch (error) {
         console.error("Error getting user data:", error);
         Alert.alert("Error", "Failed to load user data");
         navigation.goBack();
       }
     };
-
+  
     getUserData();
   }, []);
 
@@ -254,13 +264,14 @@ const MessageShelter = ({ route, navigation }) => {
           <Image 
             source={userImage} 
             style={styles.senderAvatar} 
+            onError={() => setUserImage(UserPh)} // Fallback to default image if error
           />
         </>
       ) : (
         <>
           <Image 
-            source={item.senderId === currentUserId ? userImage : receiverImage} 
-            style={item.senderId === currentUserId ? styles.senderAvatar : styles.receiverAvatar} 
+            source={receiverImage} 
+            style={styles.receiverAvatar} 
           />
           <View style={[styles.messageContainer, styles.receiverMessage]}>
             <Text style={styles.receiverMessageText}>{item.message}</Text>
@@ -272,7 +283,6 @@ const MessageShelter = ({ route, navigation }) => {
       )}
     </View>
   );
-
   if (!currentUserId) {
     return (
       <View style={styles.loadingContainer}>

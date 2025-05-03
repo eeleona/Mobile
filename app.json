@@ -32,10 +32,11 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/Images/nobglogo.png",
-        "backgroundColor": "#ffffff",
-        "usesCleartextTraffic": true,
-        "networkSecurityConfig": "@xml/network_security_config"
+        "backgroundColor": "#ffffff"
       },
+      "permissions": ["INTERNET"],
+      "usesCleartextTraffic": false,
+      "networkSecurityConfig": "./android/app/src/main/res/xml/network_security_config.xml",
       "package": "com.eleona.homefurever"
     },
     "web": {

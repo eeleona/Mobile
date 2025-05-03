@@ -56,20 +56,36 @@ const UserInbox = ({ navigation }) => {
   useEffect(() => {
     if (!userId) return;
 
-    const socketUrl = config.address.replace('https://', 'wss://');
+    const socketUrl = () => {
+      if (__DEV__) {
+        // For development, remove port if already included in config.address
+        const baseUrl = config.address.replace(/^https?:\/\//, 'wss://');
+        return baseUrl.includes(':') ? baseUrl : `${baseUrl}:8000`;
+      }
+      // For production - force secure connection
+      return 'wss://api.e-pet-adopt.site:8000'; // Single port specification
+    };
 
-    socket.current = io(socketUrl, {
-      transports: ['websocket'],
-      secure: true,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      rejectUnauthorized: false,
-      forceNew: true,
-      timeout: 10000,
-      pingTimeout: 5000,
-      pingInterval: 10000
-    });
+    const socketOptions = {
+          transports: ['polling'],
+          path: '/socket.io',
+          secure: true,
+          rejectUnauthorized: false, // TEMPORARY for debugging
+          forceNew: true,
+          timeout: 20000,
+          reconnection: true,
+          reconnectionAttempts: 10,
+          reconnectionDelay: 1000,
+          pingTimeout: 25000,
+          pingInterval: 20000,
+          query: {
+            adminId: '670a04a34f63c22acf3d8c9a' // Pass adminId as query parameter
+          }
+        };
+      
+        console.log('Connecting to WebSocket:', socketUrl());
+      
+        socket.current = io(socketUrl(), socketOptions);
 
     socket.current.on('connect', () => {
       console.log('✅ User Socket connected!');

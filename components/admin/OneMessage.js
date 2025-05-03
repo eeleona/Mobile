@@ -46,7 +46,7 @@ const OneMessage = ({ route, navigation }) => {
     const socketUrl = 'https://api.e-pet-adopt.site:8000';
 
     const socketOptions = {
-      transports: ['websocket'],
+      transports: ['polling'],
       forceNew: true,
       upgrade: false,
       secure: true,

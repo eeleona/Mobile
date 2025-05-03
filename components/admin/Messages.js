@@ -15,35 +15,56 @@ const Messages = ({ navigation }) => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [latestMessage, setLatestMessage] = useState(null);
   const adminId = '670a04a34f63c22acf3d8c9a';
   const socket = useRef(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Ensure the URL uses wss:// and correct port
-    const socketUrl = config.address.replace('https://', 'wss://');
-
-    socket.current = io(socketUrl, {
-      transports: ['websocket'],
+    const socketUrl = () => {
+      if (__DEV__) {
+        // For development, remove port if already included in config.address
+        const baseUrl = config.address.replace(/^https?:\/\//, 'wss://');
+        return baseUrl.includes(':') ? baseUrl : `${baseUrl}:8000`;
+      }
+      // For production - force secure connection
+      return 'wss://api.e-pet-adopt.site:8000'; // Single port specification
+    };
+  
+    const socketOptions = {
+      transports: ['polling'],
+      path: '/socket.io',
       secure: true,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      rejectUnauthorized: false,  // For dev/testing only
+      rejectUnauthorized: false, // TEMPORARY for debugging
       forceNew: true,
-      timeout: 10000,
-      pingTimeout: 5000,
-      pingInterval: 10000
-    });
+      timeout: 20000,
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      pingTimeout: 25000,
+      pingInterval: 20000,
+      query: {
+        adminId: '670a04a34f63c22acf3d8c9a' // Pass adminId as query parameter
+      }
+    };
+  
+    console.log('Connecting to WebSocket:', socketUrl());
+  
+    socket.current = io(socketUrl(), socketOptions);
 
     // Handle socket events
     socket.current.on('connect', () => {
-      console.log('✅ Socket connected!');
-      socket.current.emit('joinRoom', 'adminId');  // Replace with actual adminId
+      console.log('✅ Socket connected! ID:', socket.current.id);
+      // No need for separate joinRoom emit if using query params
     });
-
+  
     socket.current.on('connect_error', (err) => {
-      console.log('🔥 Connection error:', err.message);
+      console.log('🔥 Connection failed:', {
+        error: err.message,
+        type: err.type,
+        url: socketUrl(),
+        attemptedOptions: socketOptions
+      });
     });
 
     socket.current.on('disconnect', (reason) => {
@@ -52,6 +73,9 @@ const Messages = ({ navigation }) => {
 
     socket.current.on('receiveMessage', (newMessage) => {
       console.log('Received message:', newMessage);
+      if (newMessage.senderId === adminId || newMessage.receiverId === userId) {
+        setLatestMessage(newMessage);
+      }
       // Handle incoming message update logic
     });
 
@@ -85,27 +109,49 @@ const Messages = ({ navigation }) => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get(`${config.address}/api/messages/users`);
-      if (Array.isArray(response.data)) {
-        const sortedUsers = response.data.map(user => ({
+      const [usersRes, messagesRes] = await Promise.all([
+        axios.get(`${config.address}/api/messages/users`),
+        axios.get(`${config.address}/api/messages/latest-messages`)
+      ]);
+  
+      const usersData = usersRes.data;
+      const latestMessages = messagesRes.data;
+  
+      // Attach the latest message to each user
+      const usersWithLatestMessages = usersData.map(user => {
+        // Find the latest message involving this user
+        const matchedMsg = latestMessages.find(
+          msg =>
+            msg.senderId === user._id || msg.receiverId === user._id
+        );
+  
+        return {
           ...user,
-          latestMessage: user.latestMessage || { message: 'No messages yet' },
-        }));
-        setUsers(sortedUsers);
-        setFilteredUsers(sortedUsers);
-
-        // Animate list appearance
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 500,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
-        }).start();
-      }
+          latestMessage: matchedMsg
+            ? {
+                message: matchedMsg.latestMessage,
+                createdAt: matchedMsg.createdAt
+              }
+            : { message: 'No messages yet' }
+        };
+      });
+  
+      setUsers(usersWithLatestMessages);
+      setFilteredUsers(usersWithLatestMessages);
+  
+      // Animate list appearance
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+  
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+      console.error('Failed to fetch users or messages:', error);
     }
   };
+  
 
   const handleSearchChange = (text) => {
     const value = text.toLowerCase();
@@ -231,6 +277,7 @@ const styles = StyleSheet.create({
   },
   userList: {
     flex: 1,
+    marginBottom: 60,
   },
   listContent: {
     paddingBottom: 30,
