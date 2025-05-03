@@ -190,15 +190,15 @@ const Admin = () => {
   const handleStaffSelection = (staff) => {
     setSelectedStaff({
       s_id: staff.s_id,
-      a_fname: staff.s_fname,
-      a_lname: staff.s_lname,
-      a_mname: staff.s_mname || '',
-      a_add: staff.s_add || '',
-      a_contactnumber: staff.s_contactnumber || '',
-      a_position: staff.s_position || '',
-      a_gender: staff.s_gender || '',
-      a_birthdate: staff.s_birthdate || '',
-      a_email: staff.s_email || ''
+      firstName: staff.s_fname,
+      lastName: staff.s_lname,
+      middleName: staff.s_mname || '',
+      address: staff.s_add || '',
+      contact: staff.s_contactnumber || '',
+      position: staff.s_position || '',
+      gender: staff.s_gender || '',
+      birthdate: staff.s_birthdate || '',
+      email: staff.s_email || ''
     });
     setShowStaffModal(false);
     setShowConfirmationModal(true);
@@ -209,56 +209,72 @@ const Admin = () => {
       setLoading(true);
       
       // Generate credentials
-      const username = generateUsername(selectedStaff.a_fname, selectedStaff.a_lname);
+      const username = generateUsername(selectedStaff.firstName, selectedStaff.lastName);
       const password = generatePassword();
-
-      // Create admin data
+  
       const adminData = {
         s_id: selectedStaff.s_id,
-        a_fname: selectedStaff.a_fname,
-        a_lname: selectedStaff.a_lname,
-        a_mname: selectedStaff.a_mname,
-        a_add: selectedStaff.a_add,
-        a_contactnumber: selectedStaff.a_contactnumber,
-        a_position: selectedStaff.a_position,
-        a_gender: selectedStaff.a_gender,
-        a_birthdate: selectedStaff.a_birthdate,
-        a_email: selectedStaff.a_email,
-        a_username: username,
-        a_password: password,
+        firstName: selectedStaff.firstName,
+        lastName: selectedStaff.lastName,
+        middleName: selectedStaff.middleName,
+        address: selectedStaff.address,
+        contact: selectedStaff.contact,
+        position: selectedStaff.position,
+        gender: selectedStaff.gender,
+        birthdate: selectedStaff.birthdate,
+        email: selectedStaff.email,
+        username: username,
+        password: password,
         s_role: 'admin'
       };
-
+  
+      console.log('Sending admin data:', adminData);
+  
       // Add admin
       const response = await axios.post(`${config.address}/api/admin/new`, adminData);
       
       if (response.data.success) {
-        // Send email if email exists
-        if (adminData.a_email) {
-          try {
-            await axios.post(`${config.address}/api/send-email`, {
-              to: adminData.a_email,
-              subject: "Your Admin Credentials",
-              text: `Dear ${adminData.a_fname},\n\nYour admin account has been created.\nUsername: ${username}\nPassword: ${password}\n\nPlease change your password after logging in.\n`
-            });
-          } catch (emailError) {
-            console.error('Error sending email:', emailError);
-          }
+        // Send email if email exists (fire-and-forget)
+        if (adminData.email) {
+          axios.post(`${config.address}/api/send-email`, {
+            to: adminData.email,
+            subject: "Your Admin Credentials",
+            text: `Dear ${adminData.firstName},\n\nYour admin account has been created. Below are your login credentials:\n\nUsername: ${username}\nPassword: ${password}\n\nPlease change your password after logging in.\n`
+          }).catch(emailError => {
+            console.error('Email error:', emailError);
+          });
         }
-
-        fetchAdmins();
+  
+        // Close modals immediately
         setShowConfirmationModal(false);
+        setShowStaffModal(false);
         setSelectedStaff(null);
-        Alert.alert('Success', 'Admin added successfully');
-      } else {
-        throw new Error(response.data.message || 'Failed to add admin');
+        
+        // Refresh the admin list
+        await fetchAdmins();
+        
+        // Show success alert
+        Alert.alert(
+          'Success', 
+          'Admin added successfully',
+          [
+            { 
+              text: 'OK', 
+              onPress: () => {
+                // Optional: You could add additional actions here
+                // if needed after the user acknowledges the alert
+              }
+            }
+          ]
+        );
       }
     } catch (error) {
       console.error('Error adding admin:', error);
-      Alert.alert(
-        'Error', 
-        error.response?.data?.message || 'Failed to add admin. Please try again.'
-      );
+      let errorMessage = 'Failed to add admin. Please try again.';
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -408,9 +424,11 @@ const Admin = () => {
           renderItem={renderItem}
           keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
           contentContainerStyle={styles.listContainer}
+          refreshing={loading}
+          onRefresh={fetchAdmins}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <MaterialIcons name="admin-panel-settings" size={50} color="#cbd5e0" />
+              <MaterialIcons name="admin-panel-settings" size={50} color="#ff69b4" />
               <Text style={styles.emptyText}>No administrators found</Text>
             </View>
           }
@@ -610,17 +628,17 @@ const Admin = () => {
                     style={styles.staffItemContainer}
                     onPress={() => handleStaffSelection(item)}
                   >
-                    <View style={styles.staffAvatar}>
+                    {/* <View style={styles.staffAvatar}>
                       <MaterialIcons name="person" size={28} color="#ff69b4" />
-                    </View>
+                    </View> */}
                     <View style={styles.staffInfo}>
                       <Text style={styles.staffName}>
                         {item.s_fname} {item.s_lname}
                       </Text>
-                      <View style={styles.staffDetails}>
+                      
                         <Text style={styles.staffPosition}>{item.s_position}</Text>
                         <Text style={styles.staffEmail}>{item.s_email}</Text>
-                      </View>
+                      
                     </View>
                     <MaterialIcons 
                       name="chevron-right" 
@@ -651,10 +669,10 @@ const Admin = () => {
             <View style={styles.confirmationModal}>
               <Text style={styles.confirmationTitle}>Confirm Add Admin</Text>
               <Text style={styles.confirmationText}>
-                Are you sure you want to add {selectedStaff?.a_fname} {selectedStaff?.a_lname} as an admin?
+                Are you sure you want to add {selectedStaff?.firstName} {selectedStaff?.lastName} as an admin?
               </Text>
               <Text style={styles.confirmationEmail}>
-                Email: {selectedStaff?.a_email}
+                Email: {selectedStaff?.email}
               </Text>
               <View style={styles.confirmationButtons}>
                 <TouchableOpacity 
@@ -1035,10 +1053,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   staffName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#1e293b',
-    marginBottom: 4,
+    marginBottom: 10,
   },
   staffDetails: {
     flexDirection: 'row',
