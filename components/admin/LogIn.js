@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   StyleSheet, Text, TouchableOpacity, View, Image,
   KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, StatusBar,
-  Modal, TextInput, Alert
+  Modal, TextInput, Alert, ScrollView
 } from 'react-native';
 import { useFonts, Inter_700Bold, Inter_500Medium, Inter_400Regular } from '@expo-google-fonts/inter';
 import { ApplicationProvider, Input } from '@ui-kitten/components';
@@ -166,6 +166,11 @@ const LogIn = ({ navigation }) => {
         style={styles.container}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          contentContainerStyle={styles.innerContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.innerContainer}>
             <StatusBar barStyle="default" />
             <View style={styles.headercontainer}>
@@ -252,6 +257,7 @@ const LogIn = ({ navigation }) => {
               </LinearGradient>
             </Animatable.View>
           </View>
+        </ScrollView>
         </TouchableWithoutFeedback>
 
         {/* Forgot Password Modal */}
@@ -362,11 +368,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF9F6',
   },
   innerContainer: {
-    flex: 1,
+    flexGrow: 1,
+    justifyContent: 'flex-start',
   },
   headercontainer: {
     width: '100%',
-    height: '40%',
+    height: '40%', // Set fixed or responsive height
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   header: {
     width: '100%',
