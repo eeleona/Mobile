@@ -190,10 +190,9 @@ const styles = StyleSheet.create({
   },
   notificationItem: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    
     padding: 16,
-    marginHorizontal: 16,
-    marginTop: 12,
+    
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
