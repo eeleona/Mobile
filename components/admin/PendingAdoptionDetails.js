@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, TextInput, Platform } from 'react-native';
 import { Divider } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import AppBar from '../design/AppBar';
 import axios from 'axios';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import config from '../../server/config/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import jwt_decode from 'jwt-decode';
@@ -18,6 +19,11 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
   const [visitTime, setVisitTime] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [otherReason, setOtherReason] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedTime, setSelectedTime] = useState(new Date());
+  const [minDate] = useState(new Date()); // Minimum date is today
 
   const verifyAdminAccess = async () => {
     try {
@@ -90,6 +96,42 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
       setLoading(false);
       setShowAcceptModal(false);
     }
+  };
+
+  // Update visitDate and visitTime when selectedDate or selectedTime changes
+  useEffect(() => {
+    const formattedDate = selectedDate.toISOString().split('T')[0];
+    const formattedTime = selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    setVisitDate(formattedDate);
+    setVisitTime(formattedTime);
+  }, [selectedDate, selectedTime]);
+
+  const handleDateChange = (event, date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (date) {
+      setSelectedDate(date);
+    }
+  };
+
+  const handleTimeChange = (event, time) => {
+    setShowTimePicker(Platform.OS === 'ios');
+    if (time) {
+      // Validate time is between 9 AM and 3 PM
+      const hours = time.getHours();
+      if (hours < 9 || hours >= 15) {
+        Alert.alert('Invalid Time', 'Please select a time between 9 AM and 3 PM');
+        return;
+      }
+      setSelectedTime(time);
+    }
+  };
+
+  const openDatePicker = () => {
+    setShowDatePicker(true);
+  };
+
+  const openTimePicker = () => {
+    setShowTimePicker(true);
   };
   
   const handleReject = async () => {
@@ -252,19 +294,47 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
             
             <Text style={styles.modalSubtitle}>Please select date and time for the home visit:</Text>
             
-            <TextInput
-              style={styles.input}
-              placeholder="Select Date (YYYY-MM-DD)"
-              value={visitDate}
-              onChangeText={setVisitDate}
-            />
+            {/* Date Selection */}
+            <TouchableOpacity style={styles.pickerButton} onPress={openDatePicker}>
+              <MaterialIcons name="calendar-today" size={20} color="#ff69b4" />
+              <Text style={styles.pickerButtonText}>
+                {visitDate || 'Select Date'}
+              </Text>
+            </TouchableOpacity>
             
-            <TextInput
-              style={styles.input}
-              placeholder="Select Time (HH:MM)"
-              value={visitTime}
-              onChangeText={setVisitTime}
-            />
+            {/* Time Selection */}
+            <TouchableOpacity 
+              style={styles.pickerButton} 
+              onPress={openTimePicker}
+              disabled={!visitDate}
+            >
+              <MaterialIcons name="access-time" size={20} color="#ff69b4" />
+              <Text style={[styles.pickerButtonText, !visitDate && styles.disabledText]}>
+                {visitTime || 'Select Time'}
+              </Text>
+            </TouchableOpacity>
+            
+            {/* Date Picker */}
+            {showDatePicker && (
+              <DateTimePicker
+                value={selectedDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                minimumDate={minDate}
+                onChange={handleDateChange}
+              />
+            )}
+            
+            {/* Time Picker */}
+            {showTimePicker && (
+              <DateTimePicker
+                value={selectedTime}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleTimeChange}
+                minuteInterval={30} // Optional: set 30-minute intervals
+              />
+            )}
             
             <View style={styles.modalButtonContainer}>
               <TouchableOpacity
@@ -277,7 +347,7 @@ const PendingAdoptionDetails = ({ route, navigation }) => {
               <TouchableOpacity
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={handleAccept}
-                disabled={loading}
+                disabled={loading || !visitDate || !visitTime}
               >
                 {loading ? (
                   <ActivityIndicator color="#fff" />
@@ -573,6 +643,25 @@ const styles = StyleSheet.create({
   reasonText: {
     fontSize: 16,
     color: '#333',
+  },
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 50,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    backgroundColor: '#fff',
+  },
+  pickerButtonText: {
+    fontSize: 16,
+    marginLeft: 10,
+    color: '#333',
+  },
+  disabledText: {
+    color: '#999',
   },
 });
 
